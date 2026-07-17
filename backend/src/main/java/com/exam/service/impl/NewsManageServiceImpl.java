@@ -1,0 +1,90 @@
+package com.exam.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.exam.common.BusinessException;
+import com.exam.common.PageResult;
+import com.exam.entity.News;
+import com.exam.mapper.NewsMapper;
+import com.exam.service.NewsManageService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 新闻管理Service实现
+ */
+@Service
+public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> implements NewsManageService {
+
+    @Override
+    public PageResult<News> page(Integer page, Integer size, String title, Integer status) {
+        LambdaQueryWrapper<News> wrapper = new LambdaQueryWrapper<News>()
+                .like(StringUtils.hasText(title), News::getTitle, title)
+                .eq(status != null, News::getStatus, status)
+                .orderByAsc(News::getSort)
+                .orderByDesc(News::getCreateTime);
+        Page<News> p = new Page<>(page, size);
+        Page<News> result = this.page(p, wrapper);
+        return new PageResult<>(result);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void add(News news) {
+        if (!StringUtils.hasText(news.getTitle())) {
+            throw new BusinessException("标题不能为空");
+        }
+        if (news.getStatus() == null) {
+            news.setStatus(1);
+        }
+        if (news.getSort() == null) {
+            news.setSort(0);
+        }
+        this.save(news);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void update(News news) {
+        if (news.getId() == null) {
+            throw new BusinessException("ID不能为空");
+        }
+        News existing = this.getById(news.getId());
+        if (existing == null) {
+            throw new BusinessException("新闻不存在");
+        }
+        this.updateById(news);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id) {
+        if (this.getById(id) == null) {
+            throw new BusinessException("新闻不存在");
+        }
+        this.removeById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        this.removeByIds(ids);
+    }
+
+    @Override
+    public List<News> listEnabled() {
+        return this.list(new LambdaQueryWrapper<News>()
+                .eq(News::getStatus, 1)
+                .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
+                .orderByAsc(News::getSort)
+                .orderByDesc(News::getCreateTime));
+    }
+}

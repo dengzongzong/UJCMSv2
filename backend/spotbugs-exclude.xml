@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs 过滤: 排除一些误报 + 项目历史代码已知 pattern
+  文档: https://spotbugs.readthedocs.io/en/stable/filter.html
+-->
+<FindBugsFilter>
+    <!-- 测试代码 跳过 -->
+    <Match>
+        <Source name="~.*Test\.java"/>
+    </Match>
+
+    <!-- MyBatis-Plus MetaObjectHandler 反射设值产生的 false positive -->
+    <Match>
+        <Class name="com.exam.config.MetaObjectHandlerConfig"/>
+    </Match>
+
+    <!-- Spring 标准 ApplicationContextAware 写法(单例 init) -->
+    <Match>
+        <Class name="com.exam.common.SpringContextHolder"/>
+    </Match>
+
+    <!-- Excel 导入循环:未知字段用 log.debug 忽略是设计行为 -->
+    <Match>
+        <Class name="com.exam.controller.CertificateController"/>
+        <Method name="commitImport"/>
+    </Match>
+
+    <!-- @Autowired 字段默认 null 在 SpotBugs 看来可能 NPE,但 Spring 会注入 -->
+    <Match>
+        <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR"/>
+    </Match>
+
+    <!-- 静态类(Spring 工具类常见) -->
+    <Match>
+        <Bug pattern="SIC_INNER_SHOULD_BE_STATIC_ANON"/>
+    </Match>
+    <Match>
+        <Bug pattern="SIC_INNER_SHOULD_BE_STATIC_NEEDS_THIS"/>
+    </Match>
+</FindBugsFilter>
