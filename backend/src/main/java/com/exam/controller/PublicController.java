@@ -92,6 +92,14 @@ public class PublicController {
     }
 
     /**
+     * 获取已显示的重大活动列表(type=2)
+     */
+    @GetMapping("/events")
+    public Result<List<News>> listEvents() {
+        return Result.success(newsManageService.listEnabledByType(2));
+    }
+
+    /**
      * 获取首页内容板块(政策法规/信息公开)
      * type: 1-政策法规 2-信息公开, 不传则返回全部
      */

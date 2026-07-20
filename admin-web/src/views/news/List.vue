@@ -4,18 +4,29 @@
       <div class="filter-container">
         <el-input
           v-model="query.title"
-          placeholder="新闻标题"
+          placeholder="标题"
           clearable
           class="filter-item"
-          style="width: 200px"
+          style="width: 180px"
           @keyup.enter.native="handleSearch"
         />
+        <el-select
+          v-model="query.type"
+          placeholder="类型"
+          clearable
+          class="filter-item"
+          style="width: 130px"
+          @change="handleSearch"
+        >
+          <el-option label="新闻动态" :value="1" />
+          <el-option label="重大活动" :value="2" />
+        </el-select>
         <el-select
           v-model="query.status"
           placeholder="状态"
           clearable
           class="filter-item"
-          style="width: 120px"
+          style="width: 100px"
         >
           <el-option label="显示" :value="1" />
           <el-option label="隐藏" :value="0" />
@@ -52,6 +63,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+        <el-table-column label="类型" width="100" align="center">
+          <template slot-scope="{ row }">
+            <el-tag :type="row.type === 2 ? 'danger' : ''" size="mini">
+              {{ row.type === 2 ? '重大活动' : '新闻动态' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="content" label="内容" min-width="300" show-overflow-tooltip>
           <template slot-scope="{ row }">
             <span>{{ row.content ? stripHtml(row.content).substring(0, 80) : '-' }}{{ row.content && stripHtml(row.content).length > 80 ? '...' : '' }}</span>
@@ -99,16 +117,24 @@
     >
       <el-form ref="editForm" :model="editDialog.form" :rules="editDialog.rules" label-width="80px">
         <el-form-item label="标题" prop="title">
-          <el-input v-model="editDialog.form.title" placeholder="请输入新闻标题" maxlength="200" show-word-limit />
+          <el-input v-model="editDialog.form.title" placeholder="请输入标题" maxlength="200" show-word-limit />
         </el-form-item>
-        <el-form-item label="封面图URL" prop="coverUrl">
+        <el-form-item label="封面图" prop="coverUrl">
           <el-input v-model="editDialog.form.coverUrl" placeholder="请输入封面图URL" maxlength="500" clearable />
         </el-form-item>
         <el-form-item label="内容" prop="content">
           <RichEditor v-model="editDialog.form.content" height="350px" />
         </el-form-item>
         <el-row :gutter="16">
-          <el-col :span="12">
+          <el-col :span="8">
+            <el-form-item label="类型" prop="type">
+              <el-select v-model="editDialog.form.type" style="width: 100%">
+                <el-option label="新闻动态" :value="1" />
+                <el-option label="重大活动" :value="2" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="editDialog.form.status">
                 <el-radio :label="1">显示</el-radio>
@@ -116,7 +142,7 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="排序" prop="sort">
               <el-input-number v-model="editDialog.form.sort" :min="0" :max="9999" controls-position="right" style="width: 100%" />
             </el-form-item>
@@ -169,6 +195,7 @@ export default {
         page: 1,
         size: 10,
         title: '',
+        type: undefined,
         status: undefined
       },
       editDialog: {
@@ -180,6 +207,7 @@ export default {
           title: '',
           coverUrl: '',
           content: '',
+          type: 1,
           status: 1,
           sort: 0,
           publishTime: undefined,

@@ -112,6 +112,7 @@ CALL safe_add_column('certificate_photo', 'certificate_id', 'BIGINT DEFAULT NULL
 
 -- news 表
 CALL safe_add_column('news', 'publish_time', 'DATETIME DEFAULT NULL COMMENT ''发布时间''');
+CALL safe_add_column('news', 'type', 'TINYINT DEFAULT 1 COMMENT ''类型: 1-新闻动态 2-重大活动''');
 
 -- announcement 表
 CALL safe_add_column('announcement', 'publish_time', 'DATETIME DEFAULT NULL COMMENT ''发布时间''');

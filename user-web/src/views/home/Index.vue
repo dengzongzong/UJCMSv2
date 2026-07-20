@@ -24,6 +24,7 @@
           <div class="banner-right">
             <div class="news-tabs">
               <div :class="['news-tab', { active: newsTab === 'news' }]" @click="newsTab = 'news'">新闻动态</div>
+              <div :class="['news-tab', { active: newsTab === 'events' }]" @click="newsTab = 'events'">重大活动</div>
               <div :class="['news-tab', { active: newsTab === 'announcement' }]" @click="newsTab = 'announcement'">通知公告</div>
             </div>
             <div class="news-tab-content">
@@ -35,6 +36,14 @@
                 </li>
                 <li v-if="newsList.length === 0" class="news-empty">暂无新闻</li>
               </ul>
+              <ul v-else-if="newsTab === 'events'" class="news-sidebar-list">
+                <li v-for="item in displayEvents" :key="'e'+item.id" @click="onNewsClick(item)">
+                  <span class="news-dot"></span>
+                  <span class="news-text">{{ item.title }}</span>
+                  <span class="news-date">{{ formatDate(item.createTime) }}</span>
+                </li>
+                <li v-if="eventsList.length === 0" class="news-empty">暂无活动</li>
+              </ul>
               <ul v-else class="news-sidebar-list">
                 <li v-for="item in displayAnnouncements" :key="item.id" @click="onAnnouncementClick(item)">
                   <span class="news-dot"></span>
@@ -44,7 +53,7 @@
                 <li v-if="announcements.length === 0" class="news-empty">暂无公告</li>
               </ul>
             </div>
-            <div class="news-more" @click="newsTab === 'news' ? loadMoreNews() : loadMoreAnnouncements()">更多 &gt;&gt;</div>
+            <div class="news-more" @click="newsTab === 'announcement' ? loadMoreAnnouncements() : loadMoreNews()">更多 &gt;&gt;</div>
           </div>
         </div>
       </div>
@@ -302,7 +311,7 @@ import Header from '@/components/Header.vue'
 import CooperationDialog from '@/components/CooperationDialog.vue'
 import DeclarationDialog from '@/components/DeclarationDialog.vue'
 import ComplaintDialog from '@/components/ComplaintDialog.vue'
-import { getBanners, getAnnouncements, getNewsList, getFriendlyLinks, getCourseThreeImages, getPublicCourseList, getHomepageSections } from '@/api/home'
+import { getBanners, getAnnouncements, getNewsList, getEventsList, getFriendlyLinks, getCourseThreeImages, getPublicCourseList, getHomepageSections } from '@/api/home'
 import { resolveImg } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
 
@@ -315,6 +324,7 @@ export default {
       courseList: [],
       announcements: [],
       newsList: [],
+      eventsList: [],
       friendlyLinks: [],
       videoImages: [],
       loading: false,
@@ -344,6 +354,9 @@ export default {
     displayNews() {
       return (this.newsList || []).slice(0, 6)
     },
+    displayEvents() {
+      return (this.eventsList || []).slice(0, 6)
+    },
     displayAnnouncements() {
       return (this.announcements || []).slice(0, 6)
     },
@@ -359,6 +372,7 @@ export default {
     this.fetchCourses()
     this.fetchAnnouncements()
     this.fetchNews()
+    this.fetchEvents()
     this.fetchFriendlyLinks()
     this.fetchVideoImages()
     this.fetchHomepageSections()
@@ -404,6 +418,15 @@ export default {
         this.newsList = Array.isArray(data) ? data : (data.list || data.records || [])
       } catch (error) {
         this.newsList = []
+      }
+    },
+    async fetchEvents() {
+      try {
+        const res = await getEventsList()
+        const data = res.data || res
+        this.eventsList = Array.isArray(data) ? data : (data.list || data.records || [])
+      } catch (error) {
+        this.eventsList = []
       }
     },
     onGovLinkChange(event, index) {
