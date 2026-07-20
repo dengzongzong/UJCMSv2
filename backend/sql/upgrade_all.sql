@@ -140,9 +140,6 @@ CALL safe_add_column('student_course', 'course_name', 'VARCHAR(255) DEFAULT NULL
 CALL safe_add_column('video_study_record', 'course_name', 'VARCHAR(255) DEFAULT NULL COMMENT ''冗余课程名称(删除课程后仍可展示)''');
 CALL safe_add_column('video_study_record', 'video_name', 'VARCHAR(255) DEFAULT NULL COMMENT ''冗余视频名称(删除视频后仍可展示)''');
 
--- 清理存储过程
-DROP PROCEDURE IF EXISTS `safe_add_column`;
-
 -- ============================================================
 -- 3. 删除 exam_record 指向 exam 的外键约束(防止删除考试时级联删除考试记录或置空exam_id)
 -- ============================================================
@@ -202,3 +199,8 @@ CALL safe_add_column('student', 'cert_type', 'VARCHAR(100) DEFAULT NULL COMMENT 
 
 -- 证书用户表新增 cert_type 字段
 CALL safe_add_column('certificate_user', 'cert_type', 'VARCHAR(100) DEFAULT NULL COMMENT ''证书类型''');
+
+-- ============================================================
+-- 8. 清理存储过程(必须放在所有 CALL 之后)
+-- ============================================================
+DROP PROCEDURE IF EXISTS `safe_add_column`;
