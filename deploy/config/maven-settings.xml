@@ -1,0 +1,15 @@
+# =====================================================================
+# Maven 镜像配置 (阿里云加速)
+# 部署位置: ~/.m2/settings.xml
+# =====================================================================
+
+<settings>
+  <mirrors>
+    <mirror>
+      <id>aliyun</id>
+      <mirrorOf>central</mirrorOf>
+      <name>Aliyun Maven Mirror</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+  </mirrors>
+</settings>
