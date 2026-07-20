@@ -204,3 +204,47 @@ CALL safe_add_column('certificate_user', 'cert_type', 'VARCHAR(100) DEFAULT NULL
 -- 8. 清理存储过程(必须放在所有 CALL 之后)
 -- ============================================================
 DROP PROCEDURE IF EXISTS `safe_add_column`;
+
+-- ============================================================
+-- 9. 合作申请表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `cooperation_apply` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  -- 一、单位基本信息
+  `unit_name` varchar(255) DEFAULT NULL COMMENT '单位名称',
+  `credit_code` varchar(255) DEFAULT NULL COMMENT '统一社会信用代码',
+  `legal_person` varchar(255) DEFAULT NULL COMMENT '法人姓名',
+  `legal_person_phone` varchar(255) DEFAULT NULL COMMENT '法人联系电话',
+  `legal_person_id_card` varchar(255) DEFAULT NULL COMMENT '法人身份证号',
+  `legal_id_front_img` varchar(255) DEFAULT NULL COMMENT '法人身份证正面图片',
+  `legal_id_back_img` varchar(255) DEFAULT NULL COMMENT '法人身份证反面图片',
+  `business_license_img` varchar(255) DEFAULT NULL COMMENT '营业执照图片',
+  `registered_capital` varchar(255) DEFAULT NULL COMMENT '注册资金',
+  `paid_capital` varchar(255) DEFAULT NULL COMMENT '实缴资金',
+  `established_date` date DEFAULT NULL COMMENT '成立日期',
+  `unit_address` varchar(255) DEFAULT NULL COMMENT '单位地址',
+  `filing_status` varchar(255) DEFAULT NULL COMMENT '备案情况',
+  -- 二、主营业务信息
+  `main_business` varchar(255) DEFAULT NULL COMMENT '主营业务',
+  `emp_count` int DEFAULT NULL COMMENT '员工人数',
+  `training_years` int DEFAULT NULL COMMENT '培训经验年数',
+  `training_area` varchar(255) DEFAULT NULL COMMENT '培训场地面积',
+  `training_facilities` varchar(255) DEFAULT NULL COMMENT '培训设施设备',
+  `exp_intro` text DEFAULT NULL COMMENT '经验介绍',
+  `recruit_resource` text DEFAULT NULL COMMENT '招生资源介绍',
+  `other_business` text DEFAULT NULL COMMENT '其他主营业务',
+  `auth_code` varchar(255) DEFAULT NULL COMMENT '授权管理编号',
+  -- 三、合作意向
+  `cooperation_intent` varchar(255) DEFAULT NULL COMMENT '合作意向(多选,逗号分隔)',
+  -- 额外字段
+  `contact_name` varchar(255) DEFAULT NULL COMMENT '联系人姓名',
+  `contact_phone` varchar(255) DEFAULT NULL COMMENT '联系人电话',
+  `remark` text DEFAULT NULL COMMENT '备注',
+  `status` int DEFAULT 0 COMMENT '状态: 0-待审核 1-已通过 2-已拒绝',
+  -- 审计字段
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_unit_name` (`unit_name`),
+  KEY `idx_auth_code` (`auth_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='合作申请表';
