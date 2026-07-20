@@ -1,0 +1,14 @@
+[Unit]
+Description=Exam Platform Backend
+After=network.target mysqld.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/exam-platform
+ExecStart=/usr/bin/java -jar -Xms512m -Xmx1024m /opt/exam-platform/exam-platform.jar --spring.profiles.active=prod --spring.config.additional-location=file:/opt/exam-platform/application-prod.yml
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
