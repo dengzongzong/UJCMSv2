@@ -413,13 +413,12 @@ export default {
       &::after {
         content: '';
         position: absolute;
-        left: 50%;
+        left: 0;
+        right: 0;
         bottom: 0;
-        transform: translateX(-50%);
-        width: 30px;
+        width: 100%;
         height: 3px;
         background: #fff;
-        border-radius: 2px 2px 0 0;
       }
     }
   }
