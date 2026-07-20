@@ -7,7 +7,7 @@
     </div>
 
     <!-- 第一行：蓝天白云背景 + Logo + 搜索框 + 用户信息 -->
-    <div class="header-top">
+    <div class="header-top" :style="{ backgroundImage: `url(${publicPath}images/body.jpg)` }">
       <div class="header-container">
         <div class="logo" @click="$router.push('/home')">
           <img src="/images/log.jpg" alt="logo" class="logo-img" />
@@ -113,6 +113,9 @@ export default {
     }
   },
   computed: {
+    publicPath() {
+      return process.env.BASE_URL || '/'
+    },
     nickname() {
       const info = this.$store.getters.userInfo || {}
       if (info.nickname) return info.nickname
@@ -276,24 +279,9 @@ export default {
   height: 100px;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #4a90d9 0%, #6baae0 30%, #8ec5ea 60%, #a8d8f0 100%);
-
-  /* 云朵效果 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background:
-      radial-gradient(ellipse 120px 40px at 15% 60%, rgba(255,255,255,0.85) 0%, transparent 70%),
-      radial-gradient(ellipse 160px 50px at 40% 40%, rgba(255,255,255,0.7) 0%, transparent 70%),
-      radial-gradient(ellipse 100px 35px at 70% 55%, rgba(255,255,255,0.8) 0%, transparent 70%),
-      radial-gradient(ellipse 140px 45px at 90% 35%, rgba(255,255,255,0.65) 0%, transparent 70%),
-      radial-gradient(ellipse 80px 30px at 55% 70%, rgba(255,255,255,0.6) 0%, transparent 70%);
-    pointer-events: none;
-  }
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
 
   .header-container {
     justify-content: space-between;
