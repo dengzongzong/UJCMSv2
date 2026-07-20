@@ -769,7 +769,7 @@ CREATE TABLE `certificate_url_config` (
   `qr3_template` VARCHAR(1000) DEFAULT NULL COMMENT '证书二维码3的URL生成规则(留空回退使用证书qr_url3)',
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf4mb4 COMMENT='证书二维码URL生成规则配置表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书二维码URL生成规则配置表';
 
 -- 课程关联三图(视频下方三张宣传图,可点击跳转)
 DROP TABLE IF EXISTS `course_three_image`;
