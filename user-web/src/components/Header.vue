@@ -282,15 +282,6 @@ export default {
   background-position: center center;
   background-repeat: no-repeat;
 
-  /* 加深背景，避免过淡 */
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(30, 60, 120, 0.35) 0%, rgba(30, 60, 120, 0.15) 100%);
-    pointer-events: none;
-  }
-
   .header-container {
     justify-content: space-between;
     position: relative;

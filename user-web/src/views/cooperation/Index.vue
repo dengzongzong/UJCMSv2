@@ -167,6 +167,7 @@ export default {
 .cooperation-page {
   min-height: 100vh;
   background: #f5f5f5;
+  padding-top: var(--header-height, 178px);
 }
 
 .page-banner {

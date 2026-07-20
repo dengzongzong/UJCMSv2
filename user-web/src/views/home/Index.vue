@@ -578,7 +578,7 @@ $primary-red-light: #fff5f5;
 }
 
 .page-body {
-  padding-top: 120px;
+  padding-top: var(--header-height, 178px);
 }
 
 /* ========== Banner + 新闻侧栏 ========== */
@@ -1228,7 +1228,7 @@ $primary-red-light: #fff5f5;
 }
 
 @media (max-width: 768px) {
-  .page-body { padding-top: 100px; }
+  .page-body { padding-top: var(--header-height, 100px); }
   .container, .banner-section { width: 100%; padding: 0 12px; }
   .banner-left .banner-swipe, .banner-left .banner-img, .banner-left .banner-placeholder { height: 180px; }
   .section-header .section-title { font-size: 16px; }
