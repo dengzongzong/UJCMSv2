@@ -6,15 +6,14 @@
       <span>返回</span>
     </div>
 
-    <!-- 第一行：透明背景图 + Logo + 搜索框 + 用户信息 -->
+    <!-- 第一行：蓝天白云背景 + Logo + 搜索框 + 用户信息 -->
     <div class="header-top">
-      <div class="header-bg-overlay"></div>
       <div class="header-container">
         <div class="logo" @click="$router.push('/home')">
           <img src="/images/log.jpg" alt="logo" class="logo-img" />
           <div class="logo-text">
-            <div class="logo-title">国际职业能力标准人才评测网</div>
-            <div class="logo-subtitle">International Professional Competency Standard Talent Evaluation Network</div>
+            <div class="logo-title">人力资源专业技能人才评价网</div>
+            <div class="logo-subtitle">www.hrzynlpj.org.cn</div>
           </div>
         </div>
         <div class="header-right">
@@ -272,17 +271,27 @@ export default {
   align-items: center;
 }
 
-/* 第一行：透明背景图 + Logo + 搜索框（白底） */
+/* 第一行：蓝天白云背景 + Logo + 搜索框 */
 .header-top {
-  height: 120px;
-  border-bottom: 1px solid #f0f0f0;
+  height: 100px;
   position: relative;
   overflow: hidden;
+  background: linear-gradient(180deg, #4a90d9 0%, #6baae0 30%, #8ec5ea 60%, #a8d8f0 100%);
 
-  .header-bg-overlay {
+  /* 云朵效果 */
+  &::before {
+    content: '';
     position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(196, 30, 58, 0.03) 0%, rgba(25, 137, 250, 0.03) 100%);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      radial-gradient(ellipse 120px 40px at 15% 60%, rgba(255,255,255,0.85) 0%, transparent 70%),
+      radial-gradient(ellipse 160px 50px at 40% 40%, rgba(255,255,255,0.7) 0%, transparent 70%),
+      radial-gradient(ellipse 100px 35px at 70% 55%, rgba(255,255,255,0.8) 0%, transparent 70%),
+      radial-gradient(ellipse 140px 45px at 90% 35%, rgba(255,255,255,0.65) 0%, transparent 70%),
+      radial-gradient(ellipse 80px 30px at 55% 70%, rgba(255,255,255,0.6) 0%, transparent 70%);
     pointer-events: none;
   }
 
@@ -297,34 +306,37 @@ export default {
 .header-search {
   display: flex;
   align-items: center;
-  margin-right: 16px;
 
   .search-input {
-    width: 180px;
-    height: 32px;
-    padding: 0 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px 0 0 4px;
-    font-size: 13px;
+    width: 200px;
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid rgba(255,255,255,0.6);
+    border-right: none;
+    border-radius: 3px 0 0 3px;
+    font-size: 12px;
     color: #333;
     outline: none;
-    background: #fafafa;
+    background: #fff;
     transition: border-color 0.2s;
 
+    &::placeholder {
+      color: #999;
+    }
+
     &:focus {
-      border-color: #c41e3a;
-      background: #fff;
+      border-color: #fff;
     }
   }
 
   .search-btn {
-    height: 32px;
-    padding: 0 16px;
+    height: 30px;
+    padding: 0 14px;
     border: none;
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 3px 3px 0;
     background: #c41e3a;
     color: #fff;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
     transition: background 0.2s;
 
@@ -353,14 +365,14 @@ export default {
 .logo {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   cursor: pointer;
   flex-shrink: 0;
 
   .logo-img {
-    height: 60px;
+    height: 50px;
     width: auto;
-    border-radius: 10px;
+    border-radius: 50%;
     object-fit: contain;
     display: block;
   }
@@ -373,22 +385,18 @@ export default {
   }
 
   .logo-title {
-    font-size: 36px;
+    font-size: 22px;
     font-weight: bold;
     line-height: 1.3;
-    letter-spacing: 3px;
-    background: linear-gradient(135deg, #c8102e 0%, #f5222d 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: #c8102e;
+    letter-spacing: 2px;
+    color: #1a4a8a;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.5);
   }
 
   .logo-subtitle {
-    font-size: 11px;
-    color: #999;
-    letter-spacing: 1px;
-    font-weight: 300;
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+    letter-spacing: 0.5px;
   }
 }
 
