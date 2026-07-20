@@ -272,17 +272,24 @@ export default {
   align-items: center;
 }
 
-/* 第一行：透明背景图 + Logo + 搜索框（白底） */
+/* 第一行：蓝天白云背景 + Logo + 搜索框 */
 .header-top {
   height: 120px;
-  border-bottom: 1px solid #f0f0f0;
   position: relative;
   overflow: hidden;
+  background: linear-gradient(180deg, #e8f4fd 0%, #d0e8f8 40%, #b8dcf4 100%);
 
-  .header-bg-overlay {
+  &::before {
+    content: '';
     position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(196, 30, 58, 0.03) 0%, rgba(25, 137, 250, 0.03) 100%);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 30%, rgba(255,255,255,0.9) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 70% 20%, rgba(255,255,255,0.7) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 30% at 50% 10%, rgba(255,255,255,0.6) 0%, transparent 40%);
     pointer-events: none;
   }
 
@@ -336,9 +343,9 @@ export default {
 
 /* 第二行：菜单导航（红色背景，不铺满） */
 .header-nav {
-  min-height: 48px;
+  min-height: 42px;
   height: auto;
-  background: linear-gradient(180deg, #c8102e 0%, #a30d24 100%);
+  background: #c41e3a;
 
   .nav-container {
     max-width: 1200px;

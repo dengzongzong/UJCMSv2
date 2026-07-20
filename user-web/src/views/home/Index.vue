@@ -24,6 +24,7 @@
           <div class="banner-right">
             <div class="news-tabs">
               <div :class="['news-tab', { active: newsTab === 'news' }]" @click="newsTab = 'news'">新闻动态</div>
+              <div :class="['news-tab', { active: newsTab === 'events' }]" @click="newsTab = 'events'">重大活动</div>
               <div :class="['news-tab', { active: newsTab === 'announcement' }]" @click="newsTab = 'announcement'">通知公告</div>
             </div>
             <div class="news-tab-content">
@@ -35,6 +36,14 @@
                 </li>
                 <li v-if="newsList.length === 0" class="news-empty">暂无新闻</li>
               </ul>
+              <ul v-else-if="newsTab === 'events'" class="news-sidebar-list">
+                <li v-for="item in displayNews" :key="'e'+item.id" @click="onNewsClick(item)">
+                  <span class="news-dot"></span>
+                  <span class="news-text">{{ item.title }}</span>
+                  <span class="news-date">{{ formatDate(item.createTime) }}</span>
+                </li>
+                <li v-if="newsList.length === 0" class="news-empty">暂无活动</li>
+              </ul>
               <ul v-else class="news-sidebar-list">
                 <li v-for="item in displayAnnouncements" :key="item.id" @click="onAnnouncementClick(item)">
                   <span class="news-dot"></span>
@@ -44,12 +53,18 @@
                 <li v-if="announcements.length === 0" class="news-empty">暂无公告</li>
               </ul>
             </div>
-            <div class="news-more" @click="newsTab === 'news' ? loadMoreNews() : loadMoreAnnouncements()">更多 &gt;&gt;</div>
+            <div class="news-more" @click="handleNewsMore">更多 &gt;&gt;</div>
           </div>
         </div>
       </div>
 
       <div class="container">
+        <!-- ========== 中间横幅 ========== -->
+        <div class="mid-banner">
+          <img src="/images/banner-mid.jpg" class="mid-banner-img" alt="职业教育人才培育公共服务平台" />
+          <div class="mid-banner-text">职业教育人才培育公共服务平台</div>
+        </div>
+
         <!-- ========== 推荐课程 ========== -->
         <div class="course-section">
           <div class="section-header">
@@ -98,7 +113,7 @@
           <van-empty v-if="courseList.length === 0 && !loading" description="暂无课程" />
         </div>
 
-        <!-- ========== 政策法规 + 信息公开（两栏） ========== -->
+        <!-- ========== 政策法规 + 信息公开 + 证书查询（三栏） ========== -->
         <div class="info-section">
           <!-- 政策法规 -->
           <div class="info-panel">
@@ -128,6 +143,62 @@
                 <span class="item-date">{{ formatDate(item.createTime) }}</span>
               </li>
               <li v-if="displayDisclosureNews.length === 0" class="panel-empty">暂无内容</li>
+            </ul>
+          </div>
+          <!-- 证书查询 -->
+          <div class="info-panel cert-query-panel">
+            <div class="panel-header">
+              <span class="panel-title">证书查询</span>
+            </div>
+            <div class="cert-query-form">
+              <div class="cert-query-row">
+                <input v-model="certQuery.no" placeholder="证书编号" class="cert-input" />
+                <input v-model="certQuery.name" placeholder="姓名" class="cert-input" />
+              </div>
+              <div class="cert-query-row">
+                <input v-model="certQuery.idCard" placeholder="身份证号" class="cert-input cert-input-full" />
+              </div>
+              <button class="cert-query-btn" @click="handleCertQuery">查询</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 报考条件 + 热门工种 + 行业信息（三栏） ========== -->
+        <div class="info-section">
+          <!-- 报考条件 -->
+          <div class="info-panel">
+            <div class="panel-header">
+              <span class="panel-title">报考条件</span>
+            </div>
+            <ul class="panel-list">
+              <li v-for="item in registrationConditions" :key="'rc'+item.id" class="panel-item" @click="onSectionClick(item, '报考条件')">
+                <span class="item-dot"></span>
+                <span class="item-text">{{ item.title }}</span>
+              </li>
+            </ul>
+          </div>
+          <!-- 热门工种 -->
+          <div class="info-panel">
+            <div class="panel-header">
+              <span class="panel-title">热门工种</span>
+            </div>
+            <ul class="panel-list">
+              <li v-for="item in popularJobs" :key="'pj'+item.id" class="panel-item" @click="onSectionClick(item, '热门工种')">
+                <span class="item-dot"></span>
+                <span class="item-text">{{ item.title }}</span>
+              </li>
+            </ul>
+          </div>
+          <!-- 行业信息 -->
+          <div class="info-panel">
+            <div class="panel-header">
+              <span class="panel-title">行业信息</span>
+            </div>
+            <ul class="panel-list">
+              <li v-for="item in industryInfo" :key="'ii'+item.id" class="panel-item" @click="onSectionClick(item, '行业信息')">
+                <span class="item-dot"></span>
+                <span class="item-text">{{ item.title }}</span>
+              </li>
             </ul>
           </div>
         </div>
@@ -328,7 +399,29 @@ export default {
         declaration: false,
         complaint: false
       },
-      defaultCover: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect fill="#e8e8e8" width="120" height="80"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#999" font-size="12">课程封面</text></svg>')
+      defaultCover: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect fill="#e8e8e8" width="120" height="80"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#999" font-size="12">课程封面</text></svg>'),
+      certQuery: { no: '', name: '', idCard: '' },
+      registrationConditions: [
+        { id: 1, title: '心理咨询师报考条件', content: '<p>具有心理学、教育学、医学专业大专及以上学历，或具有其他专业本科及以上学历。</p>' },
+        { id: 2, title: '健康管理师报考条件', content: '<p>具有医药卫生专业大专以上学历，或具有非医药卫生专业大专以上学历并连续从事相关工作2年以上。</p>' },
+        { id: 3, title: '企业人力资源管理师报考条件', content: '<p>具有高中或同等学历，从事人力资源管理工作满6年；或具有大专以上学历，从事相关工作满2年。</p>' },
+        { id: 4, title: '公共营养师报考条件', content: '<p>具有医学或食品专业大专以上学历；或具有非相关专业大专以上学历并连续从事相关工作1年以上。</p>' },
+        { id: 5, title: '劳动关系协调员报考条件', content: '<p>具有高中或同等学历，从事劳动关系协调工作满5年；或具有大专以上学历并从事相关工作满2年。</p>' }
+      ],
+      popularJobs: [
+        { id: 1, title: '电子商务师', content: '<p>电子商务师是指利用计算机技术、网络技术，通过专业的网络商务平台等现代信息技术，帮助商家与顾客或商家与商家之间从事各类商务活动或相关工作的人员。</p>' },
+        { id: 2, title: '互联网营销师', content: '<p>互联网营销师是在数字化信息平台上，运用网络的交互性与传播公信力，对企业产品进行多平台营销推广的人员。</p>' },
+        { id: 3, title: '人工智能训练师', content: '<p>人工智能训练师是指使用智能训练软件，在人工智能产品实际使用过程中进行数据库管理、算法参数设置、人机交互设计、性能测试跟踪及其他辅助作业的人员。</p>' },
+        { id: 4, title: '电子竞技运营师', content: '<p>电子竞技运营师是指在电竞产业从事组织活动及内容运营的人员，包括电竞执行、电竞运营、电竞策划等核心工作。</p>' },
+        { id: 5, title: '无人机驾驶员', content: '<p>无人机驾驶员是指通过远程控制设备，驾驶无人机完成既定飞行任务的人员，广泛应用于农业植保、航拍测绘、巡检等领域。</p>' }
+      ],
+      industryInfo: [
+        { id: 1, title: '2025年职业技能等级认定工作通知', content: '<p>根据人力资源和社会保障部统一部署，2025年将继续推进职业技能等级认定工作，扩大认定范围，提升认定质量。</p>' },
+        { id: 2, title: '关于加强技能人才评价质量管理的通知', content: '<p>各地要严格落实技能人才评价质量管理责任，建立健全质量督导体系，确保评价结果客观公正。</p>' },
+        { id: 3, title: '关于公布职业技能等级认定机构名单的公告', content: '<p>经审核，现将符合条件的职业技能等级认定机构名单予以公布，接受社会监督。</p>' },
+        { id: 4, title: '职业技能培训补贴政策解读', content: '<p>符合条件的劳动者参加职业技能培训并取得证书的，可按规定享受职业培训补贴和职业技能鉴定补贴。</p>' },
+        { id: 5, title: '新职业信息发布动态', content: '<p>随着经济社会发展，一批新职业应运而生。人社部持续发布新职业信息，为劳动者就业提供新方向。</p>' }
+      ]
     }
   },
   computed: {
@@ -532,6 +625,15 @@ export default {
     loadMoreAnnouncements() {
       this.$router.push('/news/announcements').catch(() => {})
     },
+    handleNewsMore() {
+      if (this.newsTab === 'news') {
+        this.loadMoreNews()
+      } else if (this.newsTab === 'events') {
+        this.loadMoreNews()
+      } else {
+        this.loadMoreAnnouncements()
+      }
+    },
     loadMore() {
       this.$router.push('/course/my').catch(() => {})
     },
@@ -539,6 +641,9 @@ export default {
       if (this.dialogState[type] !== undefined) {
         this.dialogState[type] = true
       }
+    },
+    handleCertQuery() {
+      this.$router.push({ path: '/certificate', query: this.certQuery }).catch(() => {})
     }
   }
 }
@@ -560,9 +665,10 @@ $primary-red-light: #fff5f5;
 
 /* ========== Banner + 新闻侧栏 ========== */
 .banner-section {
-  width: 80%;
-  max-width: 1600px;
-  margin: 0 auto 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 16px;
+  padding: 0 12px;
 }
 
 .banner-wrapper {
@@ -572,15 +678,14 @@ $primary-red-light: #fff5f5;
 }
 
 .banner-left {
-  flex: 0 0 50%;
+  flex: 0 0 60%;
   min-width: 0;
   overflow: hidden;
   .banner-swipe {
     width: 100%;
     overflow: hidden;
-    height: 340px;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    height: 320px;
+    border-radius: 4px;
     ::v-deep .van-swipe {
       width: 100%;
       overflow: hidden;
@@ -593,28 +698,27 @@ $primary-red-light: #fff5f5;
       width: 100% !important;
       flex: 0 0 100%;
     }
-    ::v-deep .van-swipe__indicators { bottom: 16px; }
+    ::v-deep .van-swipe__indicators { bottom: 12px; }
     ::v-deep .van-swipe__indicator {
-      width: 10px;
-      height: 10px;
-      margin: 0 5px;
+      width: 8px;
+      height: 8px;
+      margin: 0 4px;
       background: rgba(255, 255, 255, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.8);
     }
     ::v-deep .van-swipe__indicator--active {
       background: #ffffff;
-      width: 24px;
-      border-radius: 5px;
+      width: 20px;
+      border-radius: 4px;
     }
   }
   .banner-img {
     width: 100%;
-    height: 340px;
+    height: 320px;
     object-fit: cover;
     display: block;
   }
   .banner-placeholder {
-    height: 340px;
+    height: 320px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -626,38 +730,40 @@ $primary-red-light: #fff5f5;
 }
 
 .banner-right {
-  flex: 0 0 calc(50% - 16px);
+  flex: 0 0 calc(40% - 16px);
   min-width: 0;
   display: flex;
   flex-direction: column;
   background: #fff;
-  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   position: relative;
   z-index: 2;
 }
 
 .news-tabs {
   display: flex;
-  height: 32px;
+  height: 34px;
+  border-bottom: 1px solid #e8e8e8;
   .news-tab {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: #666;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
+    background: #f5f5f5;
+    border-right: 1px solid #e8e8e8;
     transition: all 0.2s;
-    background: #fafafa;
+    &:last-child { border-right: none; }
     &:hover { color: $primary-red; }
     &.active {
       color: #fff;
       background: $primary-red;
-      border-bottom-color: $primary-red-dark;
+      font-weight: 600;
     }
   }
 }
@@ -722,6 +828,32 @@ $primary-red-light: #fff5f5;
   &:hover { color: $primary-red; }
 }
 
+/* ========== 中间横幅 ========== */
+.mid-banner {
+  position: relative;
+  width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  .mid-banner-img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+  }
+  .mid-banner-text {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+  }
+}
+
 /* ========== 通用 section header ========== */
 .section-header {
   display: flex;
@@ -766,10 +898,10 @@ $primary-red-light: #fff5f5;
   padding: 0 20px 24px;
 }
 
-/* ========== 政策法规 + 信息公开（两栏） ========== */
+/* ========== 政策法规 + 信息公开 + 证书查询（三栏） ========== */
 .info-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -848,6 +980,52 @@ $primary-red-light: #fff5f5;
   text-align: center;
   color: #ccc;
   font-size: 13px;
+}
+
+/* 证书查询表单 */
+.cert-query-form {
+  padding: 16px;
+  .cert-query-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .cert-input {
+    flex: 1;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #333;
+    background: #fff;
+    outline: none;
+    &::placeholder {
+      color: #999;
+    }
+    &:focus {
+      border-color: $primary-red;
+      box-shadow: 0 0 0 2px rgba(196, 30, 58, 0.1);
+    }
+  }
+  .cert-input-full {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .cert-query-btn {
+    width: 100%;
+    height: 38px;
+    background: $primary-red;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    &:hover {
+      background: $primary-red-dark;
+    }
+  }
 }
 
 @media (max-width: 768px) {
