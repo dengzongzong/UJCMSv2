@@ -2,13 +2,6 @@
   <div class="cooperation-page">
     <Header />
 
-    <div class="page-banner">
-      <div class="page-banner-inner">
-        <h1>合作单位</h1>
-        <p>合作单位申请查询</p>
-      </div>
-    </div>
-
     <div class="query-container">
       <div class="query-card">
         <div class="query-title">
