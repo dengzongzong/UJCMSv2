@@ -573,11 +573,26 @@ $primary-red-light: #fff5f5;
 
 .banner-left {
   flex: 0 0 50%;
+  min-width: 0;
+  overflow: hidden;
   .banner-swipe {
+    width: 100%;
     overflow: hidden;
     height: 340px;
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    ::v-deep .van-swipe {
+      width: 100%;
+      overflow: hidden;
+    }
+    ::v-deep .van-swipe__track {
+      width: 100% !important;
+      display: flex;
+    }
+    ::v-deep .van-swipe-item {
+      width: 100% !important;
+      flex: 0 0 100%;
+    }
     ::v-deep .van-swipe__indicators { bottom: 16px; }
     ::v-deep .van-swipe__indicator {
       width: 10px;
@@ -612,12 +627,15 @@ $primary-red-light: #fff5f5;
 
 .banner-right {
   flex: 0 0 calc(50% - 16px);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 2;
 }
 
 .news-tabs {
