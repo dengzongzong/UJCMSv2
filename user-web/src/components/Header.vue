@@ -44,9 +44,9 @@
     <div class="header-nav">
       <div class="nav-container">
         <nav class="nav-menu">
-          <router-link to="/" class="nav-item">网站首页</router-link>
+          <router-link to="/" class="nav-item" exact>网站首页</router-link>
           <router-link to="/about" class="nav-item">关于我们</router-link>
-          <router-link to="/news/center" class="nav-item">中心动态</router-link>
+          <router-link to="/news/center" class="nav-item" exact>中心动态</router-link>
           <router-link to="/course/my" class="nav-item">学习中心</router-link>
           <router-link to="/exam" class="nav-item">考试中心</router-link>
           <router-link to="/cooperation" class="nav-item">合作单位</router-link>
