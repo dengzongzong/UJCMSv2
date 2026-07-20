@@ -10,7 +10,6 @@
     <div class="header-top" :style="{ backgroundImage: `url(${publicPath}images/body.jpg)` }">
       <div class="header-container">
         <div class="logo" @click="$router.push('/home')">
-          <img src="/images/log.jpg" alt="logo" class="logo-img" />
           <div class="logo-text">
             <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-title-img" />
             <div class="logo-subtitle">www.hrzynlpj.org.cn</div>
@@ -275,12 +274,21 @@ export default {
 
 /* 第一行：蓝天白云背景 + Logo + 搜索框 */
 .header-top {
-  height: 100px;
+  height: 130px;
   position: relative;
   overflow: hidden;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
+
+  /* 加深背景，避免过淡 */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(30, 60, 120, 0.35) 0%, rgba(30, 60, 120, 0.15) 100%);
+    pointer-events: none;
+  }
 
   .header-container {
     justify-content: space-between;
@@ -373,7 +381,7 @@ export default {
   }
 
   .logo-title-img {
-    height: 40px;
+    height: 56px;
     width: auto;
     display: block;
   }

@@ -1,5 +1,7 @@
 <template>
   <div class="cooperation-page">
+    <Header />
+
     <div class="page-banner">
       <div class="page-banner-inner">
         <h1>合作单位</h1>
@@ -91,9 +93,11 @@
 
 <script>
 import request from '@/utils/request'
+import Header from '@/components/Header.vue'
 
 export default {
   name: 'CooperationUnit',
+  components: { Header },
   data() {
     return {
       query: { unitName: '', authCode: '' },
@@ -190,8 +194,8 @@ export default {
 }
 
 .query-container {
-  max-width: 1200px;
-  margin: -30px auto 40px;
+  max-width: 900px;
+  margin: 40px auto 60px;
   padding: 0 20px;
   position: relative;
   z-index: 2;
@@ -237,22 +241,21 @@ export default {
 }
 
 .query-form {
-  padding: 30px 24px;
+  padding: 24px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 18px;
 
   .form-row {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    flex: 1;
-    min-width: 240px;
+    width: 100%;
 
     &.form-actions {
       flex-direction: row;
       gap: 12px;
+      margin-top: 6px;
     }
   }
 
@@ -268,7 +271,7 @@ export default {
   }
 
   .form-input {
-    height: 38px;
+    height: 40px;
     padding: 0 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -276,6 +279,8 @@ export default {
     color: #333;
     outline: none;
     transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
 
     &:focus {
       border-color: #c41e3a;
