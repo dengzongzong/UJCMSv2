@@ -759,8 +759,8 @@ export default {
 
 <style lang="scss" scoped>
 .certificate-page { min-height: 100vh; background-color: #f5f5f5; }
-.page-body { padding-top: var(--header-height, 170px); }
-.container { width: 98%; max-width: none; margin: 0 auto; padding: 24px 10px; }
+.page-body { padding-top: var(--header-height, 178px); }
+.container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
 
 .page-title {
   display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
