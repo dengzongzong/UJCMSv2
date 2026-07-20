@@ -640,12 +640,6 @@ INSERT INTO `student` (`name`, `student_no`, `phone`, `password`, `nickname`, `p
 INSERT INTO `student_course` (`student_id`, `course_id`) VALUES (1, 1), (1, 2);
 INSERT INTO `student_exam` (`student_id`, `exam_id`) VALUES (1, 1), (1, 2);
 
--- ----------------------------
--- 增量升级：video 表添加 course_id 字段（已有数据库执行此语句）
--- ----------------------------
-ALTER TABLE `video` ADD COLUMN `course_id` bigint DEFAULT NULL COMMENT '所属课程ID' AFTER `category_id`;
-ALTER TABLE `video` ADD KEY `idx_course` (`course_id`);
-
 -- 系统公告测试数据
 INSERT INTO `announcement` (`title`, `content`, `status`, `sort`) VALUES
 ('欢迎使用国际职业能力标准人才评测网', '欢迎各位学员使用国际职业能力标准人才评测网，平台提供权威的职业能力评价、课程学习与在线考试服务，祝您学习愉快、考试顺利！', 1, 1),
