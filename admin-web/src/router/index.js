@@ -313,6 +313,12 @@ export const constantRoutes = [
         meta: { title: '合作咨询', icon: 'el-icon-phone-outline' }
       },
       {
+        path: 'cooperation-apply',
+        name: 'CooperationApply',
+        component: () => import('@/views/cooperationApply/List.vue'),
+        meta: { title: '合作申请管理', icon: 'el-icon-s-order' }
+      },
+      {
         path: 'declaration',
         name: 'SettingDeclaration',
         component: () => import('@/views/setting/Declaration.vue'),

@@ -14,7 +14,7 @@ public interface NewsManageService extends IService<News> {
     /**
      * 分页查询新闻（按标题搜索、按状态筛选）
      */
-    PageResult<News> page(Integer page, Integer size, String title, Integer status);
+    PageResult<News> page(Integer page, Integer size, String title, Integer type, Integer status);
 
     /**
      * 新增新闻
@@ -40,4 +40,9 @@ public interface NewsManageService extends IService<News> {
      * 获取已显示的新闻列表（status=1），按sort升序
      */
     List<News> listEnabled();
+
+    /**
+     * 按类型获取已显示的新闻列表
+     */
+    List<News> listEnabledByType(Integer type);
 }

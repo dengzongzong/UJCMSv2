@@ -116,6 +116,46 @@
               @current-change="page => { query.page = page; loadList() }" />
           </div>
         </el-tab-pane>
+
+        <!-- 合作申请查询 -->
+        <el-tab-pane label="合作申请" name="application">
+          <div class="filter-container">
+            <el-input v-model="applyQuery.unitName" placeholder="单位名称(必填)" clearable
+              class="filter-item" style="width: 220px" @keyup.enter.native="onApplySearch" />
+            <el-input v-model="applyQuery.authCode" placeholder="授权管理编号(必填)" clearable
+              class="filter-item" style="width: 220px" @keyup.enter.native="onApplySearch" />
+            <el-button type="primary" icon="el-icon-search" class="filter-item" @click="onApplySearch">查 询</el-button>
+            <el-button icon="el-icon-refresh" class="filter-item" @click="onApplyReset">重 置</el-button>
+          </div>
+
+          <el-table v-loading="applyLoading" :data="applyList" border stripe>
+            <el-table-column type="index" label="#" width="50" align="center" />
+            <el-table-column prop="unitName" label="单位名称" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="authCode" label="授权管理编号" width="160" show-overflow-tooltip />
+            <el-table-column prop="legalPerson" label="法人" width="100" />
+            <el-table-column prop="contactName" label="联系人" width="100" />
+            <el-table-column prop="contactPhone" label="联系电话" width="130" />
+            <el-table-column label="状态" width="100" align="center">
+              <template slot-scope="{ row }">
+                <el-tag v-if="row.status === 0" type="warning" size="mini">待审核</el-tag>
+                <el-tag v-else-if="row.status === 1" type="success" size="mini">已通过</el-tag>
+                <el-tag v-else-if="row.status === 2" type="danger" size="mini">已拒绝</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createTime" label="申请时间" width="160" align="center" />
+          </el-table>
+
+          <div class="pagination-container">
+            <el-pagination :current-page="applyQuery.page" :page-sizes="[10, 20, 50]" :page-size="applyQuery.size"
+              :total="applyTotal" layout="total, sizes, prev, pager, next, jumper" background
+              @size-change="s => { applyQuery.size = s; applyQuery.page = 1; loadApplyList() }"
+              @current-change="p => { applyQuery.page = p; loadApplyList() }" />
+          </div>
+
+          <div v-if="!applyQueried" style="text-align: center; color: #909399; padding: 30px 0;">
+            请输入单位名称和授权管理编号进行查询
+          </div>
+        </el-tab-pane>
       </el-tabs>
 
       <div v-show="activeTab === 'content'" class="form-footer">
@@ -157,6 +197,7 @@ import {
   deleteFeedback
 } from '@/api/feedback'
 import { uploadFile as uploadRequest } from '@/api/upload'
+import { cooperationApplyPage } from '@/api/cooperationApply'
 import { apiUrl } from '@/utils/apiBase'
 import RichEditor from '@/components/RichEditor'
 
@@ -185,13 +226,19 @@ export default {
         row: null,
         remark: '',
         submitting: false
-      }
+      },
+      applyQuery: { page: 1, size: 10, unitName: '', authCode: '' },
+      applyList: [],
+      applyTotal: 0,
+      applyLoading: false,
+      applyQueried: false
     }
   },
   watch: {
     activeTab(v) {
       if (v === 'list') this.loadList()
       if (v === 'content') this.fetchDetail()
+      if (v === 'application') this.loadApplyList()
     }
   },
   created() {
@@ -346,6 +393,34 @@ export default {
         .catch(err => {
           if (err && err !== 'cancel' && err !== 'close') this.$message.error('删除失败')
         })
+    },
+
+    // 合作申请查询
+    onApplySearch() { this.applyQuery.page = 1; this.loadApplyList() },
+    onApplyReset() {
+      this.applyQuery = { page: 1, size: 10, unitName: '', authCode: '' }
+      this.applyList = []
+      this.applyTotal = 0
+      this.applyQueried = false
+    },
+    async loadApplyList() {
+      if (!this.applyQuery.unitName || !this.applyQuery.authCode) {
+        this.applyList = []
+        this.applyTotal = 0
+        return
+      }
+      this.applyLoading = true
+      this.applyQueried = true
+      try {
+        const res = await cooperationApplyPage(this.applyQuery)
+        this.applyList = (res.data && (res.data.records || res.data.list || [])) || []
+        this.applyTotal = (res.data && res.data.total) || 0
+      } catch (e) {
+        this.applyList = []
+        this.applyTotal = 0
+      } finally {
+        this.applyLoading = false
+      }
     }
   }
 }

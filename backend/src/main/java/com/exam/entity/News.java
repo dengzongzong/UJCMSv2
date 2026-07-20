@@ -13,6 +13,7 @@ public class News {
     private String title;
     private String content;
     private String coverUrl;
+    private Integer type;    // 1-新闻动态 2-重大活动 (默认1)
     private Integer status;  // 0-隐藏 1-显示
     private Integer sort;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

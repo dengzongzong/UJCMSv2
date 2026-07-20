@@ -12,6 +12,10 @@ export function getNewsList() {
   return request({ url: '/public/news', method: 'get' })
 }
 
+export function getEventsList() {
+  return request({ url: '/public/events', method: 'get' })
+}
+
 export function getAnnouncements() {
   return request({ url: '/public/announcements', method: 'get' })
 }

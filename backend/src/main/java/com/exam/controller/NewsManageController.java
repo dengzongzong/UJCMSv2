@@ -26,8 +26,9 @@ public class NewsManageController {
     public Result<PageResult<News>> page(@RequestParam(defaultValue = "1") Integer page,
                                          @RequestParam(defaultValue = "10") Integer size,
                                          @RequestParam(required = false) String title,
+                                         @RequestParam(required = false) Integer type,
                                          @RequestParam(required = false) Integer status) {
-        PageResult<News> result = newsManageService.page(page, size, title, status);
+        PageResult<News> result = newsManageService.page(page, size, title, type, status);
         return Result.success(result);
     }
 

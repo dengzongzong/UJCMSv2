@@ -22,9 +22,10 @@ import java.util.List;
 public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> implements NewsManageService {
 
     @Override
-    public PageResult<News> page(Integer page, Integer size, String title, Integer status) {
+    public PageResult<News> page(Integer page, Integer size, String title, Integer type, Integer status) {
         LambdaQueryWrapper<News> wrapper = new LambdaQueryWrapper<News>()
                 .like(StringUtils.hasText(title), News::getTitle, title)
+                .eq(type != null, News::getType, type)
                 .eq(status != null, News::getStatus, status)
                 .orderByAsc(News::getSort)
                 .orderByDesc(News::getCreateTime);
@@ -83,6 +84,16 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
     public List<News> listEnabled() {
         return this.list(new LambdaQueryWrapper<News>()
                 .eq(News::getStatus, 1)
+                .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
+                .orderByAsc(News::getSort)
+                .orderByDesc(News::getCreateTime));
+    }
+
+    @Override
+    public List<News> listEnabledByType(Integer type) {
+        return this.list(new LambdaQueryWrapper<News>()
+                .eq(News::getStatus, 1)
+                .eq(type != null, News::getType, type)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
                 .orderByAsc(News::getSort)
                 .orderByDesc(News::getCreateTime));
