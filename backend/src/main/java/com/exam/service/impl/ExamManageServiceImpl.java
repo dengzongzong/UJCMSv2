@@ -586,7 +586,8 @@ public class ExamManageServiceImpl extends ServiceImpl<ExamMapper, Exam> impleme
             if (records == null || records.isEmpty()) {
                 // 没有真实考试记录:基于学生ID+专业ID生成一个稳定的默认正确率(65%-85%)
                 // 这样不同学生的默认正确率不同,避免撞分
-                int hash = Math.abs((studentId + (professionId != null ? professionId : 0)).hashCode());
+                long key = studentId + (professionId != null ? professionId : 0);
+                int hash = Math.abs(Long.hashCode(key));
                 double defaultAccuracy = 0.65 + (hash % 200) / 1000.0; // 0.65 ~ 0.85
                 return new BigDecimal(defaultAccuracy);
             }
