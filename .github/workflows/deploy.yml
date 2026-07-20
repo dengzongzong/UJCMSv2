@@ -1,19 +1,18 @@
 # =====================================================================
-# 考试平台 GitHub Actions 自动部署
+# 考试平台 GitHub Actions 自动部署 (IP 访问版)
 # ---------------------------------------------------------------------
 # 触发条件: push 到 main 或 master 分支时自动执行
 # 部署流程:
 #   1. GitHub Actions 在云端构建后端 JAR + 两个前端 dist
-#   2. 通过 SSH 上传构建产物到服务器 /data/exam-platform/deploy-pkg/
+#   2. 通过 SSH 上传构建产物到服务器 /opt/exam-platform/deploy-pkg/
 #   3. 远程执行 deploy/remote-deploy.sh 完成部署
 #
 # 使用前必须配置 GitHub Secrets (仓库 Settings → Secrets and variables → Actions):
-#   SERVER_HOST        - 服务器IP (如 123.45.67.89)
-#   SERVER_USER        - SSH用户名 (如 root)
-#   SSH_PRIVATE_KEY    - SSH私钥 (服务器上生成的,见 deploy-setup.md)
-#   SERVER_PORT        - SSH端口 (如 22,可选,默认22)
-#   MYSQL_PASS         - 数据库密码
-#   JWT_SECRET         - JWT密钥 (至少40字符)
+#   SERVER_HOST        - 服务器IP: 43.162.107.232
+#   SERVER_USER        - SSH用户名: root
+#   SSH_PRIVATE_KEY    - SSH私钥 (服务器上 cat ~/.ssh/id_rsa)
+#   MYSQL_PASS         - 数据库root密码
+#   JWT_SECRET         - JWT密钥 (至少40字符,随意生成)
 # =====================================================================
 
 name: Build and Deploy
@@ -62,7 +61,6 @@ jobs:
         run: |
           cd backend
           mvn clean package -DskipTests -q
-          # 找到生成的 JAR 文件,重命名为固定名称
           JAR_FILE=$(find target -name "*.jar" -not -name "*-sources.jar" | head -1)
           echo "JAR file: $JAR_FILE"
           cp "$JAR_FILE" ../exam-platform.jar
@@ -74,7 +72,6 @@ jobs:
           cd admin-web
           npm install --legacy-peer-deps
           NODE_ENV=production npm run build
-          # 打包 dist 目录
           cd ..
           tar -czf admin-web-dist.tar.gz -C admin-web/dist .
 
@@ -87,15 +84,11 @@ jobs:
           cd ..
           tar -czf user-web-dist.tar.gz -C user-web/dist .
 
-      # ===== 7. 准备部署配置文件 =====
-      - name: Prepare config files
+      # ===== 7. 准备部署文件 =====
+      - name: Prepare deploy files
         run: |
-          # 复制 Nginx 配置
-          cp deploy/nginx-exam-platform.conf .
-          # 复制远程部署脚本
           cp deploy/remote-deploy.sh .
           chmod +x remote-deploy.sh
-          # 复制 SQL 升级脚本
           cp backend/sql/upgrade_all.sql .
 
       # ===== 8. 打包所有部署产物 =====
@@ -105,10 +98,8 @@ jobs:
           mv exam-platform.jar deploy-pkg/
           mv admin-web-dist.tar.gz deploy-pkg/
           mv user-web-dist.tar.gz deploy-pkg/
-          mv nginx-exam-platform.conf deploy-pkg/
           mv remote-deploy.sh deploy-pkg/
           mv upgrade_all.sql deploy-pkg/
-          # 打包
           tar -czf deployment.tar.gz deploy-pkg/
           ls -lh deployment.tar.gz
 
@@ -118,22 +109,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          # 跳过主机验证 (CI 环境无法交互式确认)
-          ssh-keyscan -p ${{ secrets.SERVER_PORT || 22 }} -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
       # ===== 10. 上传部署包到服务器 =====
       - name: Upload deployment package
         run: |
-          SSH_PORT=${{ secrets.SERVER_PORT || 22 }}
-          ssh -p $SSH_PORT ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p /data/exam-platform/deploy-pkg"
-          scp -P $SSH_PORT deployment.tar.gz ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/data/exam-platform/deploy-pkg/
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p /opt/exam-platform/deploy-pkg"
+          scp deployment.tar.gz ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/exam-platform/deploy-pkg/
 
       # ===== 11. 远程执行部署 =====
       - name: Deploy on server
         run: |
-          SSH_PORT=${{ secrets.SERVER_PORT || 22 }}
-          ssh -p $SSH_PORT ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "cd /data/exam-platform/deploy-pkg && \
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "cd /opt/exam-platform/deploy-pkg && \
              tar -xzf deployment.tar.gz && \
              cd deploy-pkg && \
              MYSQL_PASS='${{ secrets.MYSQL_PASS }}' \
@@ -142,8 +130,7 @@ jobs:
 
       # ===== 12. 清理 =====
       - name: Cleanup
-        if: always
+        if: always()
         run: |
-          SSH_PORT=${{ secrets.SERVER_PORT || 22 }}
-          ssh -p $SSH_PORT ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "rm -rf /data/exam-platform/deploy-pkg/deployment.tar.gz" || true
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "rm -rf /opt/exam-platform/deploy-pkg/deployment.tar.gz" || true

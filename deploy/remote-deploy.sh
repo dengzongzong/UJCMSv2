@@ -11,29 +11,28 @@
 #   6. 启动新的后端服务
 #
 # 参数(通过环境变量传入):
-#   MYSQL_PASS   - 数据库密码
+#   MYSQL_PASS   - 数据库root密码
 #   JWT_SECRET   - JWT密钥
 # =====================================================================
 
 set -e
 
 # ===== 配置区 =====
-DEPLOY_DIR="/data/exam-platform"
-DOMAIN="gjrccp.org.cn"
+DEPLOY_DIR="/opt/exam-platform"
+SERVER_IP="43.162.107.232"
 MYSQL_DB="exam_platform"
-MYSQL_USER="exam_user"
-MYSQL_PASS="${MYSQL_PASS:-修改成你的数据库密码}"
+MYSQL_USER="root"
+MYSQL_PASS="${MYSQL_PASS:-修改成你的数据库root密码}"
 JWT_SECRET="${JWT_SECRET:-修改成你的随机密钥字符串至少40个字符}"
-SSL_CERT_DIR="/etc/nginx/ssl/exam-platform"
 # ================================
 
 echo "========================================"
 echo "  开始远程部署"
-echo "  域名: $DOMAIN"
+echo "  服务器: $SERVER_IP"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 
-# 当前脚本所在目录 (GitHub Actions 上传的部署包目录)
+# 当前脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -52,7 +51,6 @@ mkdir -p $DEPLOY_DIR/admin-web/dist
 mkdir -p $DEPLOY_DIR/user-web/dist
 mkdir -p $DEPLOY_DIR/uploads
 mkdir -p $DEPLOY_DIR/logs
-mkdir -p $SSL_CERT_DIR
 
 # 3. 替换后端 JAR
 echo "[3/8] 部署后端 JAR..."
@@ -94,7 +92,7 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/${MYSQL_DB}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true
+    url: jdbc:mysql://localhost:3306/${MYSQL_DB}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
     username: ${MYSQL_USER}
     password: ${MYSQL_PASS}
   servlet:
@@ -123,8 +121,8 @@ jwt:
   expiration: 86400000
 
 upload:
-  path: /data/exam-platform/uploads
-  access-prefix: https://${DOMAIN}/api/uploads/
+  path: /opt/exam-platform/uploads
+  access-prefix: http://${SERVER_IP}/api/uploads/
 
 async:
   task:
@@ -135,7 +133,7 @@ logging:
   level:
     com.exam: info
   file:
-    name: /data/exam-platform/logs/exam-platform.log
+    name: /opt/exam-platform/logs/exam-platform.log
 EOF
 echo "  配置文件已生成: $DEPLOY_DIR/application-prod.yml"
 
@@ -147,16 +145,56 @@ else
     echo "  警告: upgrade_all.sql 不存在,跳过"
 fi
 
-# 7. 配置 Nginx
+# 7. 配置 Nginx (HTTP 模式,无域名无SSL)
 echo "[7/8] 配置 Nginx..."
-if [ -f "nginx-exam-platform.conf" ]; then
-    cp nginx-exam-platform.conf /etc/nginx/conf.d/exam-platform.conf
-    if nginx -t 2>/dev/null; then
-        systemctl reload nginx
-        echo "  Nginx 配置已更新并重新加载"
-    else
-        echo "  警告: Nginx 配置测试失败,跳过重载"
-    fi
+cat > /etc/nginx/conf.d/exam-platform.conf << 'NGINX_EOF'
+server {
+    listen 80;
+    server_name 43.162.107.232;
+
+    # 管理后台 admin-web
+    location /admin/ {
+        alias /opt/exam-platform/admin-web/dist/;
+        try_files $uri $uri/ /admin/index.html;
+        index index.html;
+    }
+
+    # 根路径重定向到 admin
+    location = / {
+        return 302 /admin/;
+    }
+
+    # 学员端 user-web
+    location / {
+        root /opt/exam-platform/user-web/dist/;
+        try_files $uri $uri/ /index.html;
+        index index.html;
+    }
+
+    # 后端 API
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 1500m;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # 上传文件
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:8080/api/uploads/;
+    }
+}
+NGINX_EOF
+
+if nginx -t 2>/dev/null; then
+    systemctl reload nginx
+    echo "  Nginx 配置已更新并重新加载"
+else
+    echo "  警告: Nginx 配置测试失败,跳过重载"
 fi
 
 # 8. 创建并启动 systemd 服务
@@ -165,7 +203,7 @@ if [ ! -f /etc/systemd/system/exam-platform.service ]; then
     cat > /etc/systemd/system/exam-platform.service << EOF
 [Unit]
 Description=Exam Platform Backend
-After=network.target mysql.service
+After=network.target mysqld.service
 
 [Service]
 Type=simple
@@ -180,29 +218,24 @@ WantedBy=multi-user.target
 EOF
     systemctl daemon-reload
     systemctl enable exam-platform
-    echo "  systemd 服务已创建"
 fi
 
-systemctl restart exam-platform
-sleep 5
+systemctl start exam-platform
+sleep 3
 
-# 检查服务状态
 if systemctl is-active --quiet exam-platform; then
-    echo "  exam-platform 服务已启动"
+    echo "  exam-platform 服务启动成功"
 else
-    echo "  警告: exam-platform 服务启动失败,查看日志:"
-    journalctl -u exam-platform --no-pager -n 20
+    echo "  警告: exam-platform 服务启动失败,查看日志: journalctl -u exam-platform -n 20"
 fi
 
 echo ""
 echo "========================================"
 echo "  部署完成!"
-echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 echo ""
-echo "访问地址:"
-echo "  用户端:   https://$DOMAIN/"
-echo "  管理后台: https://$DOMAIN/admin/"
+echo "  管理后台: http://${SERVER_IP}/admin/"
+echo "  学员端:   http://${SERVER_IP}/"
 echo ""
-echo "查看服务状态: systemctl status exam-platform"
-echo "查看运行日志:   tail -f /data/exam-platform/logs/exam-platform.log"
+echo "  查看日志: journalctl -u exam-platform -f"
+echo ""
