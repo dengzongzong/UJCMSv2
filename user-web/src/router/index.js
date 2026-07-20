@@ -165,8 +165,7 @@ const routes = [
     {
       path: '/cooperation',
       name: 'Cooperation',
-      component: () => import('@/views/certificate/Index.vue'),
-      // 合作单位页面复用证书查询页面内容
+      component: () => import('@/views/cooperation/Index.vue'),
       meta: { requiresAuth: false, requiresSubject: false, title: '合作单位' }
     },
     {

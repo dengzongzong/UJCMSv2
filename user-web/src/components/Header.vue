@@ -51,7 +51,6 @@
           <router-link to="/course/my" class="nav-item">学习中心</router-link>
           <router-link to="/exam" class="nav-item">考试中心</router-link>
           <router-link to="/cooperation" class="nav-item">合作单位</router-link>
-          <router-link to="/certificate" class="nav-item">证书查询</router-link>
           <router-link to="/profile" class="nav-item">个人中心</router-link>
         </nav>
       </div>
