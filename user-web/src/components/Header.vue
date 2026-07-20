@@ -12,7 +12,7 @@
         <div class="logo" @click="$router.push('/home')">
           <img src="/images/log.jpg" alt="logo" class="logo-img" />
           <div class="logo-text">
-            <div class="logo-title">人力资源专业技能人才评价网</div>
+            <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-title-img" />
             <div class="logo-subtitle">www.hrzynlpj.org.cn</div>
           </div>
         </div>
@@ -263,7 +263,7 @@ export default {
 }
 
 .header-container {
-  max-width: 1600px;
+  max-width: 1200px;
   height: 100%;
   margin: 0 auto;
   padding: 0 20px;
@@ -346,19 +346,20 @@ export default {
   }
 }
 
-/* 第二行：菜单导航（红色背景，不铺满） */
+/* 第二行：菜单导航（红色背景，与内容区同宽并居中） */
 .header-nav {
   min-height: 48px;
   height: auto;
-  background: linear-gradient(180deg, #c8102e 0%, #a30d24 100%);
+  background: #fff;
 
   .nav-container {
     max-width: 1200px;
-    height: 100%;
+    height: 48px;
     margin: 0 auto;
     padding: 0 20px;
     display: flex;
     align-items: center;
+    background: linear-gradient(180deg, #c8102e 0%, #a30d24 100%);
   }
 }
 
@@ -384,13 +385,10 @@ export default {
     gap: 2px;
   }
 
-  .logo-title {
-    font-size: 22px;
-    font-weight: bold;
-    line-height: 1.3;
-    letter-spacing: 2px;
-    color: #1a4a8a;
-    text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+  .logo-title-img {
+    height: 40px;
+    width: auto;
+    display: block;
   }
 
   .logo-subtitle {
