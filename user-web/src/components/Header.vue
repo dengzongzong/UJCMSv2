@@ -236,7 +236,7 @@ export default {
   top: 0;
   left: 0;
   right: 0;
-  background: #fff;
+  background: #c8102e;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   z-index: 1000;
 }
