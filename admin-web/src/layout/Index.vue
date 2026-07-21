@@ -3,7 +3,7 @@
     <el-aside :width="collapsed ? '64px' : '220px'" class="layout-aside">
       <div class="logo-container">
         <i class="el-icon-school logo-icon"></i>
-        <span v-if="!collapsed" class="logo-text">国际职业能力标准人才评测网</span>
+        <span v-if="!collapsed" class="logo-text">人力资源专业技能人才评价网</span>
       </div>
       <el-scrollbar class="menu-scroll">
         <el-menu

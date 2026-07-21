@@ -291,7 +291,7 @@
 
       <!-- 底部版权 -->
       <div class="footer">
-        <div class="footer-copyright">© 国际职业能力标准人才评测网</div>
+        <div class="footer-copyright">© 人力资源专业技能人才评价网</div>
         <div class="footer-beian">
           <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">
             <img src="/images/logo01.dd7ff50e.png" alt="公安备案" class="beian-icon" />

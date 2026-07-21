@@ -1,5 +1,5 @@
 -- ============================================================
--- 国际职业能力标准人才评测网 数据库建表脚本
+-- 人力资源专业技能人才评价网 数据库建表脚本
 -- 技术栈: SpringBoot + Vue2 + MySQL
 -- ============================================================
 
@@ -479,7 +479,7 @@ INSERT INTO `system_setting` (`setting_key`, `setting_value`, `remark`) VALUES
 
 -- 关于我们
 INSERT INTO `about_us` (`service_phone`, `service_qrcode`, `content`) VALUES
-('400-888-8888', NULL, '<p>欢迎使用国际职业能力标准人才评测网，致力于提供权威的职业能力评价与人才评测服务。</p>');
+('400-888-8888', NULL, '<p>欢迎使用人力资源专业技能人才评价网，致力于提供权威的职业能力评价与人才评测服务。</p>');
 
 -- 专业与科目
 INSERT INTO `profession` (`name`, `sort`) VALUES
@@ -519,7 +519,7 @@ INSERT INTO `question_category` (`name`, `sort`) VALUES
 
 -- 轮播图
 INSERT INTO `banner` (`title`, `image_url`, `link_type`, `link_id`, `sort`) VALUES
-('欢迎来到国际职业能力标准人才评测网', '/static/banner1.jpg', 0, NULL, 1),
+('欢迎来到人力资源专业技能人才评价网', '/static/banner1.jpg', 0, NULL, 1),
 ('建筑工程精品课程', '/static/banner2.jpg', 2, 1, 2),
 ('CPA考试模拟测试', '/static/banner3.jpg', 1, 1, 3);
 
@@ -642,7 +642,7 @@ INSERT INTO `student_exam` (`student_id`, `exam_id`) VALUES (1, 1), (1, 2);
 
 -- 系统公告测试数据
 INSERT INTO `announcement` (`title`, `content`, `status`, `sort`) VALUES
-('欢迎使用国际职业能力标准人才评测网', '欢迎各位学员使用国际职业能力标准人才评测网，平台提供权威的职业能力评价、课程学习与在线考试服务，祝您学习愉快、考试顺利！', 1, 1),
+('欢迎使用人力资源专业技能人才评价网', '欢迎各位学员使用人力资源专业技能人才评价网，平台提供权威的职业能力评价、课程学习与在线考试服务，祝您学习愉快、考试顺利！', 1, 1),
 ('系统维护通知', '平台将于本周日凌晨2:00-4:00进行系统维护升级，期间部分功能可能无法使用，请提前做好安排。', 1, 2);
 
 -- 新闻表
@@ -659,7 +659,7 @@ CREATE TABLE IF NOT EXISTS `news` (
 
 -- 新闻测试数据
 INSERT INTO `news` (`title`, `content`, `status`, `sort`) VALUES
-('平台全新升级', '国际职业能力标准人才评测网全新升级，带来更好的评测与学习体验！', 1, 1),
+('平台全新升级', '人力资源专业技能人才评价网全新升级，带来更好的评测与学习体验！', 1, 1),
 ('新春优惠活动', '新年新气象，全场课程8折优惠，快来报名吧！', 1, 2);
 
 -- ============================================================

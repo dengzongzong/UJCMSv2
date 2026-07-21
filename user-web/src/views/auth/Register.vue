@@ -6,7 +6,7 @@
           <van-icon name="education" size="36" color="#1989fa" />
         </div>
         <h1 class="title">注册账号</h1>
-        <p class="subtitle">创建您的国际职业能力标准人才评测网账号</p>
+        <p class="subtitle">创建您的人力资源专业技能人才评价网账号</p>
       </div>
 
       <van-form @submit="handleRegister" class="register-form">
@@ -144,7 +144,7 @@
       confirm-button-color="#1989fa"
     >
       <div class="agreement-content">
-        <p>欢迎使用国际职业能力标准人才评测网。在使用本平台服务前，请您仔细阅读并同意以下协议：</p>
+        <p>欢迎使用人力资源专业技能人才评价网。在使用本平台服务前，请您仔细阅读并同意以下协议：</p>
         <p>1. 本平台仅提供在线学习与考试服务，用户应遵守相关法律法规。</p>
         <p>2. 用户应保证注册信息真实有效，并对账号安全负责。</p>
         <p>3. 平台将保护用户隐私信息，不会向第三方泄露。</p>

@@ -40,7 +40,7 @@ module.exports = {
     }
   },
   configureWebpack: {
-    name: '国际职业能力标准人才评测网管理后台',
+    name: '人力资源专业技能人才评价网管理后台',
     resolve: {
       alias: {
         '@': resolve('src')

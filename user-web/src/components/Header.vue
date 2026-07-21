@@ -281,8 +281,6 @@ export default {
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  /* 增强背景鲜艳度：饱和度+60%，对比度+15% */
-  filter: saturate(1.6) contrast(1.15);
 
   .header-container {
     justify-content: space-between;

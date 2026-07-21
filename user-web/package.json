@@ -2,7 +2,7 @@
   "name": "exam-platform-user-web",
   "version": "1.0.0",
   "private": true,
-  "description": "国际职业能力标准人才评测网用户端前端",
+  "description": "人力资源专业技能人才评价网用户端前端",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",

@@ -41,7 +41,7 @@ module.exports = {
   },
   chainWebpack: config => {
     config.plugin('html').tap(args => {
-      args[0].title = '国际职业能力标准人才评测网'
+      args[0].title = '人力资源专业技能人才评价网'
       return args
     })
   }

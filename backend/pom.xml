@@ -16,7 +16,7 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>exam-platform</name>
-    <description>国际职业能力标准人才评测网后端</description>
+    <description>人力资源专业技能人才评价网后端</description>
 
     <properties>
         <java.version>1.8</java.version>
