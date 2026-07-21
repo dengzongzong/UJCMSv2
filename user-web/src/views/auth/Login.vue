@@ -285,22 +285,6 @@ export default {
     object-fit: contain;
   }
 
-  .title {
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 4px;
-    line-height: 1.4;
-  }
-
-  .title-en {
-    font-size: 11px;
-    color: #999;
-    font-weight: 300;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
-  }
-
   .subtitle {
     font-size: 13px;
     color: #999;
