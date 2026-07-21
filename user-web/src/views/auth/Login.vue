@@ -272,11 +272,9 @@ export default {
   justify-content: center;
 
   .logo {
-    width: 72px;
-    height: 72px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #fff;
+    width: 280px;
+    max-width: 80%;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -285,7 +283,7 @@ export default {
 
   .logo-img {
     width: 100%;
-    height: 100%;
+    height: auto;
     object-fit: contain;
   }
 
