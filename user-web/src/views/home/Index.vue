@@ -305,12 +305,13 @@
       <div class="footer">
         <div class="footer-copyright">© 人力资源专业技能人才评价网</div>
         <div class="footer-beian">
+          <span>香港政府注册登记号：78503955-000-07-25-4</span>
           <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">
             <img src="/images/logo01.dd7ff50e.png" alt="公安备案" class="beian-icon" />
             冀公网安备 13068402000386 号
           </a>
           <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">
-            冀ICP备2025108945号-4
+            冀ICP备2025108945号-2
           </a>
         </div>
       </div>
