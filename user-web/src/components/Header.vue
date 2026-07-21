@@ -411,17 +411,6 @@ export default {
     &.router-link-active {
       background: rgba(255, 255, 255, 0.18);
       font-weight: 500;
-
-      &::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 3px;
-        background: #fff;
-      }
     }
   }
 }
