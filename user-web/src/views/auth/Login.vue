@@ -272,8 +272,8 @@ export default {
   justify-content: center;
 
   .logo {
-    width: 280px;
-    max-width: 80%;
+    width: 100%;
+    max-width: 360px;
     height: auto;
     display: flex;
     align-items: center;
