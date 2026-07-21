@@ -236,7 +236,7 @@ export default {
   top: 0;
   left: 0;
   right: 0;
-  background: #c8102e;
+  background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   z-index: 1000;
 }
@@ -339,7 +339,7 @@ export default {
 .header-nav {
   min-height: 48px;
   height: auto;
-  background: linear-gradient(180deg, #c8102e 0%, #a30d24 100%);
+  background: #fff;
 
   .nav-container {
     max-width: 1200px;
