@@ -31,8 +31,8 @@ export default {
       this.setHeaderHeight()
     },
     setHeaderHeight() {
-      // 移动端Header高度约100px，桌面端 header-top(150)+nav(48)=198px
-      const height = window.innerWidth <= 768 ? '100px' : '198px'
+      // 移动端Header高度约100px，桌面端 header-top(150)+nav(48)=198px，再加20px间距
+      const height = window.innerWidth <= 768 ? '120px' : '218px'
       document.documentElement.style.setProperty('--header-height', height)
     }
   }
