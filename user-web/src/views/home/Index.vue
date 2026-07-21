@@ -26,7 +26,7 @@
               <div :class="['news-tab', { active: newsTab === 'news' }]" @click="newsTab = 'news'">新闻动态</div>
               <div :class="['news-tab', { active: newsTab === 'events' }]" @click="newsTab = 'events'">重大活动</div>
               <div :class="['news-tab', { active: newsTab === 'announcement' }]" @click="newsTab = 'announcement'">通知公告</div>
-              <div class="news-more" @click="newsTab === 'announcement' ? loadMoreAnnouncements() : loadMoreNews()">更多 &gt;&gt;</div>
+              <div class="news-more" @click="goNewsCenter">更多 &gt;&gt;</div>
             </div>
             <div class="news-tab-content">
               <ul v-if="newsTab === 'news'" class="news-sidebar-list">
@@ -566,6 +566,9 @@ export default {
     },
     loadMoreAnnouncements() {
       this.$router.push('/news/announcements').catch(() => {})
+    },
+    goNewsCenter() {
+      this.$router.push({ path: '/news/center', query: { tab: this.newsTab } }).catch(() => {})
     },
     loadMore() {
       this.$router.push('/course/my').catch(() => {})

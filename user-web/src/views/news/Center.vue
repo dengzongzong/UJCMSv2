@@ -86,6 +86,10 @@ export default {
     }
   },
   mounted() {
+    const tab = this.$route.query.tab
+    if (tab && this.categories.some(c => c.key === tab)) {
+      this.activeCategory = tab
+    }
     this.fetchAll()
   },
   methods: {
