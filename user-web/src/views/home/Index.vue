@@ -26,11 +26,16 @@
               <div :class="['news-tab', { active: newsTab === 'news' }]" @click="newsTab = 'news'">新闻动态</div>
               <div :class="['news-tab', { active: newsTab === 'events' }]" @click="newsTab = 'events'">重大活动</div>
               <div :class="['news-tab', { active: newsTab === 'announcement' }]" @click="newsTab = 'announcement'">通知公告</div>
+              <div class="news-more" @click="newsTab === 'announcement' ? loadMoreAnnouncements() : loadMoreNews()">更多 &gt;&gt;</div>
             </div>
             <div class="news-tab-content">
               <ul v-if="newsTab === 'news'" class="news-sidebar-list">
                 <li v-for="item in displayNews" :key="item.id" @click="onNewsClick(item)">
-                  <span class="news-dot"></span>
+                  <svg class="news-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 1.5h7L13 4.5V14.5H3z" stroke="#c41e3a" stroke-width="1.2"/>
+                    <path d="M10 1.5V4.5H13" stroke="#c41e3a" stroke-width="1.2"/>
+                    <path d="M5 7.5h6M5 9.5h6M5 11.5h4" stroke="#c41e3a" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
                   <span class="news-text">{{ item.title }}</span>
                   <span class="news-date">{{ formatDate(item.createTime) }}</span>
                 </li>
@@ -38,7 +43,11 @@
               </ul>
               <ul v-else-if="newsTab === 'events'" class="news-sidebar-list">
                 <li v-for="item in displayEvents" :key="'e'+item.id" @click="onNewsClick(item)">
-                  <span class="news-dot"></span>
+                  <svg class="news-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 1.5h7L13 4.5V14.5H3z" stroke="#c41e3a" stroke-width="1.2"/>
+                    <path d="M10 1.5V4.5H13" stroke="#c41e3a" stroke-width="1.2"/>
+                    <path d="M5 7.5h6M5 9.5h6M5 11.5h4" stroke="#c41e3a" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
                   <span class="news-text">{{ item.title }}</span>
                   <span class="news-date">{{ formatDate(item.createTime) }}</span>
                 </li>
@@ -46,14 +55,17 @@
               </ul>
               <ul v-else class="news-sidebar-list">
                 <li v-for="item in displayAnnouncements" :key="item.id" @click="onAnnouncementClick(item)">
-                  <span class="news-dot"></span>
+                  <svg class="news-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 1.5h7L13 4.5V14.5H3z" stroke="#c41e3a" stroke-width="1.2"/>
+                    <path d="M10 1.5V4.5H13" stroke="#c41e3a" stroke-width="1.2"/>
+                    <path d="M5 7.5h6M5 9.5h6M5 11.5h4" stroke="#c41e3a" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
                   <span class="news-text">{{ item.title }}</span>
                   <span class="news-date">{{ formatDate(item.createTime) }}</span>
                 </li>
                 <li v-if="announcements.length === 0" class="news-empty">暂无公告</li>
               </ul>
             </div>
-            <div class="news-more" @click="newsTab === 'announcement' ? loadMoreAnnouncements() : loadMoreNews()">更多 &gt;&gt;</div>
           </div>
         </div>
       </div>
@@ -683,6 +695,19 @@ $primary-red-light: #fff5f5;
       border-bottom-color: $primary-red-dark;
     }
   }
+  .news-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    font-size: 12px;
+    color: #999;
+    cursor: pointer;
+    background: #fafafa;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    &:hover { color: $primary-red; }
+  }
 }
 
 .news-tab-content {
@@ -704,12 +729,10 @@ $primary-red-light: #fff5f5;
     transition: background 0.2s;
     &:last-child { border-bottom: none; }
     &:hover { background: $primary-red-light; }
-    .news-dot {
+    .news-icon {
       flex-shrink: 0;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: $primary-red;
+      width: 14px;
+      height: 14px;
       margin-right: 8px;
     }
     .news-text {
@@ -733,16 +756,6 @@ $primary-red-light: #fff5f5;
     color: #ccc;
     font-size: 14px;
   }
-}
-
-.news-more {
-  text-align: right;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: #999;
-  cursor: pointer;
-  border-top: 1px solid #f0f0f0;
-  &:hover { color: $primary-red; }
 }
 
 /* ========== 通用 section header ========== */
