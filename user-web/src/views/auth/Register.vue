@@ -3,9 +3,8 @@
     <div class="register-card">
       <div class="card-header">
         <div class="logo">
-          <van-icon name="education" size="36" color="#1989fa" />
+          <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-img" />
         </div>
-        <h1 class="title">注册账号</h1>
         <p class="subtitle">创建您的人力资源专业技能人才评价网账号</p>
       </div>
 
@@ -259,25 +258,23 @@ export default {
   margin-bottom: 28px;
 
   .logo {
-    width: 72px;
-    height: 72px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, #f0f8ff, #e6f4ff);
+    width: 100%;
+    max-width: 360px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 16px;
+    margin: 0 auto 14px;
   }
 
-  .title {
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 8px;
+  .logo-img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
   }
 
   .subtitle {
-    font-size: 14px;
+    font-size: 13px;
     color: #999;
   }
 }

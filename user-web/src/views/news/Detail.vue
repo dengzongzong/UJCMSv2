@@ -32,7 +32,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { getNewsList, getAnnouncementList } from '@/api/home'
+import { getNewsList, getEventsList, getAnnouncementList, getHomepageSections } from '@/api/home'
 
 export default {
   name: 'NewsDetail',
@@ -86,8 +86,16 @@ export default {
       }
       // 再请求接口拿最新数据
       try {
-        const isAnnouncement = this.detailType === 'announcement'
-        const apiCall = isAnnouncement ? getAnnouncementList() : getNewsList()
+        let apiCall
+        if (this.detailType === 'announcement') {
+          apiCall = getAnnouncementList()
+        } else if (this.detailType === 'events') {
+          apiCall = getEventsList()
+        } else if (this.detailType === 'policy') {
+          apiCall = getHomepageSections(1)
+        } else {
+          apiCall = getNewsList()
+        }
         const res = await apiCall
         const data = res.data || res
         const list = Array.isArray(data) ? data : (data.list || data.records || [])

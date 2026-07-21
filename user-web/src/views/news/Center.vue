@@ -120,7 +120,14 @@ export default {
       this.activeCategory = key
     },
     goDetail(item) {
-      this.$router.push('/news/detail/' + item.id)
+      const typeMap = {
+        news: 'news',
+        events: 'events',
+        announcement: 'announcement',
+        policy: 'policy'
+      }
+      const type = typeMap[this.activeCategory] || 'news'
+      this.$router.push({ path: '/news/detail/' + item.id, query: { type } })
     },
     formatDate(dateStr) {
       if (!dateStr) return ''
