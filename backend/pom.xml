@@ -106,6 +106,7 @@
     </dependencies>
 
     <build>
+        <finalName>exam-platform-1.0.0</finalName>
         <plugins>
             <!-- ============ Maven Compiler: 强制 Java 8 源码/目标 ============
                  锁 1.8 是为了避免 IDE / CI 用高 JDK 时,新加的 Java 9+/16+ 语法

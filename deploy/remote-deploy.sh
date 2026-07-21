@@ -54,11 +54,11 @@ mkdir -p $DEPLOY_DIR/logs
 
 # 3. 替换后端 JAR
 echo "[3/8] 部署后端 JAR..."
-if [ -f "exam-platform.jar" ]; then
-    cp exam-platform.jar $DEPLOY_DIR/exam-platform.jar
-    echo "  JAR 已复制到 $DEPLOY_DIR/exam-platform.jar"
+if [ -f "exam-platform-1.0.0.jar" ]; then
+    cp exam-platform-1.0.0.jar $DEPLOY_DIR/exam-platform-1.0.0.jar
+    echo "  JAR 已复制到 $DEPLOY_DIR/exam-platform-1.0.0.jar"
 else
-    echo "  错误: exam-platform.jar 不存在!"
+    echo "  错误: exam-platform-1.0.0.jar 不存在!"
     exit 1
 fi
 
@@ -194,8 +194,7 @@ fi
 
 # 8. 创建并启动 systemd 服务
 echo "[8/8] 启动后端服务..."
-if [ ! -f /etc/systemd/system/exam-platform.service ]; then
-    cat > /etc/systemd/system/exam-platform.service << EOF
+cat > /etc/systemd/system/exam-platform.service << EOF
 [Unit]
 Description=Exam Platform Backend
 After=network.target mysqld.service
@@ -204,16 +203,15 @@ After=network.target mysqld.service
 Type=simple
 User=root
 WorkingDirectory=${DEPLOY_DIR}
-ExecStart=/usr/bin/java -jar ${DEPLOY_DIR}/exam-platform.jar --spring.profiles.active=prod --spring.config.additional-location=file:${DEPLOY_DIR}/
+ExecStart=/usr/bin/java -jar ${DEPLOY_DIR}/exam-platform-1.0.0.jar --spring.profiles.active=prod --spring.config.additional-location=file:${DEPLOY_DIR}/
 Restart=on-failure
 RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    systemctl daemon-reload
-    systemctl enable exam-platform
-fi
+systemctl daemon-reload
+systemctl enable exam-platform
 
 systemctl start exam-platform
 sleep 3
