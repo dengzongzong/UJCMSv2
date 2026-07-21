@@ -339,7 +339,7 @@ export default {
 .header-nav {
   min-height: 48px;
   height: auto;
-  background: #fff;
+  background: linear-gradient(180deg, #c8102e 0%, #a30d24 100%);
 
   .nav-container {
     max-width: 1200px;
