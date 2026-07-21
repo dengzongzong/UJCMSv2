@@ -50,7 +50,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { getNewsList, getEventsList, getAnnouncements } from '@/api/home'
+import { getNewsList, getEventsList, getAnnouncements, getHomepageSections } from '@/api/home'
 
 export default {
   name: 'NewsCenter',
@@ -95,14 +95,18 @@ export default {
   methods: {
     async fetchAll() {
       try {
-        const [newsRes, eventsRes, annoRes] = await Promise.all([
+        const [newsRes, eventsRes, annoRes, sectionsRes] = await Promise.all([
           getNewsList(),
           getEventsList(),
-          getAnnouncements()
+          getAnnouncements(),
+          getHomepageSections()
         ])
         this.newsList = this.extractList(newsRes)
         this.eventsList = this.extractList(eventsRes)
         this.announcementList = this.extractList(annoRes)
+        const sectionsData = sectionsRes.data || sectionsRes || []
+        const sectionsList = Array.isArray(sectionsData) ? sectionsData : (sectionsData.list || [])
+        this.policyList = sectionsList.filter(item => item.type === 1)
       } catch (e) {
         // ignore
       }
