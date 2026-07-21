@@ -120,11 +120,7 @@ export default {
       this.activeCategory = key
     },
     goDetail(item) {
-      if (this.activeCategory === 'announcement') {
-        this.$router.push('/announcements/' + item.id)
-      } else {
-        this.$router.push('/news/' + item.id)
-      }
+      this.$router.push('/news/detail/' + item.id)
     },
     formatDate(dateStr) {
       if (!dateStr) return ''
