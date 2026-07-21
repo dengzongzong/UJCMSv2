@@ -275,12 +275,14 @@ export default {
 
 /* 第一行：蓝天白云背景 + Logo + 搜索框 */
 .header-top {
-  height: 130px;
+  height: 150px;
   position: relative;
   overflow: hidden;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
+  /* 让蓝天更蓝：色相微调向蓝偏移，饱和度适度提升 */
+  filter: hue-rotate(-10deg) saturate(1.3);
 
   .header-container {
     justify-content: space-between;
@@ -373,14 +375,14 @@ export default {
   }
 
   .logo-title-img {
-    height: 56px;
+    height: 72px;
     width: auto;
     display: block;
   }
 
   .logo-subtitle {
-    font-size: 12px;
-    color: rgba(255,255,255,0.85);
+    font-size: 13px;
+    color: rgba(255,255,255,0.9);
     letter-spacing: 0.5px;
   }
 }
