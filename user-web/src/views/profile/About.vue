@@ -8,7 +8,7 @@
           <!-- Logo 与标题 -->
           <div class="about-header">
             <div class="logo-icon">
-              <img src="/images/log.jpg" alt="logo" class="logo-img" />
+              <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-img" />
             </div>
             <h1 class="app-name">人力资源专业技能人才评价网</h1>
           </div>

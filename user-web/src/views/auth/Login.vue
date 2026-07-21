@@ -3,7 +3,7 @@
     <div class="login-card">
       <div class="card-header">
         <div class="logo">
-          <img src="/images/log.jpg" alt="logo" class="logo-img" />
+          <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-img" />
         </div>
         <h1 class="title">人力资源专业技能人才评价网</h1>
         <p class="title-en">International Professional Competency Standard Talent Evaluation Network</p>
