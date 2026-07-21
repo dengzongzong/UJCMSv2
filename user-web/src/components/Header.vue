@@ -223,7 +223,7 @@ export default {
     },
     onSearch() {
       if (this.searchKeyword && this.searchKeyword.trim()) {
-        this.$router.push({ path: '/news/list', query: { keyword: this.searchKeyword.trim() } }).catch(() => {})
+        this.$router.push({ path: '/search', query: { keyword: this.searchKeyword.trim() } }).catch(() => {})
       }
     }
   }

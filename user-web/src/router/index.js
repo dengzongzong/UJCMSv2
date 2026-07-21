@@ -156,6 +156,12 @@ const routes = [
       meta: { requiresAuth: false, requiresSubject: false, title: '系统公告' }
     },
     {
+      path: '/search',
+      name: 'Search',
+      component: () => import('@/views/search/Index.vue'),
+      meta: { requiresAuth: false, requiresSubject: false, title: '搜索结果' }
+    },
+    {
       path: '/certificate',
       name: 'CertificatePortal',
       component: () => import('@/views/certificate/Index.vue'),

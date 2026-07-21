@@ -3,6 +3,7 @@ package com.exam.controller;
 import com.exam.common.Result;
 import com.exam.entity.AboutUs;
 import com.exam.entity.Announcement;
+import com.exam.entity.Exam;
 import com.exam.entity.HomepageSection;
 import com.exam.entity.News;
 import com.exam.entity.VideoCategory;
@@ -10,11 +11,13 @@ import com.exam.service.AboutUsService;
 import com.exam.service.AnnouncementManageService;
 import com.exam.service.CourseService;
 import com.exam.service.CertificateTypeService;
+import com.exam.service.ExamService;
 import com.exam.service.HomepageSectionService;
 import com.exam.service.NewsManageService;
 import com.exam.service.ProfessionSubjectService;
 import com.exam.service.VideoCategoryService;
 import com.exam.vo.CourseListItemVO;
+import com.exam.vo.ExamListItemVO;
 import com.exam.vo.ProfessionVO;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -32,9 +35,11 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletResponse;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 公共接口控制器（无需鉴权）
@@ -66,6 +71,9 @@ public class PublicController {
 
     @Autowired
     private VideoCategoryService videoCategoryService;
+
+    @Autowired
+    private ExamService examService;
 
     /**
      * 获取所有启用的专业及科目树
@@ -203,5 +211,74 @@ public class PublicController {
         BitMatrix matrix = qr.encode(qrContent, BarcodeFormat.QR_CODE, 200, 200, hints);
         BufferedImage img = MatrixToImageWriter.toBufferedImage(matrix);
         ImageIO.write(img, "png", response.getOutputStream());
+    }
+
+    /**
+     * 通用搜索接口 - 搜索新闻、公告、课程、考试、政策法规
+     * 前端首页搜索框调用，keyword 为关键词
+     */
+    @GetMapping("/search")
+    public Result<Map<String, Object>> search(@RequestParam String keyword) {
+        Map<String, Object> result = new HashMap<>();
+        String kw = keyword == null ? "" : keyword.trim();
+        if (kw.isEmpty()) {
+            result.put("news", new ArrayList<>());
+            result.put("announcements", new ArrayList<>());
+            result.put("courses", new ArrayList<>());
+            result.put("exams", new ArrayList<>());
+            result.put("policies", new ArrayList<>());
+            return Result.success(result);
+        }
+
+        // 1. 搜索新闻（标题包含关键词）
+        try {
+            List<News> allNews = newsManageService.listEnabled();
+            List<News> newsMatches = allNews.stream()
+                    .filter(n -> n.getTitle() != null && n.getTitle().contains(kw))
+                    .collect(Collectors.toList());
+            result.put("news", newsMatches);
+        } catch (Exception e) {
+            result.put("news", new ArrayList<>());
+        }
+
+        // 2. 搜索公告（标题包含关键词）
+        try {
+            List<Announcement> allAnno = announcementManageService.listEnabled();
+            List<Announcement> annoMatches = allAnno.stream()
+                    .filter(a -> a.getTitle() != null && a.getTitle().contains(kw))
+                    .collect(Collectors.toList());
+            result.put("announcements", annoMatches);
+        } catch (Exception e) {
+            result.put("announcements", new ArrayList<>());
+        }
+
+        // 3. 搜索课程（后端支持 keyword 搜索）
+        try {
+            List<CourseListItemVO> courses = courseService.getCourseList(null, null, null, null, kw);
+            result.put("courses", courses);
+        } catch (Exception e) {
+            result.put("courses", new ArrayList<>());
+        }
+
+        // 4. 搜索考试（后端支持 keyword 搜索）
+        try {
+            List<ExamListItemVO> exams = examService.getExamList(null, null, null, kw);
+            result.put("exams", exams);
+        } catch (Exception e) {
+            result.put("exams", new ArrayList<>());
+        }
+
+        // 5. 搜索政策法规（标题包含关键词）
+        try {
+            List<HomepageSection> allSections = homepageSectionService.listEnabled(1);
+            List<HomepageSection> policyMatches = allSections.stream()
+                    .filter(s -> s.getTitle() != null && s.getTitle().contains(kw))
+                    .collect(Collectors.toList());
+            result.put("policies", policyMatches);
+        } catch (Exception e) {
+            result.put("policies", new ArrayList<>());
+        }
+
+        return Result.success(result);
     }
 }

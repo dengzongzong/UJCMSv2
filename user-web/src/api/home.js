@@ -77,3 +77,14 @@ export function getHomepageSections(type) {
     params: type != null ? { type } : {}
   })
 }
+
+/**
+ * 通用搜索 - 搜索新闻、公告、课程、考试、政策法规
+ */
+export function searchAll(keyword) {
+  return request({
+    url: '/public/search',
+    method: 'get',
+    params: { keyword }
+  })
+}
