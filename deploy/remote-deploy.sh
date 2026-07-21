@@ -159,12 +159,7 @@ server {
         index index.html;
     }
 
-    # 根路径重定向到 admin
-    location = / {
-        return 302 /admin/;
-    }
-
-    # 学员端 user-web
+    # 学员端 user-web (根路径直接访问 user-web，不跳转到 admin)
     location / {
         root /opt/exam-platform/user-web/dist/;
         try_files $uri $uri/ /index.html;
