@@ -281,6 +281,10 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     map.put("theoryScore", extra.get("theoryScore"));
                     map.put("practicalScore", extra.get("practicalScore"));
                     map.put("comprehensiveEvaluation", extra.get("comprehensiveEvaluation"));
+                    map.put("certType", extra.get("cert_type"));
+                    if (map.get("certType") == null) {
+                        map.put("certType", extra.get("certType"));
+                    }
                 }
             } catch (Exception ignored) {
             }
