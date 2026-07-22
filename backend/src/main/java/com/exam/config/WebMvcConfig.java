@@ -65,7 +65,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/uploads/**", "/api/uploads/**")
                 .addResourceLocations("file:" + uploadPath + "/");
         // 静态资源: /static/** 和 /api/static/** (兼容数据库中 /static/xxx 的旧路径)
+        // 同时映射到 uploads/ 和 uploads/static/ 两个目录,因为文件实际在 uploads/static/upload/ 下
         registry.addResourceHandler("/static/**", "/api/static/**")
-                .addResourceLocations("classpath:/static/", "file:" + uploadPath + "/");
+                .addResourceLocations("classpath:/static/", "file:" + uploadPath + "/", "file:" + uploadPath + "/static/");
     }
 }
