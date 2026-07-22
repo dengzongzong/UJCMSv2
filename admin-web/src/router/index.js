@@ -195,9 +195,27 @@ export const constantRoutes = [
     children: [
       {
         path: 'list',
-        name: 'CertificateList',
+        name: 'CertificateListAll',
         component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '证书用户', icon: 'el-icon-trophy' }
+        meta: { title: '全部证书', icon: 'el-icon-trophy' }
+      },
+      {
+        path: 'list/type1',
+        name: 'CertificateListType1',
+        component: () => import('@/views/certificate/List.vue'),
+        meta: { title: '职业技能等级证书', icon: 'el-icon-document', certType: '职业技能等级证书' }
+      },
+      {
+        path: 'list/type2',
+        name: 'CertificateListType2',
+        component: () => import('@/views/certificate/List.vue'),
+        meta: { title: '职业技能等级证书(含成绩)', icon: 'el-icon-document', certType: '职业技能等级证书(含成绩)' }
+      },
+      {
+        path: 'list/type3',
+        name: 'CertificateListType3',
+        component: () => import('@/views/certificate/List.vue'),
+        meta: { title: '岗位专业证书', icon: 'el-icon-document', certType: '岗位专业证书' }
       },
       {
         path: 'edit/:id?',

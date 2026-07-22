@@ -494,6 +494,9 @@ export default {
     }
   },
   computed: {
+    currentCertType() {
+      return this.$route.meta.certType || ''
+    },
     previewImgStyle() {
       return {
         transform: 'scale(' + this.previewScale + ') translate(' + this.previewTranslate.x + 'px, ' + this.previewTranslate.y + 'px)',
@@ -506,6 +509,13 @@ export default {
     this.loadList()
     // 加载证书模板选项(行内"绑定模板"弹窗用)
     templateList().then(r => { this.templateOptions = r.data || [] }).catch(() => {})
+  },
+  watch: {
+    '$route.meta.certType'() {
+      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' }
+      this.dateRange = null
+      this.loadList()
+    }
   },
   methods: {
     apiUrl,
@@ -619,7 +629,11 @@ export default {
       }
       this.loading = true
       try {
-        const res = await certificatePage(this.query)
+        const params = { ...this.query }
+        if (this.currentCertType) {
+          params.certType = this.currentCertType
+        }
+        const res = await certificatePage(params)
         this.list = res.data.records || []
         this.total = res.data.total || 0
       } finally {
@@ -690,6 +704,9 @@ export default {
           profession: this.query.profession,
           issueDateStart: this.query.issueDateStart,
           issueDateEnd: this.query.issueDateEnd
+        }
+        if (this.currentCertType) {
+          params.certType = this.currentCertType
         }
         const idRes = await certificateAllIds(params)
         const ids = (idRes && idRes.data) || []
