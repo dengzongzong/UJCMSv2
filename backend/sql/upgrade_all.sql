@@ -241,6 +241,26 @@ SET s.cert_type = JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type'))
 WHERE s.cert_type IS NULL
   AND JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type')) IS NOT NULL;
 
+-- 证书类型名称统一更新(旧名称 → 新名称)
+UPDATE certificate_type SET name = '专业技能证书' WHERE name = '职业技能等级证书';
+UPDATE certificate_type SET name = '专项职业技能证书' WHERE name = '职业技能等级证书(含成绩)';
+UPDATE certificate_type SET name = '人才数据入库证书' WHERE name = '岗位专业证书';
+
+UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专业技能证书')
+WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) = '职业技能等级证书';
+UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专项职业技能证书')
+WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) = '职业技能等级证书(含成绩)';
+UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '人才数据入库证书')
+WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) = '岗位专业证书';
+
+UPDATE certificate_user SET cert_type = '专业技能证书' WHERE cert_type = '职业技能等级证书';
+UPDATE certificate_user SET cert_type = '专项职业技能证书' WHERE cert_type = '职业技能等级证书(含成绩)';
+UPDATE certificate_user SET cert_type = '人才数据入库证书' WHERE cert_type = '岗位专业证书';
+
+UPDATE student SET cert_type = '专业技能证书' WHERE cert_type = '职业技能等级证书';
+UPDATE student SET cert_type = '专项职业技能证书' WHERE cert_type = '职业技能等级证书(含成绩)';
+UPDATE student SET cert_type = '人才数据入库证书' WHERE cert_type = '岗位专业证书';
+
 -- ============================================================
 -- 8. 清理存储过程(必须放在所有 CALL 之后)
 -- ============================================================
