@@ -201,6 +201,46 @@ CALL safe_add_column('student', 'cert_type', 'VARCHAR(100) DEFAULT NULL COMMENT 
 -- 证书用户表新增 cert_type 字段
 CALL safe_add_column('certificate_user', 'cert_type', 'VARCHAR(100) DEFAULT NULL COMMENT ''证书类型''');
 
+-- 证书用户表新增 id_card, name 字段(冗余,方便查询)
+CALL safe_add_column('certificate_user', 'id_card', 'VARCHAR(20) DEFAULT NULL COMMENT ''身份证号''');
+CALL safe_add_column('certificate_user', 'name', 'VARCHAR(100) DEFAULT NULL COMMENT ''姓名''');
+
+-- ============================================================
+-- 7.1 证书类型去重 + 数据修复
+-- ============================================================
+-- 去重: 每个名称只保留id最小的一条,删除多余的
+DELETE t1 FROM certificate_type t1
+INNER JOIN certificate_type t2
+WHERE t1.name = t2.name AND t1.id > t2.id;
+
+-- 添加唯一索引防止再次重复(如果不存在)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate_type' AND INDEX_NAME = 'uk_name');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE certificate_type ADD UNIQUE INDEX uk_name (name)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 填充 certificate_user 的 id_card, name
+UPDATE certificate_user cu
+JOIN certificate c ON c.id = cu.certificate_id
+SET cu.id_card = c.id_card, cu.name = c.name
+WHERE cu.id_card IS NULL;
+
+-- 填充 certificate_user.cert_type (从certificate.extra_json提取)
+UPDATE certificate_user cu
+JOIN certificate c ON c.id = cu.certificate_id
+SET cu.cert_type = JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type'))
+WHERE cu.cert_type IS NULL
+  AND JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type')) IS NOT NULL;
+
+-- 填充 student.cert_type (从certificate.extra_json提取)
+UPDATE student s
+JOIN certificate c ON c.id_card = s.id_card
+SET s.cert_type = JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type'))
+WHERE s.cert_type IS NULL
+  AND JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type')) IS NOT NULL;
+
 -- ============================================================
 -- 8. 清理存储过程(必须放在所有 CALL 之后)
 -- ============================================================
