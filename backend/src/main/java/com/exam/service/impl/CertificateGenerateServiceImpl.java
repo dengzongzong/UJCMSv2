@@ -543,6 +543,9 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
             } else if (url.startsWith("/uploads/")) {
                 // 支持相对路径 /uploads/ 前缀
                 localPath = uploadPath + url.substring("/uploads".length());
+            } else if (url.startsWith("/static/")) {
+                // 支持相对路径 /static/ 前缀(文件实际在 uploads/static/ 下)
+                localPath = uploadPath + url;
             }
             img = ImageIO.read(new java.io.File(localPath));
         }
