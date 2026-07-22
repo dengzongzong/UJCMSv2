@@ -203,19 +203,37 @@ export const constantRoutes = [
         path: 'list/type1',
         name: 'CertificateListType1',
         component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '职业技能等级证书', icon: 'el-icon-document', certType: '职业技能等级证书' }
+        meta: { title: '专业技能证书内容', icon: 'el-icon-document', certType: '职业技能等级证书' }
       },
       {
         path: 'list/type2',
         name: 'CertificateListType2',
         component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '职业技能等级证书(含成绩)', icon: 'el-icon-document', certType: '职业技能等级证书(含成绩)' }
+        meta: { title: '专项职业技能证书内容', icon: 'el-icon-document', certType: '职业技能等级证书(含成绩)' }
       },
       {
         path: 'list/type3',
         name: 'CertificateListType3',
         component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '岗位专业证书', icon: 'el-icon-document', certType: '岗位专业证书' }
+        meta: { title: '人才数据入库证书内容', icon: 'el-icon-document', certType: '岗位专业证书' }
+      },
+      {
+        path: 'list/type4',
+        name: 'CertificateListType4',
+        component: () => import('@/views/certificate/List.vue'),
+        meta: { title: '职业能力内容', icon: 'el-icon-document', certType: '职业能力' }
+      },
+      {
+        path: 'list/type5',
+        name: 'CertificateListType5',
+        component: () => import('@/views/certificate/List.vue'),
+        meta: { title: '职业能力等级内容', icon: 'el-icon-document', certType: '职业能力等级' }
+      },
+      {
+        path: 'cooperation-apply',
+        name: 'CooperationApply',
+        component: () => import('@/views/cooperationApply/List.vue'),
+        meta: { title: '授权培育基地内容', icon: 'el-icon-s-order' }
       },
       {
         path: 'edit/:id?',
@@ -329,12 +347,6 @@ export const constantRoutes = [
         name: 'SettingCooperation',
         component: () => import('@/views/setting/Cooperation.vue'),
         meta: { title: '合作咨询', icon: 'el-icon-phone-outline' }
-      },
-      {
-        path: 'cooperation-apply',
-        name: 'CooperationApply',
-        component: () => import('@/views/cooperationApply/List.vue'),
-        meta: { title: '合作申请管理', icon: 'el-icon-s-order' }
       },
       {
         path: 'declaration',
