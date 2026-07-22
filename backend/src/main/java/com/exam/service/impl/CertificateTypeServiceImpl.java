@@ -31,6 +31,12 @@ public class CertificateTypeServiceImpl extends ServiceImpl<CertificateTypeMappe
         if (!StringUtils.hasText(type.getName())) {
             throw new BusinessException("类型名称不能为空");
         }
+        // 去重: 同名类型不允许重复添加
+        long count = this.count(new LambdaQueryWrapper<CertificateType>()
+                .eq(CertificateType::getName, type.getName().trim()));
+        if (count > 0) {
+            throw new BusinessException("证书类型'" + type.getName() + "'已存在,请勿重复添加");
+        }
         if (type.getStatus() == null) {
             type.setStatus(1);
         }
