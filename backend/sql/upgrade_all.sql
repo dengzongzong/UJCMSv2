@@ -241,10 +241,12 @@ SET s.cert_type = JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type'))
 WHERE s.cert_type IS NULL
   AND JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type')) IS NOT NULL;
 
--- 证书类型名称统一更新(按code强制覆盖,确保名称正确)
-UPDATE certificate_type SET name = '专业技能证书' WHERE code = '3';
-UPDATE certificate_type SET name = '专项职业技能证书' WHERE code = '4';
-UPDATE certificate_type SET name = '人才数据入库证书' WHERE code = '5';
+-- 证书类型: 清空重建为正确的三种类型
+TRUNCATE TABLE certificate_type;
+INSERT INTO certificate_type (id, name, code, sort, status) VALUES
+(1, '专业技能证书', '3', 1, 1),
+(2, '专项职业技能证书', '4', 2, 1),
+(3, '人才数据入库证书', '5', 3, 1);
 
 UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专业技能证书')
 WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('职业技能等级证书');
