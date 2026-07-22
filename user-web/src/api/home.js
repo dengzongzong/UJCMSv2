@@ -8,6 +8,10 @@ export function getBanners() {
   return request({ url: '/public/banner/list', method: 'get' })
 }
 
+export function getBannerImages() {
+  return request({ url: '/public/banner-images', method: 'get' })
+}
+
 export function getNewsList() {
   return request({ url: '/public/news', method: 'get' })
 }

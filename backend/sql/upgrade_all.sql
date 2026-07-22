@@ -247,6 +247,20 @@ WHERE s.cert_type IS NULL
 DROP PROCEDURE IF EXISTS `safe_add_column`;
 
 -- ============================================================
+-- 8.1 首页横幅图片表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `banner_image` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `title` VARCHAR(200) DEFAULT NULL COMMENT '标题文字',
+  `image_url` VARCHAR(500) NOT NULL COMMENT '图片URL',
+  `link_url` VARCHAR(500) DEFAULT NULL COMMENT '点击跳转链接(可选)',
+  `status` TINYINT DEFAULT 1 COMMENT '0-隐藏 1-显示',
+  `sort` INT DEFAULT 0 COMMENT '排序(升序)',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='首页横幅图片';
+
+-- ============================================================
 -- 9. 合作申请表
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `cooperation_apply` (

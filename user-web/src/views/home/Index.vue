@@ -70,6 +70,19 @@
         </div>
       </div>
 
+      <!-- ========== 横幅图片(轮播图下方) ========== -->
+      <div v-if="bannerImages.length > 0" class="homepage-banner-wrap">
+        <div
+          v-for="banner in bannerImages"
+          :key="banner.id"
+          class="homepage-banner-item"
+          @click="onBannerImageClick(banner)"
+        >
+          <img :src="resolveImg(banner.imageUrl)" class="homepage-banner-img" />
+          <div v-if="banner.title" class="homepage-banner-title">{{ banner.title }}</div>
+        </div>
+      </div>
+
       <div class="container">
         <!-- ========== 推荐课程 ========== -->
         <div class="course-section">
@@ -324,7 +337,7 @@ import Header from '@/components/Header.vue'
 import CooperationDialog from '@/components/CooperationDialog.vue'
 import DeclarationDialog from '@/components/DeclarationDialog.vue'
 import ComplaintDialog from '@/components/ComplaintDialog.vue'
-import { getBanners, getAnnouncements, getNewsList, getEventsList, getFriendlyLinks, getCourseThreeImages, getPublicCourseList, getHomepageSections } from '@/api/home'
+import { getBanners, getBannerImages, getAnnouncements, getNewsList, getEventsList, getFriendlyLinks, getCourseThreeImages, getPublicCourseList, getHomepageSections } from '@/api/home'
 import { resolveImg } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
 
@@ -334,6 +347,7 @@ export default {
   data() {
     return {
       banners: [],
+      bannerImages: [],
       courseList: [],
       announcements: [],
       newsList: [],
@@ -382,6 +396,7 @@ export default {
   },
   created() {
     this.fetchBanners()
+    this.fetchBannerImages()
     this.fetchCourses()
     this.fetchAnnouncements()
     this.fetchNews()
@@ -488,6 +503,19 @@ export default {
         this.banners = Array.isArray(data) ? data : (data.list || [])
       } catch (error) {
         this.banners = []
+      }
+    },
+    async fetchBannerImages() {
+      try {
+        const res = await getBannerImages()
+        this.bannerImages = res.data || []
+      } catch (error) {
+        this.bannerImages = []
+      }
+    },
+    onBannerImageClick(banner) {
+      if (banner.linkUrl) {
+        window.open(banner.linkUrl, '_blank')
       }
     },
     async fetchCourses() {
@@ -602,6 +630,37 @@ $primary-red-light: #fff5f5;
   width: 80%;
   max-width: 1600px;
   margin: 0 auto 20px;
+}
+
+/* ========== 横幅图片 ========== */
+.homepage-banner-wrap {
+  width: 80%;
+  max-width: 1600px;
+  margin: 0 auto 20px;
+}
+.homepage-banner-item {
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.homepage-banner-img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+.homepage-banner-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 2px;
+  white-space: nowrap;
 }
 
 .banner-wrapper {
@@ -1246,7 +1305,8 @@ $primary-red-light: #fff5f5;
 
 @media (max-width: 768px) {
   .page-body { padding-top: var(--header-height, 100px); }
-  .container, .banner-section { width: 100%; padding: 0 12px; }
+  .container, .banner-section, .homepage-banner-wrap { width: 100%; padding: 0 12px; }
+  .homepage-banner-title { font-size: 16px; }
   .banner-left .banner-swipe, .banner-left .banner-img, .banner-left .banner-placeholder { height: 180px; }
   .section-header .section-title { font-size: 16px; }
   .evaluate-row { grid-template-columns: 1fr; gap: 12px; }

@@ -1,12 +1,14 @@
 package com.exam.controller;
 
 import com.exam.common.Result;
+import com.exam.entity.BannerImage;
 import com.exam.entity.AboutUs;
 import com.exam.entity.Announcement;
 import com.exam.entity.Exam;
 import com.exam.entity.HomepageSection;
 import com.exam.entity.News;
 import com.exam.entity.VideoCategory;
+import com.exam.service.BannerImageService;
 import com.exam.service.AboutUsService;
 import com.exam.service.AnnouncementManageService;
 import com.exam.service.CourseService;
@@ -70,6 +72,9 @@ public class PublicController {
     private CertificateTypeService certificateTypeService;
 
     @Autowired
+    private BannerImageService bannerImageService;
+
+    @Autowired
     private VideoCategoryService videoCategoryService;
 
     @Autowired
@@ -115,6 +120,14 @@ public class PublicController {
     public Result<List<HomepageSection>> listHomepageSections(
             @RequestParam(required = false) Integer type) {
         return Result.success(homepageSectionService.listEnabled(type));
+    }
+
+    /**
+     * 获取首页横幅图片(轮播图下方的长条图片)
+     */
+    @GetMapping("/banner-images")
+    public Result<List<BannerImage>> listBannerImages() {
+        return Result.success(bannerImageService.listEnabled());
     }
 
     /**

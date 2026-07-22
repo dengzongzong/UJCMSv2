@@ -379,6 +379,12 @@ export const constantRoutes = [
         meta: { title: '首页内容板块', icon: 'el-icon-files' }
       },
       {
+        path: 'banner-image',
+        name: 'BannerImageList',
+        component: () => import('@/views/bannerImage/List.vue'),
+        meta: { title: '首页横幅图片', icon: 'el-icon-picture' }
+      },
+      {
         path: 'certificate-type',
         name: 'CertificateTypeList',
         component: () => import('@/views/certificateType/List.vue'),
