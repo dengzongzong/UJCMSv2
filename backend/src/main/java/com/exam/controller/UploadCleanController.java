@@ -27,8 +27,8 @@ public class UploadCleanController {
     @Value("${upload.path}")
     private String uploadPath;
 
-    /** 匹配字符串中 /uploads/xxx 或 /static/upload/xxx 形式的引用 */
-    private static final Pattern UPLOAD_REF = Pattern.compile("/(?:uploads|static/upload)/([^\"'\\s<>)(\\\\]+)");
+    /** 匹配字符串中 /uploads/xxx 或 /static/upload/xxx 或 /static/证书模板图/xxx 形式的引用 */
+    private static final Pattern UPLOAD_REF = Pattern.compile("/(?:uploads|static/upload|static/证书模板图)/([^\"'\\s<>)(\\\\]+)");
 
     /**
      * 扫描孤儿文件(未被数据库任何业务数据引用的上传文件)。
@@ -185,7 +185,7 @@ public class UploadCleanController {
             String column = String.valueOf(col.get("COLUMN_NAME"));
             try {
                 List<String> values = jdbcTemplate.queryForList(
-                        "SELECT `" + column + "` FROM `" + table + "` WHERE `" + column + "` LIKE '%/uploads/%' OR `" + column + "` LIKE '%/static/upload/%'",
+                        "SELECT `" + column + "` FROM `" + table + "` WHERE `" + column + "` LIKE '%/uploads/%' OR `" + column + "` LIKE '%/static/upload/%' OR `" + column + "` LIKE '%/static/证书模板图/%'",
                         String.class);
                 for (String v : values) {
                     if (v == null) continue;
