@@ -9,7 +9,7 @@
           <span>您当前所在位置：</span>
           <router-link to="/" class="crumb-link">主页</router-link>
           <span class="crumb-sep">&gt;</span>
-          <router-link to="/news" class="crumb-link">中心动态</router-link>
+          <router-link to="/news/center" class="crumb-link">中心动态</router-link>
           <span class="crumb-sep">&gt;</span>
           <span class="crumb-current">{{ news ? news.title : '详情' }}</span>
         </div>
