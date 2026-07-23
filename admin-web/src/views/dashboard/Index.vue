@@ -57,7 +57,7 @@
           <ul class="notice-list">
             <li v-for="(notice, idx) in notices" :key="idx">
               <el-tag size="mini" :type="notice.type">{{ notice.tag }}</el-tag>
-              <span class="notice-text">{{ notice.text }}</span>
+              <span class="notice-text" v-html="notice.text"></span>
             </li>
           </ul>
         </el-card>
@@ -144,7 +144,7 @@ export default {
           this.notices = records.map((item, idx) => ({
             tag: '公告',
             type: idx === 0 ? 'success' : (idx === 1 ? 'info' : ''),
-            text: item.title + (item.content ? '：' + item.content : '')
+            text: item.title + (item.content ? '：' + item.content.replace(/<[^>]+>/g, '').substring(0, 80) : '')
           }))
         })
         .catch(() => {
