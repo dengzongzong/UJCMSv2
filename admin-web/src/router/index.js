@@ -383,7 +383,7 @@ const whiteList = ['/login']
 // 动态添加证书类型路由
 let certTypeRoutesAdded = false
 async function addDynamicCertTypeRoutes() {
-  if (certTypeRoutesAdded) return
+  if (certTypeRoutesAdded) return false
   try {
     const res = await publicCertificateTypes()
     const types = (res.data || res || [])
@@ -400,8 +400,10 @@ async function addDynamicCertTypeRoutes() {
     // 通知菜单更新
     store.commit('app/SET_CERT_TYPES', types)
     certTypeRoutesAdded = true
+    return true
   } catch (e) {
     // 静默失败,不影响登录
+    return false
   }
 }
 
@@ -422,7 +424,12 @@ router.beforeEach(async (to, from, next) => {
         }
       }
       // 动态添加证书类型路由
-      await addDynamicCertTypeRoutes()
+      const routesAdded = await addDynamicCertTypeRoutes()
+      // 如果是第一次添加路由,需要重新导航以匹配新路由
+      if (routesAdded) {
+        next({ ...to, replace: true })
+        return
+      }
       next()
     }
   } else {
