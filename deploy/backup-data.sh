@@ -34,7 +34,7 @@ echo "[1/3] 导出数据库..."
 DUMP_FILE="${BACKUP_DIR}/data.sql"
 
 # 需要导出的表(配置类数据,不含学生/证书/考试记录等)
-TABLES=(
+ALL_TABLES=(
   profession
   subject
   video_category
@@ -69,13 +69,31 @@ TABLES=(
   course_three_image
 )
 
+# 检查哪些表实际存在(老系统可能缺少部分表)
+EXISTING_TABLES=()
+for tbl in "${ALL_TABLES[@]}"; do
+  EXISTS=$(mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${MYSQL_DB}' AND table_name='${tbl}'" 2>/dev/null)
+  if [ "${EXISTS}" = "1" ]; then
+    EXISTING_TABLES+=("${tbl}")
+  else
+    echo "  跳过不存在的表: ${tbl}"
+  fi
+done
+
+if [ ${#EXISTING_TABLES[@]} -eq 0 ]; then
+  echo "错误: 没有找到任何配置表,请检查数据库名和权限"
+  exit 1
+fi
+
+echo "  将导出 ${#EXISTING_TABLES[@]} 张表"
+
+# 导出数据
 mysqldump -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} \
   --default-character-set=utf8mb4 \
   --no-create-db \
   --skip-add-drop-table \
   --complete-insert \
-  --where="1=1" \
-  ${TABLES[@]} 2>/dev/null > "${DUMP_FILE}"
+  ${EXISTING_TABLES[@]} 2>/dev/null > "${DUMP_FILE}"
 
 # 在 SQL 文件头部加上 CREATE TABLE IF NOT EXISTS
 echo "-- 自动生成的数据备份" > "${BACKUP_DIR}/data_full.sql"
@@ -83,12 +101,12 @@ echo "SET NAMES utf8mb4;" >> "${BACKUP_DIR}/data_full.sql"
 echo "SET FOREIGN_KEY_CHECKS=0;" >> "${BACKUP_DIR}/data_full.sql"
 echo "" >> "${BACKUP_DIR}/data_full.sql"
 
-# 先导出表结构
+# 先导出表结构(只导出存在的表)
 mysqldump -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} \
   --default-character-set=utf8mb4 \
   --no-data \
   --skip-add-drop-table \
-  ${TABLES[@]} 2>/dev/null >> "${BACKUP_DIR}/data_full.sql"
+  ${EXISTING_TABLES[@]} 2>/dev/null >> "${BACKUP_DIR}/data_full.sql"
 
 # 再追加数据(用 INSERT IGNORE 防重复)
 echo "" >> "${BACKUP_DIR}/data_full.sql"
@@ -98,7 +116,7 @@ sed 's/INSERT INTO/INSERT IGNORE INTO/g' "${DUMP_FILE}" >> "${BACKUP_DIR}/data_f
 echo "SET FOREIGN_KEY_CHECKS=1;" >> "${BACKUP_DIR}/data_full.sql"
 rm -f "${DUMP_FILE}"
 
-TABLE_COUNT=$((${#TABLES[@]}))
+TABLE_COUNT=${#EXISTING_TABLES[@]}
 SQL_SIZE=$(du -h "${BACKUP_DIR}/data_full.sql" | cut -f1)
 echo "  导出 ${TABLE_COUNT} 张表, SQL 大小: ${SQL_SIZE}"
 

@@ -221,6 +221,13 @@ export const constantRoutes = [
         hidden: true
       },
       {
+        path: 'cert-type/:idx',
+        name: 'CertificateListByType',
+        component: () => import('@/views/certificate/List.vue'),
+        meta: { title: '证书类型', activeMenu: '/certificate/list' },
+        hidden: true
+      },
+      {
         path: 'issue',
         redirect: '/certificate/list',
         meta: { title: '模板绑定', icon: 'el-icon-medal' },
@@ -380,30 +387,17 @@ const router = createRouter()
 
 const whiteList = ['/login']
 
-// 动态添加证书类型路由
-let certTypeRoutesAdded = false
-async function addDynamicCertTypeRoutes() {
-  if (certTypeRoutesAdded) return false
+// 加载证书类型到 store(用于侧边栏菜单生成)
+let certTypesLoaded = false
+async function loadCertTypes() {
+  if (certTypesLoaded) return
   try {
     const res = await publicCertificateTypes()
     const types = (res.data || res || [])
-    types.forEach((t, idx) => {
-      const name = t.name || t
-      const routePath = `cert-type-${idx + 1}`
-      router.addRoute('Certificate', {
-        path: routePath,
-        name: `CertificateListDyn${idx + 1}`,
-        component: () => import('@/views/certificate/List.vue'),
-        meta: { title: `${name}`, icon: 'el-icon-document', certType: name }
-      })
-    })
-    // 通知菜单更新
     store.commit('app/SET_CERT_TYPES', types)
-    certTypeRoutesAdded = true
-    return true
+    certTypesLoaded = true
   } catch (e) {
     // 静默失败,不影响登录
-    return false
   }
 }
 
@@ -423,13 +417,8 @@ router.beforeEach(async (to, from, next) => {
           return
         }
       }
-      // 动态添加证书类型路由
-      const routesAdded = await addDynamicCertTypeRoutes()
-      // 如果是第一次添加路由,需要重新导航以匹配新路由
-      if (routesAdded) {
-        next({ ...to, replace: true })
-        return
-      }
+      // 加载证书类型(用于侧边栏菜单)
+      await loadCertTypes()
       next()
     }
   } else {

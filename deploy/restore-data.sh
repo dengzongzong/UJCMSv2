@@ -57,6 +57,7 @@ echo "解压目录: ${BACKUP_DIR}"
 # 1. 恢复数据库
 #    - 配置类表(课程/视频/题库/考试/证书模板等): 清空后覆盖
 #    - 用户类表(学生/证书/考试记录等): INSERT IGNORE 合并,不覆盖
+#    - 注意: certificate_type 不清空(用户手动新增的类型需要保留)
 # --------------------------------------------------
 echo "[1/2] 恢复数据库..."
 SQL_FILE="${BACKUP_DIR}/data_full.sql"
@@ -84,7 +85,6 @@ TRUNCATE TABLE subject;
 TRUNCATE TABLE certificate_template_field;
 TRUNCATE TABLE certificate_template;
 TRUNCATE TABLE certificate_field;
-TRUNCATE TABLE certificate_type;
 TRUNCATE TABLE certificate_number_config;
 TRUNCATE TABLE certificate_url_config;
 TRUNCATE TABLE homepage_section;

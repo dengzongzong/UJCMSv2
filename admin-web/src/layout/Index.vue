@@ -170,17 +170,22 @@ export default {
     // 证书类型子菜单动态生成,依赖 certTypes 触发响应式更新
     menuRoutes() {
       // 引用 certTypes 使其成为响应式依赖
-      const _ = this.certTypes
+      const certTypes = this.certTypes || []
       const routes = this.$router.options.routes
       return routes
         .filter((r) => r.meta && r.meta.title && r.children && r.children.length)
         .map((r) => {
           if (r.path === '/certificate') {
-            // 证书管理:合并静态子路由 + 动态添加的子路由
+            // 证书管理:静态子路由 + 证书类型动态子菜单
             const staticChildren = r.children.filter((c) => !c.hidden)
-            const dynamicChildren = (this.$router.getRoutes ? this.$router.getRoutes() : [])
-              .filter((rr) => rr.name && rr.name.startsWith('CertificateListDyn') && rr.meta)
-              .map((rr) => ({ path: rr.path.replace('/certificate/', ''), name: rr.name, meta: rr.meta }))
+            const dynamicChildren = certTypes.map((t, idx) => {
+              const name = (t && (t.name || t)) || '证书类型'
+              return {
+                path: `cert-type/${idx + 1}`,
+                name: `CertificateListDyn${idx + 1}`,
+                meta: { title: name, icon: 'el-icon-document', certType: name }
+              }
+            })
             return { ...r, children: [...staticChildren, ...dynamicChildren] }
           }
           return { ...r, children: r.children.filter((c) => !c.hidden) }

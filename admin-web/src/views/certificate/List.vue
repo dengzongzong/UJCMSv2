@@ -498,6 +498,13 @@ export default {
   },
   computed: {
     currentCertType() {
+      // 从路由参数获取证书类型名称
+      const idx = this.$route.params.idx
+      if (idx) {
+        const certTypes = this.$store.getters.certTypes || []
+        const t = certTypes[parseInt(idx) - 1]
+        return t ? (t.name || t) : ''
+      }
       return this.$route.meta.certType || ''
     },
     previewImgStyle() {
@@ -514,6 +521,11 @@ export default {
     templateList().then(r => { this.templateOptions = r.data || [] }).catch(() => {})
   },
   watch: {
+    '$route.params.idx'() {
+      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' }
+      this.dateRange = null
+      this.loadList()
+    },
     '$route.meta.certType'() {
       this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' }
       this.dateRange = null
