@@ -626,6 +626,8 @@ $primary-red-light: #fff5f5;
   width: 80%;
   max-width: 1600px;
   margin: 0 auto 20px;
+  padding: 0 20px;
+  box-sizing: border-box;
 }
 
 /* ========== 横幅图片 ========== */
@@ -633,6 +635,8 @@ $primary-red-light: #fff5f5;
   width: 80%;
   max-width: 1600px;
   margin: 0 auto 20px;
+  padding: 0 20px;
+  box-sizing: border-box;
   overflow: hidden;
 }
 .homepage-banner-item {
