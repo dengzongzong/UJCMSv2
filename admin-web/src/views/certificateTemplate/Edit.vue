@@ -7,8 +7,10 @@
       </div>
 
       <el-form :model="template" label-width="120px" size="small" style="max-width:720px">
-        <el-form-item label="模板名称">
-          <el-input v-model="template.name" />
+        <el-form-item label="证书类型">
+          <el-select v-model="template.name" placeholder="请选择证书类型" filterable allow-create style="width:100%">
+            <el-option v-for="t in certTypes" :key="t.id" :label="t.name" :value="t.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="背景图">
           <el-upload
@@ -210,6 +212,7 @@ import { templateDetail, saveTemplate } from '@/api/certificateTemplate'
 import { fieldList } from '@/api/certificateField'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
+import { publicCertificateTypes } from '@/api/certificateType'
 
 export default {
   name: 'CertificateTemplateEdit',
@@ -218,6 +221,7 @@ export default {
       submitting: false,
       isEdit: false,
       zoom: 1,
+      certTypes: [],
       template: {
         id: null, name: '', bgImageUrl: '', bgWidth: 0, bgHeight: 0,
         isDefault: 0, remark: '',
@@ -301,6 +305,11 @@ export default {
   async mounted() {
     const fields = await fieldList()
     this.allFields = fields.data || []
+    // 加载证书类型列表
+    try {
+      const typeRes = await publicCertificateTypes()
+      this.certTypes = (typeRes.data || typeRes || [])
+    } catch (e) { /* ignore */ }
     if (this.id) {
       this.isEdit = true
       const res = await templateDetail(this.id)

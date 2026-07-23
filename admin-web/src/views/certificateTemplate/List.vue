@@ -12,7 +12,7 @@
             <el-image v-if="s.row.bgImageUrl" :src="resolveUrl(s.row.bgImageUrl)" style="width:80px;height:60px" fit="contain" :preview-src-list="[resolveUrl(s.row.bgImageUrl)]" />
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="模板名" min-width="160" />
+        <el-table-column prop="name" label="证书类型" min-width="160" />
         <el-table-column label="默认" width="80">
           <template slot-scope="s">
             <el-tag v-if="s.row.isDefault === 1" type="warning" size="mini">★ 默认</el-tag>
