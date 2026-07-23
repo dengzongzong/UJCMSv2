@@ -633,6 +633,7 @@ $primary-red-light: #fff5f5;
   width: 80%;
   max-width: 1600px;
   margin: 0 auto 20px;
+  overflow: hidden;
 }
 .homepage-banner-item {
   position: relative;
@@ -643,6 +644,8 @@ $primary-red-light: #fff5f5;
 }
 .homepage-banner-img {
   width: 100%;
+  height: auto;
+  max-width: 100%;
   display: block;
   object-fit: cover;
 }
@@ -1301,10 +1304,11 @@ $primary-red-light: #fff5f5;
 
 @media (max-width: 768px) {
   .page-body { padding-top: var(--header-height, 96px); }
-  .container, .banner-section, .homepage-banner-wrap { width: 100%; padding: 0 10px; }
-  .homepage-banner-title { font-size: 16px; }
+  .container, .banner-section, .homepage-banner-wrap { width: 100%; padding: 0 10px; box-sizing: border-box; }
+  .homepage-banner-title { font-size: 14px; letter-spacing: 0; }
   .banner-left .banner-swipe, .banner-left .banner-img, .banner-left .banner-placeholder { height: 140px; }
-  .homepage-banner-img { height: 140px; object-fit: cover; }
+  .homepage-banner-wrap { width: 100%; margin: 0 0 12px; }
+  .homepage-banner-img { width: 100%; height: auto; max-height: 120px; object-fit: cover; }
   .section-header .section-title { font-size: 16px; }
   .evaluate-row { grid-template-columns: 1fr; gap: 12px; }
   .evaluate-section { padding: 12px; }
