@@ -389,7 +389,7 @@ async function addDynamicCertTypeRoutes() {
     const types = (res.data || res || [])
     types.forEach((t, idx) => {
       const name = t.name || t
-      const routePath = `list/cert-type-${idx + 1}`
+      const routePath = `cert-type-${idx + 1}`
       router.addRoute('Certificate', {
         path: routePath,
         name: `CertificateListDyn${idx + 1}`,

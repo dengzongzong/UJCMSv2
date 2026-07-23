@@ -704,6 +704,7 @@ INSERT INTO `certificate_field` (`field_key`, `field_name`, `field_type`, `requi
 ('qr3',          '证书二维码3',         1, 0, 13, 1, NULL),
 ('examQr',       '学员考试二维码',      1, 0, 14, 1, NULL),
 ('photo',        '学员照片',            5, 0, 15, 1, NULL),
+('birthday',                 '出生日期',    3, 0, 16, 1, NULL),
 ('theoryScore',              '理论成绩',    1, 0, 20, 1, NULL),
 ('practicalScore',           '实操成绩',    1, 0, 21, 1, NULL),
 ('comprehensiveEvaluation',  '综合测评',    1, 0, 22, 1, NULL),

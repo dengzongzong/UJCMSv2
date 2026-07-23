@@ -11,6 +11,7 @@
         <el-descriptions-item label="姓名">{{ data.name }}</el-descriptions-item>
         <el-descriptions-item label="性别">{{ data.genderName || (data.gender === 1 ? '男' : data.gender === 2 ? '女' : '-') }}</el-descriptions-item>
         <el-descriptions-item label="身份证号">{{ data.idCard }}</el-descriptions-item>
+        <el-descriptions-item label="出生日期">{{ getBirthdayFromIdCard(data.idCard) }}</el-descriptions-item>
         <el-descriptions-item label="职业名称">{{ data.profession }}</el-descriptions-item>
         <el-descriptions-item label="技能等级">{{ data.skillLevel }}</el-descriptions-item>
         <el-descriptions-item label="颁发日期">{{ data.issueDate }}</el-descriptions-item>
@@ -77,6 +78,16 @@ export default {
     } finally { this.loading = false }
   },
   methods: {
+    getBirthdayFromIdCard(idCard) {
+      if (!idCard) return '-'
+      if (idCard.length === 18) {
+        return idCard.substring(6, 10) + '-' + idCard.substring(10, 12) + '-' + idCard.substring(12, 14)
+      }
+      if (idCard.length === 15) {
+        return '19' + idCard.substring(6, 8) + '-' + idCard.substring(8, 10) + '-' + idCard.substring(10, 12)
+      }
+      return '-'
+    },
     onDownload(format) {
       const f = format || 'image'
       this.$message.info('正在下载...')

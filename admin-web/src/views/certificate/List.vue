@@ -77,6 +77,9 @@
           <span :class="{ 'id-card-invalid': row.idCard && !validateIdCard(row.idCard) }">{{ row.idCard || '-' }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="出生日期" width="120">
+        <template slot-scope="s">{{ getBirthdayFromIdCard(s.row.idCard) || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="profession" label="专业" min-width="120" />
       <el-table-column prop="skillLevel" label="技能等级" width="120" />
       <el-table-column label="颁发日期" width="150">
@@ -533,6 +536,25 @@ export default {
       }
       var expectedCheck = checkCodes[sum % 11]
       return expectedCheck === idCard.charAt(17).toUpperCase()
+    },
+    // 从身份证号提取出生日期(yyyy-MM-dd)
+    getBirthdayFromIdCard(idCard) {
+      if (!idCard) return ''
+      // 18位身份证: 第7-14位为出生日期
+      if (idCard.length === 18) {
+        var year = idCard.substring(6, 10)
+        var month = idCard.substring(10, 12)
+        var day = idCard.substring(12, 14)
+        return year + '-' + month + '-' + day
+      }
+      // 15位身份证: 第7-12位为出生日期(年份补19)
+      if (idCard.length === 15) {
+        var y = '19' + idCard.substring(6, 8)
+        var m = idCard.substring(8, 10)
+        var d = idCard.substring(10, 12)
+        return y + '-' + m + '-' + d
+      }
+      return ''
     },
     formatDate(d) {
       if (!d) return ''

@@ -283,6 +283,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     map.put("theoryScore", extra.get("theoryScore"));
                     map.put("practicalScore", extra.get("practicalScore"));
                     map.put("comprehensiveEvaluation", extra.get("comprehensiveEvaluation"));
+                    map.put("birthday", extra.get("birthday"));
                     map.put("certType", extra.get("cert_type"));
                     if (map.get("certType") == null) {
                         map.put("certType", extra.get("certType"));
@@ -291,6 +292,25 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             } catch (Exception ignored) {
             }
         }
+    }
+
+    /** 从身份证号提取出生日期(yyyy-MM-dd),无效返回 null */
+    private String extractBirthdayFromIdCard(String idCard) {
+        if (idCard == null) return null;
+        idCard = idCard.trim();
+        if (idCard.length() == 18) {
+            String year = idCard.substring(6, 10);
+            String month = idCard.substring(10, 12);
+            String day = idCard.substring(12, 14);
+            return year + "-" + month + "-" + day;
+        }
+        if (idCard.length() == 15) {
+            String year = "19" + idCard.substring(6, 8);
+            String month = idCard.substring(8, 10);
+            String day = idCard.substring(10, 12);
+            return year + "-" + month + "-" + day;
+        }
+        return null;
     }
 
     private PageResult<Certificate> pageWithProfession(Integer page, Integer size,
@@ -383,6 +403,17 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         // 自动从身份证提取性别
         if (c.getGender() == null && StringUtils.hasText(c.getIdCard())) {
             c.setGender(CertificateNumberServiceImpl.extractGenderFromIdCard(c.getIdCard()));
+        }
+        // 自动从身份证提取出生日期,存入 extra_json
+        if (StringUtils.hasText(c.getIdCard())) {
+            String birthday = extractBirthdayFromIdCard(c.getIdCard());
+            if (birthday != null) {
+                Map<String, Object> extra = dto.getExtra() != null ? dto.getExtra() : new HashMap<>();
+                if (!extra.containsKey("birthday")) {
+                    extra.put("birthday", birthday);
+                    dto.setExtra(extra);
+                }
+            }
         }
         // 默认颁发日期 = 今天
         if (c.getIssueDate() == null) c.setIssueDate(LocalDate.now());
