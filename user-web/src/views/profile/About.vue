@@ -5,11 +5,8 @@
     <div class="page-body">
       <div class="container">
         <div class="about-card">
-          <!-- Logo 与标题 -->
+          <!-- 标题 -->
           <div class="about-header">
-            <div class="logo-icon">
-              <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-img" />
-            </div>
             <h1 class="app-name">人力资源专业技能人才评价网</h1>
           </div>
 
@@ -161,25 +158,6 @@ export default {
   padding-bottom: 32px;
   border-bottom: 1px solid #f0f0f0;
   margin-bottom: 32px;
-
-  .logo-icon {
-    width: 90px;
-    height: 90px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #f0f8ff, #e6f4ff);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
-    overflow: hidden;
-
-    .logo-img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-    }
-  }
 
   .app-name {
     font-size: 26px;

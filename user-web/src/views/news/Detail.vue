@@ -4,6 +4,16 @@
 
     <div class="page-body">
       <div class="container">
+        <!-- 面包屑 -->
+        <div class="breadcrumb">
+          <span>您当前所在位置：</span>
+          <router-link to="/" class="crumb-link">主页</router-link>
+          <span class="crumb-sep">&gt;</span>
+          <router-link to="/news" class="crumb-link">中心动态</router-link>
+          <span class="crumb-sep">&gt;</span>
+          <span class="crumb-current">{{ news ? news.title : '详情' }}</span>
+        </div>
+
         <div v-if="loading" class="loading">
           <van-loading size="24" color="#1989fa">加载中...</van-loading>
         </div>
@@ -131,6 +141,26 @@ export default {
   max-width: 900px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: #909399;
+  padding: 12px 0;
+  margin-bottom: 8px;
+
+  .crumb-link {
+    color: #409eff;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+  .crumb-sep {
+    margin: 0 6px;
+    color: #c0c4cc;
+  }
+  .crumb-current {
+    color: #303133;
+  }
 }
 
 .loading {
