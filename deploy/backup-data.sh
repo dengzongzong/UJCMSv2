@@ -8,7 +8,7 @@ set -e
 
 MYSQL_DB="exam_platform"
 MYSQL_USER="root"
-MYSQL_PASS="${MYSQL_PASS:-修改成你的数据库root密码}"
+MYSQL_PASS="${MYSQL_PASS:-Root@123456}"
 UPLOAD_DIR="/opt/exam-platform/uploads"
 BACKUP_DIR="/tmp/exam-backup-$(date +%Y%m%d_%H%M%S)"
 
