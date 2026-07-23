@@ -339,7 +339,7 @@ export default {
 .header-nav {
   min-height: 48px;
   height: auto;
-  background: #fff;
+  background: linear-gradient(180deg, #c8102e 0%, #a30d24 100%);
 
   .nav-container {
     max-width: 1200px;
@@ -348,7 +348,7 @@ export default {
     padding: 0 20px;
     display: flex;
     align-items: center;
-    background: linear-gradient(180deg, #c8102e 0%, #a30d24 100%);
+    justify-content: space-between;
   }
 }
 
@@ -392,10 +392,14 @@ export default {
   align-items: center;
   height: 100%;
   flex-wrap: nowrap;
+  flex: 1;
+  width: 100%;
 
   .nav-item {
     position: relative;
-    padding: 0 30px;
+    flex: 1;
+    text-align: center;
+    padding: 0 8px;
     height: 48px;
     line-height: 48px;
     font-size: 15px;
