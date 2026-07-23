@@ -46,6 +46,8 @@ public class CertificateImportRow {
     private String qr2;
     private String qr3;
     private String examQr;
+    /** 证书类型(专业技能证书/专项职业技能证书/人才数据入库证书) */
+    private String certType;
     private String remark;
     /** 行号(用于前端错误回显) */
     private Integer rowIndex;

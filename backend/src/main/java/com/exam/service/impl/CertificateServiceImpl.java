@@ -909,6 +909,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         s1.add("");
         s1.add("");
         s1.add("");
+        s1.add("专业技能证书");
         sample.add(s1);
         try (OutputStream os = response.getOutputStream()) {
             EasyExcel.write(os).head(head).sheet(sheetName).doWrite(sample);
@@ -1312,6 +1313,10 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (StringUtils.hasText(r.getPhone())) {
             extra.put("phone", r.getPhone());
         }
+        // 证书类型
+        if (StringUtils.hasText(r.getCertType())) {
+            extra.put("cert_type", r.getCertType().trim());
+        }
         d.setExtra(extra);
         return d;
     }
@@ -1463,6 +1468,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         head.add(Arrays.asList("证书二维码生成2（选填）"));
         head.add(Arrays.asList("证书二维码生成3（选填）"));
         head.add(Arrays.asList("学员考试二维码（选填）"));
+        head.add(Arrays.asList("证书类型（选填，如：专业技能证书/专项职业技能证书/人才数据入库证书）"));
         // 示例行
         List<List<Object>> sample = new ArrayList<>();
         List<Object> s1 = new ArrayList<>();
@@ -1528,13 +1534,13 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     }
 
     /**
-     * 25列模板解析(学生管理专用,独立于证书管理的20列 parseRow)
+     * 26列模板解析(学生管理专用,独立于证书管理的20列 parseRow)
      * 列顺序: 0序号 1姓名 2证件号码 3职业名称 4技能等级 5颁发日期
      * 6报单机构 7报单机构费用统计 8培训专业 9培训学时 10培训日期
      * 11考试时间 12理论成绩 13实操成绩 14综合测评
      * 15手机号码 16性别 17证书编号前缀 18证书编号中段
      * 19学员编号前缀 20学员编号中段 21证书二维码1 22证书二维码2
-     * 23证书二维码3 24学员考试二维码
+     * 23证书二维码3 24学员考试二维码 25证书类型
      */
     private CertificateImportRow parseRow25(Map<Integer, String> row, int rowIndex) {
         CertificateImportRow r = new CertificateImportRow();
@@ -1565,6 +1571,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         r.setQr2(trimToNull(row.get(22)));
         r.setQr3(trimToNull(row.get(23)));
         r.setExamQr(trimToNull(row.get(24)));
+        r.setCertType(trimToNull(row.get(25)));
         // ============ 字段限制/校验 ============
         List<String> errs = new ArrayList<>();
         if (r.getName() == null) {
