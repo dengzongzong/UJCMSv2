@@ -692,9 +692,9 @@ INSERT INTO `certificate_field` (`field_key`, `field_name`, `field_type`, `requi
 ('gender',       '性别',                1, 0,  3, 1, '男,女'),
 ('profession',   '职业名称',            1, 1,  4, 1, NULL),
 ('skillLevel',   '技能等级',            4, 0,  5, 1, '五级/初级,四级/中级,三级/高级,二级/技师,一级/高级技师'),
-('issueYear',    '颁发日期(年)',        1, 0,  61, 1, NULL),
-('issueMonth',   '颁发日期(月)',        1, 0,  62, 1, NULL),
-('issueDay',     '颁发日期(日)',        1, 0,  63, 1, NULL),
+('issueYear',    '颁发日期(年)',        1, 0, 61, 1, NULL),
+('issueMonth',   '颁发日期(月)',        1, 0, 62, 1, NULL),
+('issueDay',     '颁发日期(日)',        1, 0, 63, 1, NULL),
 ('certNo',       '证书编号',            1, 0,  7, 1, NULL),
 ('studentNo',    '学员编号',            1, 0,  8, 1, NULL),
 ('agency',       '报单机构',            1, 1,  9, 1, NULL),
@@ -703,7 +703,15 @@ INSERT INTO `certificate_field` (`field_key`, `field_name`, `field_type`, `requi
 ('qr2',          '证书二维码2',         1, 0, 12, 1, NULL),
 ('qr3',          '证书二维码3',         1, 0, 13, 1, NULL),
 ('examQr',       '学员考试二维码',      1, 0, 14, 1, NULL),
-('photo',        '学员照片',            5, 0, 15, 1, NULL);
+('photo',        '学员照片',            5, 0, 15, 1, NULL),
+('theoryScore',              '理论成绩',    1, 0, 20, 1, NULL),
+('practicalScore',           '实操成绩',    1, 0, 21, 1, NULL),
+('comprehensiveEvaluation',  '综合测评',    1, 0, 22, 1, NULL),
+('trainingMajor',            '培训专业',    1, 0, 30, 1, NULL),
+('trainingHours',            '培训学时',    1, 0, 31, 1, NULL),
+('trainingDate',             '培训日期',    3, 0, 32, 1, NULL),
+('examTime',                 '考试时间',    3, 0, 33, 1, NULL),
+('phone',                    '手机号码',    1, 0, 40, 1, NULL);
 
 -- 证书主表
 DROP TABLE IF EXISTS `certificate`;

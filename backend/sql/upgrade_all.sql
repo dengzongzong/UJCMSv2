@@ -570,6 +570,19 @@ DELETE FROM homepage_section WHERE id NOT IN (
 );
 
 -- ============================================================
+-- certificate_field 补充缺失的系统字段(成绩/培训/手机等)
+-- ============================================================
+INSERT IGNORE INTO `certificate_field` (`field_key`, `field_name`, `field_type`, `required`, `sort`, `is_system`, `default_value`, `options`) VALUES
+('theoryScore',              '理论成绩',    1, 0, 20, 1, NULL, NULL),
+('practicalScore',           '实操成绩',    1, 0, 21, 1, NULL, NULL),
+('comprehensiveEvaluation',  '综合测评',    1, 0, 22, 1, NULL, NULL),
+('trainingMajor',            '培训专业',    1, 0, 30, 1, NULL, NULL),
+('trainingHours',            '培训学时',    1, 0, 31, 1, NULL, NULL),
+('trainingDate',             '培训日期',    3, 0, 32, 1, NULL, NULL),
+('examTime',                 '考试时间',    3, 0, 33, 1, NULL, NULL),
+('phone',                    '手机号码',    1, 0, 40, 1, NULL, NULL);
+
+-- ============================================================
 -- about_us 表增加免责声明字段
 -- ============================================================
 SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'about_us' AND COLUMN_NAME = 'disclaimer');
