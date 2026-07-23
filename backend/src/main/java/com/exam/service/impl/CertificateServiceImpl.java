@@ -108,6 +108,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     private com.exam.service.AsyncTaskService taskService;
     @Autowired
     private com.exam.service.CertificateUserSyncService certificateUserSyncService;
+    @Autowired
+    private com.exam.service.CertificateTypeService certificateTypeService;
 
     @Override
     public PageResult<Certificate> page(Integer page, Integer size, String name,
@@ -1468,7 +1470,18 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         head.add(Arrays.asList("证书二维码生成2（选填）"));
         head.add(Arrays.asList("证书二维码生成3（选填）"));
         head.add(Arrays.asList("学员考试二维码（选填）"));
-        head.add(Arrays.asList("证书类型（选填，如：专业技能证书/专项职业技能证书/人才数据入库证书）"));
+        // 证书类型: 动态获取系统设置中的证书类型名称
+        String typeHint = "证书类型（选填）";
+        try {
+            List<String> typeNames = certificateTypeService.listAll().stream()
+                    .filter(t -> t.getStatus() == null || t.getStatus() == 1)
+                    .map(t -> t.getName())
+                    .collect(java.util.stream.Collectors.toList());
+            if (!typeNames.isEmpty()) {
+                typeHint = "证书类型（选填，可选值：" + String.join("/", typeNames) + "）";
+            }
+        } catch (Exception e) { /* ignore */ }
+        head.add(Arrays.asList(typeHint));
         // 示例行
         List<List<Object>> sample = new ArrayList<>();
         List<Object> s1 = new ArrayList<>();
@@ -1597,6 +1610,20 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (r.getTheoryScore() != null) {
             try { Double.parseDouble(r.getTheoryScore().trim()); }
             catch (NumberFormatException e) { errs.add("理论成绩不是数字"); }
+        }
+        // 证书类型校验: 必须与系统设置中的证书类型名称一致
+        if (r.getCertType() != null) {
+            try {
+                List<String> validTypes = certificateTypeService.listAll().stream()
+                        .filter(t -> t.getStatus() == null || t.getStatus() == 1)
+                        .map(t -> t.getName())
+                        .collect(java.util.stream.Collectors.toList());
+                if (!validTypes.contains(r.getCertType())) {
+                    errs.add("证书类型'" + r.getCertType() + "'不在系统设置中(可选: " + String.join("/", validTypes) + ")");
+                }
+            } catch (Exception e) {
+                // 查询失败不阻断导入
+            }
         }
         if (!errs.isEmpty()) {
             r.setError(String.join("; ", errs));
