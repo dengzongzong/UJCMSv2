@@ -9,7 +9,15 @@ set -e
 MYSQL_DB="exam_platform"
 MYSQL_USER="root"
 MYSQL_PASS="${MYSQL_PASS:-Root@123456}"
-UPLOAD_DIR="/opt/exam-platform/uploads"
+# 新系统部署在 /opt/exam-platform,老系统在 /data/exam-platform
+# 自动检测: 优先 /opt,其次 /data,可用 UPLOAD_DIR 环境变量覆盖
+if [ -d "/opt/exam-platform/uploads" ]; then
+  UPLOAD_DIR="/opt/exam-platform/uploads"
+elif [ -d "/data/exam-platform/uploads" ]; then
+  UPLOAD_DIR="/data/exam-platform/uploads"
+else
+  UPLOAD_DIR="${UPLOAD_DIR:-/opt/exam-platform/uploads}"
+fi
 
 # 接受参数: ZIP 文件路径
 ZIP_FILE="${1:-/tmp/exam-backup-*.zip}"

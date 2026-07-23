@@ -9,7 +9,15 @@ set -e
 MYSQL_DB="exam_platform"
 MYSQL_USER="root"
 MYSQL_PASS="${MYSQL_PASS:-Root@123456}"
-UPLOAD_DIR="/opt/exam-platform/uploads"
+# 老系统部署在 /data/exam-platform,新系统在 /opt/exam-platform
+# 自动检测: 优先 /data,其次 /opt,可用 UPLOAD_DIR 环境变量覆盖
+if [ -d "/data/exam-platform/uploads" ]; then
+  UPLOAD_DIR="/data/exam-platform/uploads"
+elif [ -d "/opt/exam-platform/uploads" ]; then
+  UPLOAD_DIR="/opt/exam-platform/uploads"
+else
+  UPLOAD_DIR="${UPLOAD_DIR:-/data/exam-platform/uploads}"
+fi
 BACKUP_DIR="/tmp/exam-backup-$(date +%Y%m%d_%H%M%S)"
 
 echo "===== 数据备份开始 ====="
