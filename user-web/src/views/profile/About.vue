@@ -83,10 +83,6 @@
             <p>保留所有权利</p>
             <!-- 备案信息 -->
             <div class="beian">
-              <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">
-                <img src="/images/logo01.dd7ff50e.png" alt="公安备案" class="beian-icon" />
-                冀公网安备 13068402000386 号
-              </a>
               <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">
                 冀ICP备2025108945号-4
               </a>
