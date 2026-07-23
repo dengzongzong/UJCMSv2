@@ -15,7 +15,7 @@
     </el-card>
 
     <el-row :gutter="16" class="stat-row">
-      <el-col v-for="item in stats" :key="item.key" :xs="12" :sm="12" :md="6">
+      <el-col v-for="item in stats" :key="item.key" :xs="12" :sm="12" :md="6" :lg="{ span: 4, offset: 0 }">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-card-body">
             <div class="stat-icon" :style="{ background: item.color }">
@@ -76,6 +76,7 @@ export default {
     return {
       stats: [
         { key: 'student', label: '学生总数', value: '--', icon: 'el-icon-s-custom', color: '#409eff' },
+        { key: 'certificateUser', label: '证书用户', value: '--', icon: 'el-icon-s-flag', color: '#9254de' },
         { key: 'course', label: '课程总数', value: '--', icon: 'el-icon-reading', color: '#67c23a' },
         { key: 'exam', label: '考试总数', value: '--', icon: 'el-icon-document', color: '#e6a23c' },
         { key: 'question', label: '题目总数', value: '--', icon: 'el-icon-edit', color: '#f56c6c' }

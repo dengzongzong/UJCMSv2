@@ -28,6 +28,8 @@ public class DashboardController {
     private VideoMapper videoMapper;
     @Autowired
     private ExamRecordMapper examRecordMapper;
+    @Autowired
+    private CertificateUserMapper certificateUserMapper;
 
     @GetMapping("/stats")
     public Result<Map<String, Object>> stats() {
@@ -39,6 +41,7 @@ public class DashboardController {
         data.put("paper", paperMapper.selectCount(null));
         data.put("video", videoMapper.selectCount(null));
         data.put("examRecord", examRecordMapper.selectCount(null));
+        data.put("certificateUser", certificateUserMapper.selectCount(null));
         return Result.success(data);
     }
 }
