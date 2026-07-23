@@ -1294,16 +1294,17 @@ $primary-red-light: #fff5f5;
 @media (max-width: 800px) {
   .banner-wrapper { flex-direction: column; }
   .banner-left { flex: 1; }
-  .banner-left .banner-swipe, .banner-left .banner-img, .banner-left .banner-placeholder { height: 200px; }
+  .banner-left .banner-swipe, .banner-left .banner-img, .banner-left .banner-placeholder { height: 160px; }
   .banner-right { flex: 1; }
   .course-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
-  .page-body { padding-top: var(--header-height, 100px); }
-  .container, .banner-section, .homepage-banner-wrap { width: 100%; padding: 0 12px; }
+  .page-body { padding-top: var(--header-height, 96px); }
+  .container, .banner-section, .homepage-banner-wrap { width: 100%; padding: 0 10px; }
   .homepage-banner-title { font-size: 16px; }
-  .banner-left .banner-swipe, .banner-left .banner-img, .banner-left .banner-placeholder { height: 180px; }
+  .banner-left .banner-swipe, .banner-left .banner-img, .banner-left .banner-placeholder { height: 140px; }
+  .homepage-banner-img { height: 140px; object-fit: cover; }
   .section-header .section-title { font-size: 16px; }
   .evaluate-row { grid-template-columns: 1fr; gap: 12px; }
   .evaluate-section { padding: 12px; }

@@ -417,10 +417,10 @@ export default {
 
 @media (max-width: 768px) {
   .header-top {
-    height: 50px;
+    height: 56px;
   }
   .header-container {
-    padding: 0 12px;
+    padding: 0 10px;
   }
   .logo {
     gap: 8px;
@@ -436,12 +436,16 @@ export default {
       letter-spacing: 0;
       line-height: 1.2;
     }
+    .logo-title-img {
+      height: 38px;
+    }
     .logo-subtitle {
       display: none;
     }
   }
   .header-right {
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 1;
     .header-search {
       display: none;
     }
@@ -449,7 +453,7 @@ export default {
       display: none;
     }
     .subject-switch {
-      max-width: 100px;
+      max-width: 80px;
       padding: 3px 6px;
       .subject-name {
         font-size: 12px;
@@ -461,8 +465,9 @@ export default {
     }
     .login-btn,
     .register-btn {
-      font-size: 12px;
-      padding: 4px 10px;
+      font-size: 13px;
+      padding: 5px 12px;
+      white-space: nowrap;
     }
   }
   .nav-menu {
@@ -472,7 +477,7 @@ export default {
       display: none;
     }
     .nav-item {
-      padding: 0 14px;
+      padding: 0 12px;
       font-size: 13px;
     }
   }
