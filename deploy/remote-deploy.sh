@@ -140,7 +140,8 @@ echo "  配置文件已生成: $DEPLOY_DIR/application-prod.yml"
 # 6. 执行 SQL 升级 (幂等,可重复执行)
 echo "[6/8] 执行 SQL 升级..."
 if [ -f "upgrade_all.sql" ]; then
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 < upgrade_all.sql 2>&1 | grep -v "Using a password" && echo "  SQL 升级完成" || echo "  SQL 升级跳过(可能已执行过或MySQL未就绪)"
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < upgrade_all.sql 2>&1 | grep -v "Using a password"
+    echo "  SQL 升级完成"
 else
     echo "  警告: upgrade_all.sql 不存在,跳过"
 fi
