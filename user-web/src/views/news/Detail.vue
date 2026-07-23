@@ -9,7 +9,7 @@
           <span>您当前所在位置：</span>
           <router-link to="/" class="crumb-link">主页</router-link>
           <span class="crumb-sep">&gt;</span>
-          <router-link to="/news/center" class="crumb-link">中心动态</router-link>
+          <router-link :to="crumbCategoryLink" class="crumb-link">{{ crumbCategoryName }}</router-link>
           <span class="crumb-sep">&gt;</span>
           <span class="crumb-current">{{ news ? news.title : '详情' }}</span>
         </div>
@@ -59,6 +59,24 @@ export default {
     },
     detailType() {
       return this.$route.query.type || 'news'
+    },
+    crumbCategoryName() {
+      const map = {
+        'announcement': '通知公告',
+        'events': '重大活动',
+        'policy': '政策法规',
+        'news': '中心动态'
+      }
+      return map[this.detailType] || '中心动态'
+    },
+    crumbCategoryLink() {
+      const map = {
+        'announcement': '/news/announcements',
+        'events': '/news/center?type=events',
+        'policy': '/news/center?type=policy',
+        'news': '/news/center'
+      }
+      return map[this.detailType] || '/news/center'
     }
   },
   created() {
