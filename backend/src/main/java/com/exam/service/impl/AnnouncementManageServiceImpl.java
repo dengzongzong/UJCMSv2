@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 系统公告管理Service实现
@@ -81,10 +82,13 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     public List<Announcement> listEnabled() {
-        return this.list(new LambdaQueryWrapper<Announcement>()
+        List<Announcement> list = this.list(new LambdaQueryWrapper<Announcement>()
                 .eq(Announcement::getStatus, 1)
                 .and(w -> w.isNull(Announcement::getPublishTime).or().le(Announcement::getPublishTime, LocalDateTime.now()))
                 .orderByAsc(Announcement::getSort)
                 .orderByDesc(Announcement::getCreateTime));
+        return list.stream().collect(Collectors.toMap(
+                Announcement::getTitle, a -> a, (a1, a2) -> a1
+        )).values().stream().collect(Collectors.toList());
     }
 }

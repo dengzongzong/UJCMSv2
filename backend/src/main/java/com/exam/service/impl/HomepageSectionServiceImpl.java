@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 首页内容板块Service实现
@@ -90,6 +91,9 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
         }
         wrapper.orderByAsc(HomepageSection::getSort)
                .orderByDesc(HomepageSection::getCreateTime);
-        return this.list(wrapper);
+        List<HomepageSection> list = this.list(wrapper);
+        return list.stream().collect(Collectors.toMap(
+                HomepageSection::getTitle, h -> h, (h1, h2) -> h1
+        )).values().stream().collect(Collectors.toList());
     }
 }

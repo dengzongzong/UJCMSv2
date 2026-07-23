@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 新闻管理Service实现
@@ -82,20 +83,28 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
 
     @Override
     public List<News> listEnabled() {
-        return this.list(new LambdaQueryWrapper<News>()
+        List<News> list = this.list(new LambdaQueryWrapper<News>()
                 .eq(News::getStatus, 1)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
                 .orderByAsc(News::getSort)
                 .orderByDesc(News::getCreateTime));
+        return dedupByTitle(list);
     }
 
     @Override
     public List<News> listEnabledByType(Integer type) {
-        return this.list(new LambdaQueryWrapper<News>()
+        List<News> list = this.list(new LambdaQueryWrapper<News>()
                 .eq(News::getStatus, 1)
                 .eq(type != null, News::getType, type)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
                 .orderByAsc(News::getSort)
                 .orderByDesc(News::getCreateTime));
+        return dedupByTitle(list);
+    }
+
+    private List<News> dedupByTitle(List<News> list) {
+        return list.stream().collect(Collectors.toMap(
+                News::getTitle, n -> n, (n1, n2) -> n1
+        )).values().stream().collect(Collectors.toList());
     }
 }
