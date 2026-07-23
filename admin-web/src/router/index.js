@@ -394,7 +394,7 @@ async function addDynamicCertTypeRoutes() {
         path: routePath,
         name: `CertificateListDyn${idx + 1}`,
         component: () => import('@/views/certificate/List.vue'),
-        meta: { title: `${name}内容`, icon: 'el-icon-document', certType: name }
+        meta: { title: `${name}`, icon: 'el-icon-document', certType: name }
       })
     })
     // 通知菜单更新
