@@ -422,6 +422,7 @@ CREATE TABLE `about_us` (
   `service_qrcode` varchar(500) DEFAULT NULL COMMENT '客服二维码',
   `qrcode_link` varchar(500) DEFAULT NULL COMMENT '关于我们右下角二维码所指向的链接(后台配置)',
   `content` longtext DEFAULT NULL COMMENT '平台介绍(富文本)',
+  `disclaimer` longtext DEFAULT NULL COMMENT '免责声明(富文本,后台配置)',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='关于我们设置表';

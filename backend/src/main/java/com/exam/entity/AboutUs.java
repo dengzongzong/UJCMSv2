@@ -17,6 +17,8 @@ public class AboutUs {
     private String qrcodeLink;
     @TableField("content")
     private String content;
+    /** 免责声明(后台配置,前台关于我们页面展示) */
+    private String disclaimer;
     @TableField(fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;

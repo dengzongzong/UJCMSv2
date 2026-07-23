@@ -31,6 +31,7 @@ public class AboutUsServiceImpl extends ServiceImpl<AboutUsMapper, AboutUs> impl
         aboutUs.setServiceQrcode(dto.getServiceQrcode());
         aboutUs.setQrcodeLink(dto.getQrcodeLink());
         aboutUs.setContent(dto.getContent());
+        aboutUs.setDisclaimer(dto.getDisclaimer());
         if (aboutUs.getId() == null) {
             this.save(aboutUs);
         } else {

@@ -568,3 +568,12 @@ DELETE FROM news WHERE id NOT IN (
 DELETE FROM homepage_section WHERE id NOT IN (
   SELECT min_id FROM (SELECT MIN(id) AS min_id FROM homepage_section GROUP BY title, COALESCE(type, 0)) t
 );
+
+-- ============================================================
+-- about_us 表增加免责声明字段
+-- ============================================================
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'about_us' AND COLUMN_NAME = 'disclaimer');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE about_us ADD COLUMN disclaimer longtext DEFAULT NULL COMMENT ''免责声明(富文本,后台配置)'' AFTER content', 'SELECT ''disclaimer already exists''');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

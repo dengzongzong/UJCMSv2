@@ -68,6 +68,12 @@
             </div>
           </template>
 
+          <!-- 免责声明(后台配置) -->
+          <div v-if="aboutData.disclaimer" class="section">
+            <div class="section-title">免责声明</div>
+            <div class="section-text" v-html="aboutData.disclaimer"></div>
+          </div>
+
           <!-- 版权信息 -->
           <div class="copyright">
             <p>Copyright &copy; {{ year }} 中国人力资源专业技能人才评价中心</p>

@@ -44,6 +44,10 @@
           <RichEditor v-model="form.content" :height="380" placeholder="请输入平台介绍内容(支持富文本: 文字+图片+链接+表格+视频)" />
           <div class="form-tip">支持富文本: 加粗/字号/颜色/链接/图片/表格/视频等;最多 5000 字</div>
         </el-form-item>
+        <el-form-item label="免责声明" prop="disclaimer">
+          <RichEditor v-model="form.disclaimer" :height="260" placeholder="请输入免责声明内容(支持富文本)" />
+          <div class="form-tip">用户端"关于我们"页面底部展示;留空则不显示免责声明</div>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitting" @click="submitForm">保 存</el-button>
           <el-button @click="fetchDetail">重 置</el-button>
@@ -69,7 +73,8 @@ export default {
         servicePhone: '',
         serviceQrcode: '',
         qrcodeLink: '',
-        content: ''
+        content: '',
+        disclaimer: ''
       },
       rules: {
         servicePhone: [{ required: true, message: '请输入客服电话', trigger: 'blur' }]
@@ -94,7 +99,8 @@ export default {
             servicePhone: data.servicePhone || '',
             serviceQrcode: data.serviceQrcode || '',
             qrcodeLink: data.qrcodeLink || '',
-            content: data.content || ''
+            content: data.content || '',
+            disclaimer: data.disclaimer || ''
           }
         })
         .finally(() => {

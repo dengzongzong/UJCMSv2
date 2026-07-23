@@ -12,4 +12,6 @@ public class AboutUsDTO {
     /** 关于我们页面右下角二维码所指向的链接 */
     private String qrcodeLink;
     private String content;
+    /** 免责声明 */
+    private String disclaimer;
 }
