@@ -5,7 +5,7 @@
         <el-avatar :size="56" icon="el-icon-user-solid" class="welcome-avatar"></el-avatar>
         <div class="welcome-text">
           <h2>{{ greeting }}，{{ adminName }}！</h2>
-          <p>欢迎使用人力资源专业技能人才评价网管理后台，祝您工作顺利。</p>
+          <p>欢迎使用中国人力资源专业技能人才评价中心管理后台，祝您工作顺利。</p>
         </div>
         <div class="welcome-date">
           <i class="el-icon-date"></i>

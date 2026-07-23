@@ -4,7 +4,7 @@
       <div class="login-banner">
         <div class="banner-content">
           <i class="el-icon-school banner-icon"></i>
-          <h1 class="banner-title">人力资源专业技能人才评价网</h1>
+          <h1 class="banner-title">中国人力资源专业技能人才评价中心</h1>
           <p class="banner-subtitle">管理后台</p>
           <p class="banner-desc">一站式职业能力评测管理解决方案</p>
         </div>
@@ -75,7 +75,7 @@
       </div>
     </div>
     <div class="login-footer">
-      <div>Copyright &copy; {{ year }} 人力资源专业技能人才评价网. All Rights Reserved.</div>
+      <div>Copyright &copy; {{ year }} 中国人力资源专业技能人才评价中心. All Rights Reserved.</div>
       <div class="beian">
         <a href="https://beian.mps.gov.cn/#/query/webSearch" target="_blank" rel="noopener">
           <img src="https://beian.mps.gov.cn/img/logo01.png" alt="公安备案" class="beian-icon" />

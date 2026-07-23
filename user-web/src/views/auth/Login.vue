@@ -3,7 +3,7 @@
     <div class="login-card">
       <div class="card-header">
         <div class="logo">
-          <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-img" />
+          <img src="/images/1756976082837900.png" alt="中国人力资源专业技能人才评价中心" class="logo-img" />
         </div>
         <p class="subtitle">欢迎回来，请登录您的账号</p>
       </div>
@@ -90,7 +90,7 @@
       confirm-button-color="#1989fa"
     >
       <div class="agreement-content">
-        <p>欢迎使用人力资源专业技能人才评价网。在使用本平台服务前，请您仔细阅读并同意以下协议：</p>
+        <p>欢迎使用中国人力资源专业技能人才评价中心。在使用本平台服务前，请您仔细阅读并同意以下协议：</p>
         <p>1. 本平台仅提供在线学习与考试服务，用户应遵守相关法律法规。</p>
         <p>2. 用户应保证注册信息真实有效，并对账号安全负责。</p>
         <p>3. 平台将保护用户隐私信息，不会向第三方泄露。</p>

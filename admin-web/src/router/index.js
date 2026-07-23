@@ -407,7 +407,7 @@ async function addDynamicCertTypeRoutes() {
 
 router.beforeEach(async (to, from, next) => {
   const hasToken = store.getters.token
-  document.title = (to.meta && to.meta.title ? to.meta.title + ' - ' : '') + '人力资源专业技能人才评价网管理后台'
+  document.title = (to.meta && to.meta.title ? to.meta.title + ' - ' : '') + '中国人力资源专业技能人才评价中心管理后台'
   if (hasToken) {
     if (to.path === '/login') {
       next({ path: '/' })

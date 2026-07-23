@@ -11,7 +11,7 @@
       <div class="header-container">
         <div class="logo" @click="$router.push('/home')">
           <div class="logo-text">
-            <img src="/images/1756976082837900.png" alt="人力资源专业技能人才评价网" class="logo-title-img" />
+            <img src="/images/1756976082837900.png" alt="中国人力资源专业技能人才评价中心" class="logo-title-img" />
             <div class="logo-subtitle">www.hrzynlpj.org.cn</div>
           </div>
         </div>

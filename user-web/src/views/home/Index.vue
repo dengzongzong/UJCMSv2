@@ -316,7 +316,7 @@
 
       <!-- 底部版权 -->
       <div class="footer">
-        <div class="footer-copyright">© 人力资源专业技能人才评价网</div>
+        <div class="footer-copyright">© 中国人力资源专业技能人才评价中心</div>
         <div class="footer-beian">
           <span>香港政府注册登记号：78503955-000-07-25-4</span>
           <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">

@@ -7,7 +7,7 @@
         <div class="about-card">
           <!-- 标题 -->
           <div class="about-header">
-            <h1 class="app-name">人力资源专业技能人才评价网</h1>
+            <h1 class="app-name">中国人力资源专业技能人才评价中心</h1>
           </div>
 
           <!-- 关于我们(后台数据) -->
@@ -48,7 +48,7 @@
             <div class="section">
               <div class="section-title">平台介绍</div>
               <p class="section-text">
-                人力资源专业技能人才评价网是面向职业能力标准评价与人才评测的综合性在线平台，提供课程学习、在线考试、证书查询与下载、错题练习等一站式服务。
+                中国人力资源专业技能人才评价中心是面向职业能力标准评价与人才评测的综合性在线平台，提供课程学习、在线考试、证书查询与下载、错题练习等一站式服务。
               </p>
             </div>
             <div class="section">
@@ -79,12 +79,12 @@
 
           <!-- 版权信息 -->
           <div class="copyright">
-            <p>Copyright &copy; {{ year }} 人力资源专业技能人才评价网</p>
-            <p>保留所有权利</p>
+            <p>Copyright &copy; {{ year }} 中国人力资源专业技能人才评价中心</p>
             <!-- 备案信息 -->
             <div class="beian">
+              <span>香港政府注册登记号：78503955-000-07-25-4</span>
               <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">
-                冀ICP备2025108945号-4
+                冀ICP备2025108945号-2
               </a>
             </div>
           </div>
