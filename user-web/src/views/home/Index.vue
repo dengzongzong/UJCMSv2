@@ -379,13 +379,13 @@ export default {
       return (this.courseList || []).slice(0, this.displayLimit)
     },
     displayNews() {
-      return (this.newsList || []).slice(0, 6)
+      return (this.newsList || []).slice(0, 7)
     },
     displayEvents() {
-      return (this.eventsList || []).slice(0, 6)
+      return (this.eventsList || []).slice(0, 7)
     },
     displayAnnouncements() {
-      return (this.announcements || []).slice(0, 6)
+      return (this.announcements || []).slice(0, 7)
     },
     displayPolicyNews() {
       return (this.policySections || []).slice(0, 5)
