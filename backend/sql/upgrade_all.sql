@@ -346,27 +346,29 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- ============================================
 -- 文章数据去重(每次部署会重复执行INSERT,需要先清理重复数据)
 -- 保留每组重复数据中id最小的一条
+-- 用子查询方式(兼容所有MySQL版本)
 -- ============================================
 
 -- announcement 去重(按 title)
-DELETE a1 FROM announcement a1
-INNER JOIN announcement a2
-ON a1.title = a2.title
-AND a1.id > a2.id;
+DELETE FROM announcement WHERE id NOT IN (
+  SELECT min_id FROM (
+    SELECT MIN(id) AS min_id FROM announcement GROUP BY title
+  ) t
+);
 
 -- news 去重(按 title + type)
-DELETE n1 FROM news n1
-INNER JOIN news n2
-ON n1.title = n2.title
-AND COALESCE(n1.type, 0) = COALESCE(n2.type, 0)
-AND n1.id > n2.id;
+DELETE FROM news WHERE id NOT IN (
+  SELECT min_id FROM (
+    SELECT MIN(id) AS min_id FROM news GROUP BY title, COALESCE(type, 0)
+  ) t
+);
 
 -- homepage_section 去重(按 title + type)
-DELETE h1 FROM homepage_section h1
-INNER JOIN homepage_section h2
-ON h1.title = h2.title
-AND COALESCE(h1.type, 0) = COALESCE(h2.type, 0)
-AND h1.id > h2.id;
+DELETE FROM homepage_section WHERE id NOT IN (
+  SELECT min_id FROM (
+    SELECT MIN(id) AS min_id FROM homepage_section GROUP BY title, COALESCE(type, 0)
+  ) t
+);
 
 -- ============================================
 -- 文章数据导入(仅在数据不存在时插入,用 LEFT JOIN 防重复)
@@ -557,19 +559,12 @@ UPDATE homepage_section SET cover_url = CONCAT('https://www.zgrlosta.org.cn', co
 -- ============================================
 -- 文章数据再次去重(INSERT 后执行,清理本次插入产生的重复)
 -- ============================================
-DELETE a1 FROM announcement a1
-INNER JOIN announcement a2
-ON a1.title = a2.title
-AND a1.id > a2.id;
-
-DELETE n1 FROM news n1
-INNER JOIN news n2
-ON n1.title = n2.title
-AND COALESCE(n1.type, 0) = COALESCE(n2.type, 0)
-AND n1.id > n2.id;
-
-DELETE h1 FROM homepage_section h1
-INNER JOIN homepage_section h2
-ON h1.title = h2.title
-AND COALESCE(h1.type, 0) = COALESCE(h2.type, 0)
-AND h1.id > h2.id;
+DELETE FROM announcement WHERE id NOT IN (
+  SELECT min_id FROM (SELECT MIN(id) AS min_id FROM announcement GROUP BY title) t
+);
+DELETE FROM news WHERE id NOT IN (
+  SELECT min_id FROM (SELECT MIN(id) AS min_id FROM news GROUP BY title, COALESCE(type, 0)) t
+);
+DELETE FROM homepage_section WHERE id NOT IN (
+  SELECT min_id FROM (SELECT MIN(id) AS min_id FROM homepage_section GROUP BY title, COALESCE(type, 0)) t
+);

@@ -9,14 +9,9 @@
           <span>您当前所在位置：</span>
           <router-link to="/" class="crumb-link">主页</router-link>
           <span class="crumb-sep">&gt;</span>
-          <template v-if="detailType === 'announcement'">
-            <router-link to="/news/announcements" class="crumb-link">通知公告</router-link>
-          </template>
-          <template v-else>
-            <router-link to="/news/center" class="crumb-link">中心动态</router-link>
-            <span class="crumb-sep">&gt;</span>
-            <router-link :to="crumbCategoryLink" class="crumb-link">{{ crumbCategoryName }}</router-link>
-          </template>
+          <router-link to="/news/center" class="crumb-link">中心动态</router-link>
+          <span class="crumb-sep">&gt;</span>
+          <router-link :to="crumbCategoryLink" class="crumb-link">{{ crumbCategoryName }}</router-link>
           <span class="crumb-sep">&gt;</span>
           <span class="crumb-current">{{ news ? news.title : '详情' }}</span>
         </div>
@@ -69,6 +64,7 @@ export default {
     },
     crumbCategoryName() {
       const map = {
+        'announcement': '通知公告',
         'events': '重大活动',
         'policy': '政策法规',
         'news': '新闻动态'
@@ -77,6 +73,7 @@ export default {
     },
     crumbCategoryLink() {
       const map = {
+        'announcement': '/news/announcements',
         'events': '/news/center?type=events',
         'policy': '/news/center?type=policy',
         'news': '/news/center'
