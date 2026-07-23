@@ -348,27 +348,24 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- 保留每组重复数据中id最小的一条
 -- ============================================
 
--- announcement 去重(按 title + create_time)
+-- announcement 去重(按 title)
 DELETE a1 FROM announcement a1
 INNER JOIN announcement a2
 ON a1.title = a2.title
-AND COALESCE(a1.create_time, '1970-01-01') = COALESCE(a2.create_time, '1970-01-01')
 AND a1.id > a2.id;
 
--- news 去重(按 title + type + create_time)
+-- news 去重(按 title + type)
 DELETE n1 FROM news n1
 INNER JOIN news n2
 ON n1.title = n2.title
 AND COALESCE(n1.type, 0) = COALESCE(n2.type, 0)
-AND COALESCE(n1.create_time, '1970-01-01') = COALESCE(n2.create_time, '1970-01-01')
 AND n1.id > n2.id;
 
--- homepage_section 去重(按 title + type + create_time)
+-- homepage_section 去重(按 title + type)
 DELETE h1 FROM homepage_section h1
 INNER JOIN homepage_section h2
 ON h1.title = h2.title
 AND COALESCE(h1.type, 0) = COALESCE(h2.type, 0)
-AND COALESCE(h1.create_time, '1970-01-01') = COALESCE(h2.create_time, '1970-01-01')
 AND h1.id > h2.id;
 
 -- ============================================
@@ -563,19 +560,16 @@ UPDATE homepage_section SET cover_url = CONCAT('https://www.zgrlosta.org.cn', co
 DELETE a1 FROM announcement a1
 INNER JOIN announcement a2
 ON a1.title = a2.title
-AND COALESCE(a1.create_time, '1970-01-01') = COALESCE(a2.create_time, '1970-01-01')
 AND a1.id > a2.id;
 
 DELETE n1 FROM news n1
 INNER JOIN news n2
 ON n1.title = n2.title
 AND COALESCE(n1.type, 0) = COALESCE(n2.type, 0)
-AND COALESCE(n1.create_time, '1970-01-01') = COALESCE(n2.create_time, '1970-01-01')
 AND n1.id > n2.id;
 
 DELETE h1 FROM homepage_section h1
 INNER JOIN homepage_section h2
 ON h1.title = h2.title
 AND COALESCE(h1.type, 0) = COALESCE(h2.type, 0)
-AND COALESCE(h1.create_time, '1970-01-01') = COALESCE(h2.create_time, '1970-01-01')
 AND h1.id > h2.id;
