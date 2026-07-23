@@ -510,3 +510,21 @@ SELECT 'announcement' AS tbl, COUNT(*) AS cnt FROM announcement UNION ALL
 SELECT 'news(type=1)', COUNT(*) FROM news WHERE type=1 UNION ALL
 SELECT 'news(type=2)', COUNT(*) FROM news WHERE type=2 UNION ALL
 SELECT 'homepage_section(all)', COUNT(*) FROM homepage_section;
+-- ============================================================
+-- 11. 修复文章中的图片路径(本地路径改为旧服务器完整URL)
+-- ============================================================
+-- 文章从其他网站导出,图片路径是 /static/upload/image/xxx
+-- 本服务器上没有这些图片文件,改为指向旧服务器的完整URL
+UPDATE announcement SET content = REPLACE(content, 'src="/static/upload/image/', 'src="https://www.zgrlosta.org.cn/static/upload/image/') WHERE content LIKE '%/static/upload/image/%';
+UPDATE news SET content = REPLACE(content, 'src="/static/upload/image/', 'src="https://www.zgrlosta.org.cn/static/upload/image/') WHERE content LIKE '%/static/upload/image/%';
+UPDATE homepage_section SET content = REPLACE(content, 'src="/static/upload/image/', 'src="https://www.zgrlosta.org.cn/static/upload/image/') WHERE content LIKE '%/static/upload/image/%';
+
+-- 同步处理 HTML 实体编码的 src (src=&quot;/static/upload/image/)
+UPDATE announcement SET content = REPLACE(content, 'src=&quot;/static/upload/image/', 'src=&quot;https://www.zgrlosta.org.cn/static/upload/image/') WHERE content LIKE '%/static/upload/image/%';
+UPDATE news SET content = REPLACE(content, 'src=&quot;/static/upload/image/', 'src=&quot;https://www.zgrlosta.org.cn/static/upload/image/') WHERE content LIKE '%/static/upload/image/%';
+UPDATE homepage_section SET content = REPLACE(content, 'src=&quot;/static/upload/image/', 'src=&quot;https://www.zgrlosta.org.cn/static/upload/image/') WHERE content LIKE '%/static/upload/image/%';
+
+-- 修复缩略图字段(cover_url)
+UPDATE announcement SET cover_url = CONCAT('https://www.zgrlosta.org.cn', cover_url) WHERE cover_url LIKE '/static/upload/image/%';
+UPDATE news SET cover_url = CONCAT('https://www.zgrlosta.org.cn', cover_url) WHERE cover_url LIKE '/static/upload/image/%';
+UPDATE homepage_section SET cover_url = CONCAT('https://www.zgrlosta.org.cn', cover_url) WHERE cover_url LIKE '/static/upload/image/%';
