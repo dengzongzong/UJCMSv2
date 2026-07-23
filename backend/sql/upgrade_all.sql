@@ -342,9 +342,37 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'news' AND COLUMN_NAME = 'summary');
 SET @sql = IF(@col_exists = 0, 'ALTER TABLE news ADD COLUMN summary VARCHAR(500) DEFAULT NULL COMMENT ''摘要'' AFTER source', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- ============================================
--- 文章数据导入
--- 从导出的Excel文件导入到对应数据库表
+-- 文章数据去重(每次部署会重复执行INSERT,需要先清理重复数据)
+-- 保留每组重复数据中id最小的一条
+-- ============================================
+
+-- announcement 去重(按 title + create_time)
+DELETE a1 FROM announcement a1
+INNER JOIN announcement a2
+ON a1.title = a2.title
+AND COALESCE(a1.create_time, '1970-01-01') = COALESCE(a2.create_time, '1970-01-01')
+AND a1.id > a2.id;
+
+-- news 去重(按 title + type + create_time)
+DELETE n1 FROM news n1
+INNER JOIN news n2
+ON n1.title = n2.title
+AND COALESCE(n1.type, 0) = COALESCE(n2.type, 0)
+AND COALESCE(n1.create_time, '1970-01-01') = COALESCE(n2.create_time, '1970-01-01')
+AND n1.id > n2.id;
+
+-- homepage_section 去重(按 title + type + create_time)
+DELETE h1 FROM homepage_section h1
+INNER JOIN homepage_section h2
+ON h1.title = h2.title
+AND COALESCE(h1.type, 0) = COALESCE(h2.type, 0)
+AND COALESCE(h1.create_time, '1970-01-01') = COALESCE(h2.create_time, '1970-01-01')
+AND h1.id > h2.id;
+
+-- ============================================
+-- 文章数据导入(仅在数据不存在时插入,用 LEFT JOIN 防重复)
 -- ============================================
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS=0;
@@ -528,3 +556,26 @@ UPDATE homepage_section SET content = REPLACE(content, 'src=&quot;/static/upload
 UPDATE announcement SET cover_url = CONCAT('https://www.zgrlosta.org.cn', cover_url) WHERE cover_url LIKE '/static/upload/image/%';
 UPDATE news SET cover_url = CONCAT('https://www.zgrlosta.org.cn', cover_url) WHERE cover_url LIKE '/static/upload/image/%';
 UPDATE homepage_section SET cover_url = CONCAT('https://www.zgrlosta.org.cn', cover_url) WHERE cover_url LIKE '/static/upload/image/%';
+
+-- ============================================
+-- 文章数据再次去重(INSERT 后执行,清理本次插入产生的重复)
+-- ============================================
+DELETE a1 FROM announcement a1
+INNER JOIN announcement a2
+ON a1.title = a2.title
+AND COALESCE(a1.create_time, '1970-01-01') = COALESCE(a2.create_time, '1970-01-01')
+AND a1.id > a2.id;
+
+DELETE n1 FROM news n1
+INNER JOIN news n2
+ON n1.title = n2.title
+AND COALESCE(n1.type, 0) = COALESCE(n2.type, 0)
+AND COALESCE(n1.create_time, '1970-01-01') = COALESCE(n2.create_time, '1970-01-01')
+AND n1.id > n2.id;
+
+DELETE h1 FROM homepage_section h1
+INNER JOIN homepage_section h2
+ON h1.title = h2.title
+AND COALESCE(h1.type, 0) = COALESCE(h2.type, 0)
+AND COALESCE(h1.create_time, '1970-01-01') = COALESCE(h2.create_time, '1970-01-01')
+AND h1.id > h2.id;
