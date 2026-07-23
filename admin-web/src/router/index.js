@@ -2,6 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Layout from '@/layout/Index.vue'
 import store from '@/store'
+import { publicCertificateTypes } from '@/api/certificateType'
 
 Vue.use(VueRouter)
 
@@ -200,36 +201,6 @@ export const constantRoutes = [
         meta: { title: '全部证书', icon: 'el-icon-trophy' }
       },
       {
-        path: 'list/type1',
-        name: 'CertificateListType1',
-        component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '专业技能证书内容', icon: 'el-icon-document', certType: '专业技能证书' }
-      },
-      {
-        path: 'list/type2',
-        name: 'CertificateListType2',
-        component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '专项职业技能证书内容', icon: 'el-icon-document', certType: '专项职业技能证书' }
-      },
-      {
-        path: 'list/type3',
-        name: 'CertificateListType3',
-        component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '人才数据入库证书内容', icon: 'el-icon-document', certType: '人才数据入库证书' }
-      },
-      {
-        path: 'list/type4',
-        name: 'CertificateListType4',
-        component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '职业能力内容', icon: 'el-icon-document', certType: '职业能力' }
-      },
-      {
-        path: 'list/type5',
-        name: 'CertificateListType5',
-        component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '职业能力等级内容', icon: 'el-icon-document', certType: '职业能力等级' }
-      },
-      {
         path: 'cooperation-apply',
         name: 'CooperationApply',
         component: () => import('@/views/cooperationApply/List.vue'),
@@ -409,6 +380,31 @@ const router = createRouter()
 
 const whiteList = ['/login']
 
+// 动态添加证书类型路由
+let certTypeRoutesAdded = false
+async function addDynamicCertTypeRoutes() {
+  if (certTypeRoutesAdded) return
+  try {
+    const res = await publicCertificateTypes()
+    const types = (res.data || res || [])
+    types.forEach((t, idx) => {
+      const name = t.name || t
+      const routePath = `list/cert-type-${idx + 1}`
+      router.addRoute('Certificate', {
+        path: routePath,
+        name: `CertificateListDyn${idx + 1}`,
+        component: () => import('@/views/certificate/List.vue'),
+        meta: { title: `${name}内容`, icon: 'el-icon-document', certType: name }
+      })
+    })
+    // 通知菜单更新
+    store.commit('app/SET_CERT_TYPES', types)
+    certTypeRoutesAdded = true
+  } catch (e) {
+    // 静默失败,不影响登录
+  }
+}
+
 router.beforeEach(async (to, from, next) => {
   const hasToken = store.getters.token
   document.title = (to.meta && to.meta.title ? to.meta.title + ' - ' : '') + '人力资源专业技能人才评价网管理后台'
@@ -425,6 +421,8 @@ router.beforeEach(async (to, from, next) => {
           return
         }
       }
+      // 动态添加证书类型路由
+      await addDynamicCertTypeRoutes()
       next()
     }
   } else {

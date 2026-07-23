@@ -162,18 +162,29 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['sidebarCollapsed', 'adminInfo']),
+    ...mapGetters(['sidebarCollapsed', 'adminInfo', 'certTypes']),
     collapsed() {
       return this.sidebarCollapsed
     },
     // 自动从路由表生成菜单:仅保留有 meta.title/icon 的父路由,排除 hidden 子项
+    // 证书类型子菜单动态生成,依赖 certTypes 触发响应式更新
     menuRoutes() {
-      return constantRoutes
+      // 引用 certTypes 使其成为响应式依赖
+      const _ = this.certTypes
+      const routes = this.$router.options.routes
+      return routes
         .filter((r) => r.meta && r.meta.title && r.children && r.children.length)
-        .map((r) => ({
-          ...r,
-          children: r.children.filter((c) => !c.hidden)
-        }))
+        .map((r) => {
+          if (r.path === '/certificate') {
+            // 证书管理:合并静态子路由 + 动态添加的子路由
+            const staticChildren = r.children.filter((c) => !c.hidden)
+            const dynamicChildren = (this.$router.getRoutes ? this.$router.getRoutes() : [])
+              .filter((rr) => rr.name && rr.name.startsWith('CertificateListDyn') && rr.meta)
+              .map((rr) => ({ path: rr.path.replace('/certificate/', ''), name: rr.name, meta: rr.meta }))
+            return { ...r, children: [...staticChildren, ...dynamicChildren] }
+          }
+          return { ...r, children: r.children.filter((c) => !c.hidden) }
+        })
         .filter((r) => r.children.length)
     },
     activeMenu() {
