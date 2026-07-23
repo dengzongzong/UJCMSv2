@@ -68,15 +68,6 @@
             </div>
           </template>
 
-          <!-- 免责声明 -->
-          <div class="section">
-            <div class="section-title">免责声明</div>
-            <p class="section-text">
-              本平台所有内容仅供学习交流使用，未经授权不得用于商业用途。
-              平台对考试结果不承担任何法律责任，最终成绩以官方公布为准。
-            </p>
-          </div>
-
           <!-- 版权信息 -->
           <div class="copyright">
             <p>Copyright &copy; {{ year }} 中国人力资源专业技能人才评价中心</p>
