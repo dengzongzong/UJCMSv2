@@ -1,8 +1,8 @@
 #!/bin/bash
 # ============================================================
 # 数据恢复脚本 - 在目标系统服务器上执行
-# 从备份 zip 中恢复课程/视频/题库/考试/证书模板等配置数据 + 媒体文件
-# 不会覆盖: 学生数据、证书数据、考试记录、管理员账号
+# 全部使用合并模式(INSERT IGNORE),不会覆盖任何已有数据
+# 媒体文件用 cp -n(不覆盖已有文件)
 # ============================================================
 set -e
 
@@ -29,6 +29,7 @@ fi
 echo "===== 数据恢复开始 ====="
 echo "数据库: ${MYSQL_DB}"
 echo "备份文件: ${ZIP_FILE}"
+echo "模式: 合并模式(不覆盖任何已有数据)"
 echo ""
 
 # 解压
@@ -45,51 +46,14 @@ fi
 echo "解压目录: ${BACKUP_DIR}"
 
 # --------------------------------------------------
-# 1. 恢复数据库
+# 1. 恢复数据库(合并模式,不清空任何表)
 # --------------------------------------------------
-echo "[1/2] 恢复数据库..."
+echo "[1/2] 恢复数据库(合并模式)..."
 SQL_FILE="${BACKUP_DIR}/data_full.sql"
 if [ -f "${SQL_FILE}" ]; then
-  # 只清空配置类表(不含证书模板相关表,避免覆盖已有模板)
-  echo "  清空配置表数据(保留证书模板)..."
-  mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 2>/dev/null << 'CLEAR_SQL'
-SET FOREIGN_KEY_CHECKS=0;
-SET NAMES utf8mb4;
-TRUNCATE TABLE course_section_video;
-TRUNCATE TABLE course_section;
-TRUNCATE TABLE course;
-TRUNCATE TABLE video;
-TRUNCATE TABLE question_option;
-TRUNCATE TABLE question;
-TRUNCATE TABLE question_template_item;
-TRUNCATE TABLE question_template;
-TRUNCATE TABLE paper_question;
-TRUNCATE TABLE paper;
-TRUNCATE TABLE exam;
-TRUNCATE TABLE video_category;
-TRUNCATE TABLE question_category;
-TRUNCATE TABLE profession;
-TRUNCATE TABLE subject;
-TRUNCATE TABLE certificate_field;
-TRUNCATE TABLE certificate_type;
-TRUNCATE TABLE certificate_number_config;
-TRUNCATE TABLE certificate_url_config;
-TRUNCATE TABLE homepage_section;
-TRUNCATE TABLE news;
-TRUNCATE TABLE announcement;
-TRUNCATE TABLE banner_image;
-TRUNCATE TABLE banner;
-TRUNCATE TABLE friendly_link;
-TRUNCATE TABLE system_setting;
-TRUNCATE TABLE about_us;
-TRUNCATE TABLE site_declaration;
-TRUNCATE TABLE cooperation_setting;
-TRUNCATE TABLE course_three_image;
-SET FOREIGN_KEY_CHECKS=1;
-CLEAR_SQL
-
-  echo "  导入数据(证书模板用 INSERT IGNORE 合并,不会覆盖已有模板)..."
-  # SQL 文件中已经用了 INSERT IGNORE,对已有 ID 的记录会跳过
+  # 不清空任何表,直接用 INSERT IGNORE 导入
+  # INSERT IGNORE: 如果主键/ID已存在则跳过,不会覆盖
+  echo "  导入数据(INSERT IGNORE,已有记录跳过,不覆盖)..."
   mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < "${SQL_FILE}" 2>&1 | grep -v "Using a password" || true
   echo "  数据库恢复完成"
 else
@@ -97,13 +61,14 @@ else
 fi
 
 # --------------------------------------------------
-# 2. 恢复媒体文件
+# 2. 恢复媒体文件(不覆盖已有文件)
 # --------------------------------------------------
-echo "[2/2] 恢复媒体文件..."
+echo "[2/2] 恢复媒体文件(不覆盖已有文件)..."
 BACKUP_UPLOADS="${BACKUP_DIR}/uploads"
 if [ -d "${BACKUP_UPLOADS}" ]; then
   mkdir -p "${UPLOAD_DIR}"
-  cp -rf "${BACKUP_UPLOADS}/"* "${UPLOAD_DIR}/" 2>/dev/null || true
+  # cp -n: 不覆盖已存在的文件,只新增不存在的
+  cp -rn "${BACKUP_UPLOADS}/"* "${UPLOAD_DIR}/" 2>/dev/null || true
   echo "  媒体文件恢复完成: ${UPLOAD_DIR}"
 else
   echo "  警告: 媒体文件目录不存在,跳过"
@@ -114,5 +79,6 @@ rm -rf "${BACKUP_DIR}" "${TMP_DIR}"
 
 echo ""
 echo "===== 恢复完成 ====="
+echo "所有数据已合并导入,已有数据未被覆盖"
 echo "请重启后端服务使数据生效:"
 echo "  systemctl restart exam-platform"
