@@ -90,6 +90,8 @@ jobs:
           cp deploy/remote-deploy.sh .
           chmod +x remote-deploy.sh
           cp backend/sql/upgrade_all.sql .
+          cp backend/sql/fix_all_cert_issues.sql .
+          cp backend/sql/import_missing_certs.sql .
 
       # ===== 8. 打包所有部署产物 =====
       - name: Create deployment package
@@ -100,6 +102,8 @@ jobs:
           mv user-web-dist.tar.gz deploy-pkg/
           mv remote-deploy.sh deploy-pkg/
           mv upgrade_all.sql deploy-pkg/
+          mv fix_all_cert_issues.sql deploy-pkg/
+          mv import_missing_certs.sql deploy-pkg/
           tar -czf deployment.tar.gz deploy-pkg/
           ls -lh deployment.tar.gz
 

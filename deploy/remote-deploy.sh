@@ -146,6 +146,20 @@ else
     echo "  警告: upgrade_all.sql 不存在,跳过"
 fi
 
+# 6.1 执行证书修复SQL (幂等,安全,不删除用户自定义类型)
+if [ -f "fix_all_cert_issues.sql" ]; then
+    echo "  执行证书修复SQL..."
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_all_cert_issues.sql 2>&1 | grep -v "Using a password"
+    echo "  证书修复SQL完成"
+fi
+
+# 6.2 导入缺失的证书数据 (幂等,INSERT IGNORE)
+if [ -f "import_missing_certs.sql" ]; then
+    echo "  导入缺失证书数据..."
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < import_missing_certs.sql 2>&1 | grep -v "Using a password"
+    echo "  证书数据导入完成"
+fi
+
 # 7. 配置 Nginx (HTTP 模式,无域名无SSL)
 echo "[7/8] 配置 Nginx..."
 cat > /etc/nginx/conf.d/exam-platform.conf << 'NGINX_EOF'
