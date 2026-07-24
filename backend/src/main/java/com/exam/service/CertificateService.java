@@ -144,7 +144,7 @@ public interface CertificateService extends IService<Certificate> {
      * 按身份证号+专业维度检查,已存在的不重复创建。
      * @return 新创建的记录数
      */
-    int syncFromStudents();
+    int syncFromStudents(String certType);
 
     /**
      * 下载学生导入专用模板(25列,独立于证书管理模板)

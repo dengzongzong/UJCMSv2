@@ -134,6 +134,10 @@ CALL safe_add_column('exam_record', 'paper_id', 'BIGINT DEFAULT NULL COMMENT ''�
 -- certificate_template_field 表
 CALL safe_add_column('certificate_template_field', 'height', 'INT DEFAULT NULL COMMENT ''高度''');
 
+-- certificate_template 表(证书编号前缀/中段合并到模板配置)
+CALL safe_add_column('certificate_template', 'cert_no_prefix', 'VARCHAR(10) DEFAULT NULL COMMENT ''证书编号前缀字母(从此模板配置)''');
+CALL safe_add_column('certificate_template', 'cert_no_middle', 'VARCHAR(10) DEFAULT NULL COMMENT ''证书编号中段字母(从此模板配置)''');
+
 -- student_course 表
 CALL safe_add_column('student_course', 'course_name', 'VARCHAR(255) DEFAULT NULL COMMENT ''冗余课程名称(删除课程后仍可展示)''');
 

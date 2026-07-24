@@ -527,7 +527,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (dto.getTemplateId() != null) {
             Certificate latest = this.getById(dto.getId());
             if (latest != null && !StringUtils.hasText(latest.getCertNo())) {
-                numberService.fillCertNoIfEmpty(latest);
+                // 使用模板的 cert_no_prefix/cert_no_middle 配置生成证书编号(模板未配置时回落到全局编号配置)
+                numberService.fillCertNoIfEmpty(latest, dto.getTemplateId());
                 this.update(new LambdaUpdateWrapper<Certificate>()
                         .eq(Certificate::getId, dto.getId())
                         .set(Certificate::getCertNo, latest.getCertNo())
@@ -1435,8 +1436,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public int syncFromStudents() {
-        List<Student> students = studentMapper.selectList(null);
+    public int syncFromStudents(String certType) {
+        LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
+        if (certType != null && !certType.isEmpty()) {
+            queryWrapper.eq(Student::getCertType, certType);
+        }
+        List<Student> students = studentMapper.selectList(queryWrapper);
         if (students.isEmpty()) return 0;
         // 加载专业名称映射
         Map<Long, String> professionNameMap = professionMapper.selectList(null).stream()
@@ -1502,14 +1507,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         head.add(Arrays.asList("证书二维码生成3（选填）"));
         head.add(Arrays.asList("学员考试二维码（选填）"));
         // 证书类型: 动态获取系统设置中的证书类型名称
-        String typeHint = "证书类型（选填）";
+        String typeHint = "证书类型（必填）";
         try {
             List<String> typeNames = certificateTypeService.listAll().stream()
                     .filter(t -> t.getStatus() == null || t.getStatus() == 1)
                     .map(t -> t.getName())
                     .collect(java.util.stream.Collectors.toList());
             if (!typeNames.isEmpty()) {
-                typeHint = "证书类型（选填，可选值：" + String.join("/", typeNames) + "）";
+                typeHint = "证书类型（必填，可选值：" + String.join("/", typeNames) + "）";
             }
         } catch (Exception e) { /* ignore */ }
         head.add(Arrays.asList(typeHint));

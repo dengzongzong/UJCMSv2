@@ -701,6 +701,10 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                     newStudent.setProfessionId(professionId);
                     newStudent.setStatus(1);
                     newStudent.setRegisterTime(LocalDateTime.now());
+                    // 证书类型: 从Excel第25列读取
+                    if (StringUtils.hasText(row.getCertType())) {
+                        newStudent.setCertType(row.getCertType().trim());
+                    }
                     this.save(newStudent);
 
                     // 保存专业关联
@@ -734,6 +738,14 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                         // 同步更新主专业字段（取第一个关联专业）
                         if (student.getProfessionId() == null) {
                             student.setProfessionId(professionId);
+                            this.updateById(student);
+                        }
+                    }
+                    // 证书类型: 从Excel读取,有值则更新
+                    if (StringUtils.hasText(row.getCertType())) {
+                        String certType = row.getCertType().trim();
+                        if (!certType.equals(student.getCertType())) {
+                            student.setCertType(certType);
                             this.updateById(student);
                         }
                     }

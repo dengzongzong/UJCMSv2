@@ -22,6 +22,12 @@ public interface CertificateNumberService {
     String generateCertNo(String prefix, String middle, LocalDate issueDate);
 
     /**
+     * 生成唯一证书编号(指定模板:从证书模板读取 cert_no_prefix/cert_no_middle,
+     * 模板未配置时回落到全局编号配置)
+     */
+    String generateCertNo(Long templateId);
+
+    /**
      * 生成唯一学员编号(日期取自颁发日期)
      */
     String generateStudentNo(String prefix, String middle);
@@ -47,4 +53,11 @@ public interface CertificateNumberService {
      * 绑定证书模板时调用:证书编号在绑定模板时才生成。
      */
     void fillCertNoIfEmpty(Certificate certificate);
+
+    /**
+     * 仅在证书编号为空时生成证书编号(指定模板:从证书模板读取 cert_no_prefix/cert_no_middle,
+     * 模板未配置时回落到证书记录上的前缀/中段或全局编号配置,日期取自颁发日期)。
+     * 绑定证书模板时调用:证书编号在绑定模板时才生成。
+     */
+    void fillCertNoIfEmpty(Certificate certificate, Long templateId);
 }

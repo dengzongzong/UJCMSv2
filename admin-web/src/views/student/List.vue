@@ -359,8 +359,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="证书类型">
-              <el-select v-model="addDialog.form.certType" placeholder="请选择证书类型" clearable filterable style="width: 100%">
+            <el-form-item label="证书类型" prop="certType">
+              <el-select v-model="addDialog.form.certType" placeholder="请选择证书类型" filterable style="width: 100%">
                 <el-option v-for="item in certTypeOptions" :key="item.id" :label="item.name" :value="item.name" />
               </el-select>
             </el-form-item>
@@ -481,8 +481,8 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="证书类型">
-        <el-select v-model="editDialog.form.certType" placeholder="请选择证书类型" clearable filterable style="width: 100%">
+      <el-form-item label="证书类型" prop="certType">
+        <el-select v-model="editDialog.form.certType" placeholder="请选择证书类型" filterable style="width: 100%">
           <el-option v-for="item in certTypeOptions" :key="item.id" :label="item.name" :value="item.name" />
         </el-select>
       </el-form-item>
@@ -602,6 +602,7 @@ export default {
         },
         rules: {
           name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+          certType: [{ required: true, message: '请选择证书类型', trigger: 'change' }],
           phone: [
             { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
           ],

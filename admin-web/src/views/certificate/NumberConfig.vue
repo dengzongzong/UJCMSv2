@@ -2,15 +2,9 @@
   <div class="app-container">
     <el-card shadow="never" v-loading="loading">
       <div slot="header">
-        <span>证书编号配置</span>
+        <span>学员编号配置</span>
       </div>
       <el-form ref="form" :model="form" :rules="rules" label-width="160px" style="max-width: 640px">
-        <el-form-item label="证书编号前缀字母" prop="certNoPrefix">
-          <el-input v-model="form.certNoPrefix" placeholder="如 ZGZH" maxlength="10" show-word-limit />
-        </el-form-item>
-        <el-form-item label="证书编号中段字母" prop="certNoMiddle">
-          <el-input v-model="form.certNoMiddle" placeholder="如 M" maxlength="10" show-word-limit />
-        </el-form-item>
         <el-form-item label="学员编号前缀字母" prop="studentNoPrefix">
           <el-input v-model="form.studentNoPrefix" placeholder="如 RCCP" maxlength="10" show-word-limit />
         </el-form-item>
@@ -20,10 +14,6 @@
 
         <el-form-item label="编号预览">
           <div class="preview-box">
-            <div class="preview-row">
-              <span class="preview-label">证书编号：</span>
-              <span class="preview-value">{{ certNoPreview }}</span>
-            </div>
             <div class="preview-row">
               <span class="preview-label">学员编号：</span>
               <span class="preview-value">{{ studentNoPreview }}</span>
@@ -39,7 +29,8 @@
 
       <div class="rule-tip">
         <p><strong>编号生成规则：</strong>前缀字母 + 出证日期(yyyyMMdd) + 中段字母 + 10000~99999随机数（系统内唯一）</p>
-        <p class="example">示例：{{ form.certNoPrefix || 'ZGZH' }}20201020{{ form.certNoMiddle || 'M' }}12345</p>
+        <p class="example">示例：{{ form.studentNoPrefix || 'RCCP' }}20201020{{ form.studentNoMiddle || 'B' }}67890</p>
+        <p style="color:#909399;font-size:12px;margin-top:4px">说明：证书编号的前缀/中段已合并到「证书模板」中配置，按模板生成证书编号时优先使用模板配置；学员编号仍在此处统一配置。</p>
       </div>
     </el-card>
   </div>
@@ -55,8 +46,6 @@ export default {
       loading: false,
       submitting: false,
       form: {
-        certNoPrefix: '',
-        certNoMiddle: '',
         studentNoPrefix: '',
         studentNoMiddle: ''
       },
@@ -64,11 +53,6 @@ export default {
     }
   },
   computed: {
-    certNoPreview() {
-      const p = this.form.certNoPrefix || ''
-      const m = this.form.certNoMiddle || ''
-      return p + '20201020' + m + '12345'
-    },
     studentNoPreview() {
       const p = this.form.studentNoPrefix || ''
       const m = this.form.studentNoMiddle || ''
@@ -85,8 +69,6 @@ export default {
         .then((res) => {
           const data = res.data || {}
           this.form = {
-            certNoPrefix: data.certNoPrefix || '',
-            certNoMiddle: data.certNoMiddle || '',
             studentNoPrefix: data.studentNoPrefix || '',
             studentNoMiddle: data.studentNoMiddle || ''
           }

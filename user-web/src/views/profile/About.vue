@@ -68,9 +68,9 @@
             </div>
           </template>
 
-          <!-- 免责声明(后台配置) -->
+          <!-- 证书说明(后台配置) -->
           <div v-if="aboutData.disclaimer" class="section">
-            <div class="section-title">免责声明</div>
+            <div class="section-title">证书说明</div>
             <div class="section-text" v-html="aboutData.disclaimer"></div>
           </div>
 

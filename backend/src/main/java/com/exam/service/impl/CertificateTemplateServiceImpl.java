@@ -62,6 +62,9 @@ public class CertificateTemplateServiceImpl extends ServiceImpl<CertificateTempl
         t.setStampWidth(dto.getStampWidth());
         t.setStampRotation(dto.getStampRotation());
         t.setStampOpacity(dto.getStampOpacity());
+        // 证书编号前缀/中段(从此模板配置,生成证书编号时优先使用)
+        t.setCertNoPrefix(dto.getCertNoPrefix());
+        t.setCertNoMiddle(dto.getCertNoMiddle());
         LocalDateTime now = LocalDateTime.now();
         t.setUpdateTime(now);
         if (dto.getId() == null) {

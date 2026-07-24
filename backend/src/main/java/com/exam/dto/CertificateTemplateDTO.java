@@ -21,6 +21,10 @@ public class CertificateTemplateDTO {
     private Integer stampWidth;
     private Double stampRotation;
     private Float stampOpacity;
+    /** 证书编号前缀字母(从此模板配置,生成证书编号时优先使用) */
+    private String certNoPrefix;
+    /** 证书编号中段字母(从此模板配置,生成证书编号时优先使用) */
+    private String certNoMiddle;
     /** 模板上每个字段的位置 */
     private List<CertificateTemplateField> fields;
 }

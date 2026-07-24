@@ -50,16 +50,21 @@ public class CertificateUserSyncService {
      */
     @Scheduled(fixedRate = 10 * 60 * 1000)
     public void scheduledSyncAll() {
-        syncAll();
+        syncAll(null);
     }
 
     /**
      * 全量同步所有学员到证书用户(按专业维度:每个专业一条记录)
      *
+     * @param certType 证书类型过滤,为空时同步全部
      * @return 同步的记录数
      */
-    public int syncAll() {
-        List<Student> students = studentMapper.selectList(null);
+    public int syncAll(String certType) {
+        LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
+        if (certType != null && !certType.isEmpty()) {
+            queryWrapper.eq(Student::getCertType, certType);
+        }
+        List<Student> students = studentMapper.selectList(queryWrapper);
         if (students.isEmpty()) {
             return 0;
         }
@@ -74,7 +79,7 @@ public class CertificateUserSyncService {
                         s.getId(), s.getIdCard(), s.getPhone(), e.getMessage());
             }
         }
-        log.info("证书用户定时同步完成,共处理 {} 名学员", count);
+        log.info("证书用户同步完成,certType={},共处理 {} 名学员", certType, count);
         return count;
     }
 

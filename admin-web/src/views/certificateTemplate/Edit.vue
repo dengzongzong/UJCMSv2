@@ -12,6 +12,14 @@
             <el-option v-for="t in certTypes" :key="t.id" :label="t.name" :value="t.name" />
           </el-select>
         </el-form-item>
+        <el-form-item label="证书编号前缀">
+          <el-input v-model="template.certNoPrefix" placeholder="如 ZGZH(留空则用全局配置)" maxlength="10" show-word-limit style="width:240px" />
+          <span style="margin-left:8px;color:#999;font-size:12px">生成证书编号时优先使用此模板配置</span>
+        </el-form-item>
+        <el-form-item label="证书编号中段">
+          <el-input v-model="template.certNoMiddle" placeholder="如 M(留空则用全局配置)" maxlength="10" show-word-limit style="width:240px" />
+          <span style="margin-left:8px;color:#999;font-size:12px">生成证书编号时优先使用此模板配置</span>
+        </el-form-item>
         <el-form-item label="背景图">
           <el-upload
             :show-file-list="false"
@@ -225,6 +233,7 @@ export default {
       template: {
         id: null, name: '', bgImageUrl: '', bgWidth: 0, bgHeight: 0,
         isDefault: 0, remark: '',
+        certNoPrefix: '', certNoMiddle: '',
         stampUrl: '', stampX: null, stampY: null, stampWidth: null, stampRotation: 0, stampOpacity: 0.8,
         fields: []
       },
@@ -321,6 +330,8 @@ export default {
         bgHeight: res.data.bgHeight,
         isDefault: res.data.isDefault,
         remark: res.data.remark,
+        certNoPrefix: res.data.certNoPrefix || '',
+        certNoMiddle: res.data.certNoMiddle || '',
         stampUrl: res.data.stampUrl || '',
         stampX: res.data.stampX,
         stampY: res.data.stampY,

@@ -266,8 +266,9 @@ export function certificateUserPage(params) {
   return request({ url: '/admin/certificate/user/page', method: 'get', params })
 }
 
-export function certificateUserSync() {
-  return request({ url: '/admin/certificate/user/sync', method: 'post' })
+export function certificateUserSync(certType) {
+  const params = certType ? { certType } : {}
+  return request({ url: '/admin/certificate/user/sync', method: 'post', params })
 }
 
 export function addCertificateUser(data) {

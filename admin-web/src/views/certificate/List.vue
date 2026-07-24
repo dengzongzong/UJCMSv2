@@ -625,13 +625,17 @@ export default {
       this.loadList()
     },
     onSyncFromStudents() {
+      const certType = this.currentCertType
+      const msg = certType
+        ? `确定要从「学生管理」同步「${certType}」类型的学员数据到证书用户吗？\n（按专业维度，每个专业创建一条记录；已删除的记录会自动恢复）`
+        : '确定要从「学生管理」同步学员数据到证书用户吗？\n（按专业维度，每个专业创建一条记录；已删除的记录会自动恢复）'
       this.$confirm(
-        '确定要从「学生管理」同步学员数据到证书用户吗？\n（按专业维度，每个专业创建一条记录；已删除的记录会自动恢复）',
+        msg,
         '同步确认',
         { type: 'warning', confirmButtonText: '确定同步', cancelButtonText: '取消' }
       ).then(() => {
         this.syncingUsers = true
-        certificateUserSync()
+        certificateUserSync(certType)
           .then((res) => {
             const data = (res && res.data) || {}
             const synced = data.synced != null ? data.synced : 0

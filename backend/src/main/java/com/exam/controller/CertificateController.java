@@ -449,7 +449,8 @@ public class CertificateController {
             // 真正写入 templateId(覆盖式绑定)
             try {
                 // 绑定模板时生成证书编号(若尚未生成):证书编号只在绑定模板时才生成
-                numberService.fillCertNoIfEmpty(c);
+                // 使用模板的 cert_no_prefix/cert_no_middle 配置(模板未配置时回落到全局编号配置)
+                numberService.fillCertNoIfEmpty(c, template.getId());
                 c.setTemplateId(template.getId());
                 certificateMapper.updateById(c);
                 issuedCount++;

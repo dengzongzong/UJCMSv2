@@ -3,8 +3,10 @@ package com.exam.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.exam.entity.Certificate;
 import com.exam.entity.CertificateNumberConfig;
+import com.exam.entity.CertificateTemplate;
 import com.exam.mapper.CertificateMapper;
 import com.exam.mapper.CertificateNumberConfigMapper;
+import com.exam.mapper.CertificateTemplateMapper;
 import com.exam.service.CertificateNumberService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,8 @@ public class CertificateNumberServiceImpl implements CertificateNumberService {
     private CertificateMapper certificateMapper;
     @Autowired
     private CertificateNumberConfigMapper numberConfigMapper;
+    @Autowired
+    private CertificateTemplateMapper certificateTemplateMapper;
 
     @Override
     public String generateCertNo(String prefix, String middle) {
@@ -35,6 +39,31 @@ public class CertificateNumberServiceImpl implements CertificateNumberService {
     @Override
     public String generateCertNo(String prefix, String middle, LocalDate issueDate) {
         return generateUnique(prefix, middle, "cert_no", issueDate);
+    }
+
+    @Override
+    public String generateCertNo(Long templateId) {
+        String prefix = null;
+        String middle = null;
+        // 优先从证书模板读取 cert_no_prefix/cert_no_middle
+        if (templateId != null) {
+            CertificateTemplate tpl = certificateTemplateMapper.selectById(templateId);
+            if (tpl != null) {
+                prefix = tpl.getCertNoPrefix();
+                middle = tpl.getCertNoMiddle();
+            }
+        }
+        // 模板未配置时回落到全局编号配置
+        if (!StringUtils.hasText(prefix) || !StringUtils.hasText(middle)) {
+            CertificateNumberConfig config = getConfig();
+            if (!StringUtils.hasText(prefix) && config != null) {
+                prefix = config.getCertNoPrefix();
+            }
+            if (!StringUtils.hasText(middle) && config != null) {
+                middle = config.getCertNoMiddle();
+            }
+        }
+        return generateCertNo(prefix, middle);
     }
 
     @Override
@@ -126,6 +155,34 @@ public class CertificateNumberServiceImpl implements CertificateNumberService {
                 : (config != null ? config.getCertNoPrefix() : null);
         String middle = StringUtils.hasText(cert.getCertNoMiddle()) ? cert.getCertNoMiddle()
                 : (config != null ? config.getCertNoMiddle() : null);
+        cert.setCertNoPrefix(prefix);
+        cert.setCertNoMiddle(middle);
+        cert.setCertNo(generateCertNo(prefix, middle, cert.getIssueDate()));
+    }
+
+    @Override
+    public void fillCertNoIfEmpty(Certificate cert, Long templateId) {
+        if (cert.getCertNo() != null && !cert.getCertNo().isEmpty()) {
+            return;
+        }
+        CertificateNumberConfig config = getConfig();
+        // 默认:证书记录上的前缀/中段 > 全局编号配置
+        String prefix = StringUtils.hasText(cert.getCertNoPrefix()) ? cert.getCertNoPrefix()
+                : (config != null ? config.getCertNoPrefix() : null);
+        String middle = StringUtils.hasText(cert.getCertNoMiddle()) ? cert.getCertNoMiddle()
+                : (config != null ? config.getCertNoMiddle() : null);
+        // 指定模板时:模板上的 cert_no_prefix/cert_no_middle 优先级最高
+        if (templateId != null) {
+            CertificateTemplate tpl = certificateTemplateMapper.selectById(templateId);
+            if (tpl != null) {
+                if (StringUtils.hasText(tpl.getCertNoPrefix())) {
+                    prefix = tpl.getCertNoPrefix();
+                }
+                if (StringUtils.hasText(tpl.getCertNoMiddle())) {
+                    middle = tpl.getCertNoMiddle();
+                }
+            }
+        }
         cert.setCertNoPrefix(prefix);
         cert.setCertNoMiddle(middle);
         cert.setCertNo(generateCertNo(prefix, middle, cert.getIssueDate()));

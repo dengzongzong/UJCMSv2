@@ -42,6 +42,10 @@ public class CertificateTemplate {
     private Float stampOpacity;
     /** 备注 */
     private String remark;
+    /** 证书编号前缀字母(从此模板配置,生成证书编号时优先使用) */
+    private String certNoPrefix;
+    /** 证书编号中段字母(从此模板配置,生成证书编号时优先使用) */
+    private String certNoMiddle;
     @TableField(fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

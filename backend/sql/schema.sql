@@ -830,6 +830,8 @@ CREATE TABLE `certificate_template` (
   `stamp_width` INT DEFAULT NULL COMMENT '钢印宽度(0=原尺寸)',
   `stamp_rotation` DOUBLE DEFAULT NULL COMMENT '钢印旋转角度(0-360)',
   `stamp_opacity` FLOAT DEFAULT NULL COMMENT '钢印透明度(0-1,默认0.8)',
+  `cert_no_prefix` VARCHAR(10) DEFAULT NULL COMMENT '证书编号前缀字母(从此模板配置,生成证书编号时优先使用)',
+  `cert_no_middle` VARCHAR(10) DEFAULT NULL COMMENT '证书编号中段字母(从此模板配置,生成证书编号时优先使用)',
   `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -82,11 +82,11 @@ public class CertificateUserController {
      * 2. 同步学生数据到 certificate 表(界面实际展示的数据源)
      */
     @PostMapping("/sync")
-    public Result<Map<String, Object>> sync() {
+    public Result<Map<String, Object>> sync(@RequestParam(required = false) String certType) {
         // 1. 同步到 certificate_user 表
-        int userCount = certificateUserSyncService.syncAll();
+        int userCount = certificateUserSyncService.syncAll(certType);
         // 2. 同步到 certificate 表(界面展示的数据源,创建缺失的证书记录)
-        int certCount = certificateService.syncFromStudents();
+        int certCount = certificateService.syncFromStudents(certType);
         Map<String, Object> data = new HashMap<>();
         data.put("synced", userCount);
         data.put("created", certCount);
