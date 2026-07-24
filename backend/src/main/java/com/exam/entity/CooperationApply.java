@@ -107,6 +107,10 @@ public class CooperationApply {
     /** 状态: 0-待审核 1-已通过 2-已拒绝 */
     private Integer status;
 
+    /** 授权开始日期 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate authStartDate;
+
     /** 授权有效期截止日期 */
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate authExpireDate;

@@ -55,6 +55,7 @@
       <el-table-column prop="creditCode" label="统一社会信用代码" width="200" show-overflow-tooltip />
       <el-table-column prop="legalPerson" label="法人姓名" width="110" />
       <el-table-column prop="authCode" label="授权管理编号" width="160" show-overflow-tooltip />
+      <el-table-column prop="authStartDate" label="授权开始日期" width="120" align="center" />
       <el-table-column prop="authExpireDate" label="授权有效期" width="120" align="center" />
       <el-table-column label="联系人/电话" width="160">
         <template slot-scope="s">
@@ -288,6 +289,17 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
+            <el-form-item label="授权开始日期" prop="authStartDate">
+              <el-date-picker
+                v-model="form.authStartDate"
+                type="date"
+                value-format="yyyy-MM-dd"
+                placeholder="请选择授权开始日期"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="授权有效期" prop="authExpireDate">
               <el-date-picker
                 v-model="form.authExpireDate"
@@ -458,6 +470,7 @@ export default {
         otherBusiness: '',
         authCode: '',
         authExpireDate: '',
+        authStartDate: '',
         cooperationIntent: [],
         contactName: '',
         contactPhone: '',
@@ -561,6 +574,7 @@ export default {
         otherBusiness: row.otherBusiness || '',
         authCode: row.authCode || '',
         authExpireDate: row.authExpireDate || '',
+        authStartDate: row.authStartDate || '',
         cooperationIntent: row.cooperationIntent || [],
         contactName: row.contactName || '',
         contactPhone: row.contactPhone || '',

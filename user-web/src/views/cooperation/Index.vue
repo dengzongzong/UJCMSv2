@@ -54,11 +54,7 @@
               </div>
               <div class="result-item">
                 <span class="result-label">授权日期：</span>
-                <span class="result-value">{{ formatDate(item.createTime) }}</span>
-              </div>
-              <div class="result-item">
-                <span class="result-label">授权有效期：</span>
-                <span class="result-value">{{ formatDate(item.authExpireDate) }}</span>
+                <span class="result-value">{{ authDateText(item) }}</span>
               </div>
             </div>
           </div>
@@ -81,8 +77,7 @@
           <div class="detail-row"><span class="detail-label">联系人</span><span class="detail-value">{{ detail.contactName || '—' }}</span></div>
           <div class="detail-row"><span class="detail-label">联系电话</span><span class="detail-value">{{ detail.contactPhone || '—' }}</span></div>
           <div class="detail-row" v-if="detail.status !== 1"><span class="detail-label">审核状态</span><span class="detail-value">{{ statusText(detail.status) }}</span></div>
-          <div class="detail-row"><span class="detail-label">授权日期</span><span class="detail-value">{{ formatDate(detail.createTime) }}</span></div>
-          <div class="detail-row"><span class="detail-label">授权有效期</span><span class="detail-value">{{ formatDate(detail.authExpireDate) }}</span></div>
+          <div class="detail-row"><span class="detail-label">授权日期</span><span class="detail-value">{{ authDateText(detail) }}</span></div>
         </div>
       </div>
     </div>
@@ -147,6 +142,23 @@ export default {
     statusText(status) {
       const map = { 0: '待审核', 1: '已通过', 2: '已拒绝' }
       return map[status] || '未知'
+    },
+    authDateText(item) {
+      const start = item.authStartDate
+      const end = item.authExpireDate
+      if (!start && !end) return '—'
+      const startStr = this.formatDateCN(start)
+      const endStr = this.formatDateCN(end)
+      // 判断是否过期
+      let statusStr = ''
+      if (end) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const endDate = new Date(end)
+        endDate.setHours(0, 0, 0, 0)
+        statusStr = endDate >= today ? '（有效）' : '（失效）'
+      }
+      return `${startStr}至${endStr}${statusStr}`
     },
     formatDateCN(dateStr) {
       if (!dateStr) return '—'

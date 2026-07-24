@@ -322,6 +322,7 @@ CREATE TABLE IF NOT EXISTS `cooperation_apply` (
   `contact_phone` varchar(255) DEFAULT NULL COMMENT '联系人电话',
   `remark` text DEFAULT NULL COMMENT '备注',
   `status` int DEFAULT 0 COMMENT '状态: 0-待审核 1-已通过 2-已拒绝',
+  `auth_start_date` date DEFAULT NULL COMMENT '授权开始日期',
   `auth_expire_date` date DEFAULT NULL COMMENT '授权有效期截止日期',
   -- 审计字段
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -600,12 +601,6 @@ DEALLOCATE PREPARE stmt;
 -- ============================================================
 -- news/announcement 表增加置顶字段
 -- ============================================================
-CALL safe_add_column('news', 'is_top', 'TINYINT NOT NULL DEFAULT 0 COMMENT ''是否置顶 0-否 1-是''');
-CALL safe_add_column('announcement', 'is_top', 'TINYINT NOT NULL DEFAULT 0 COMMENT ''是否置顶 0-否 1-是''');
-
--- ============================================================
--- cooperation_apply 表增加授权有效期字段
--- ============================================================
 DROP PROCEDURE IF EXISTS `safe_add_column`;
 DELIMITER //
 CREATE PROCEDURE `safe_add_column`(
@@ -624,5 +619,12 @@ BEGIN
   END IF;
 END //
 DELIMITER ;
+CALL safe_add_column('news', 'is_top', 'TINYINT NOT NULL DEFAULT 0 COMMENT ''是否置顶 0-否 1-是''');
+CALL safe_add_column('announcement', 'is_top', 'TINYINT NOT NULL DEFAULT 0 COMMENT ''是否置顶 0-否 1-是''');
+
+-- ============================================================
+-- cooperation_apply 表增加授权有效期字段
+-- ============================================================
+CALL safe_add_column('cooperation_apply', 'auth_start_date', 'DATE DEFAULT NULL COMMENT ''授权开始日期''');
 CALL safe_add_column('cooperation_apply', 'auth_expire_date', 'DATE DEFAULT NULL COMMENT ''授权有效期截止日期''');
 DROP PROCEDURE IF EXISTS `safe_add_column`;

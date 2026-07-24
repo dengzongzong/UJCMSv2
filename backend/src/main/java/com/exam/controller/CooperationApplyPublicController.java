@@ -47,6 +47,7 @@ public class CooperationApplyPublicController {
             m.put("cooperationIntent", item.getCooperationIntent());
             m.put("status", item.getStatus());
             m.put("createTime", item.getCreateTime());
+            m.put("authStartDate", item.getAuthStartDate());
             m.put("authExpireDate", item.getAuthExpireDate());
             return m;
         }).collect(Collectors.toList());
