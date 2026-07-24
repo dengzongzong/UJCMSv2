@@ -311,7 +311,7 @@ public class CertificateController {
     }
 
     /**
-     * 导出证书数据(Excel,使用与导入模板相同的20列结构)
+     * 导出证书数据(Excel,按证书绑定的模板分组导出)
      * 支持按筛选条件导出全部,或按选中ID导出
      */
     @GetMapping("/export")
@@ -322,10 +322,9 @@ public class CertificateController {
                        @RequestParam(required = false) String issueDateStart,
                        @RequestParam(required = false) String issueDateEnd,
                        @RequestParam(required = false) List<Long> ids,
-                       @RequestParam(required = false) Long templateId,
                        HttpServletResponse response) {
         certificateService.exportCertificates(response, name, idCard, agency, profession,
-                issueDateStart, issueDateEnd, ids, templateId);
+                issueDateStart, issueDateEnd, ids);
     }
 
     /**

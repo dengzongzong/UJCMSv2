@@ -45,9 +45,6 @@
       </el-button>
       <el-button type="primary" icon="el-icon-download" size="small" :disabled="selection.length === 0" @click="openDownloadFormatDialog">批量下载(选中)</el-button>
       <el-button type="primary" icon="el-icon-files" size="small" @click="openDownloadAllFormatDialog">批量下载(全部)</el-button>
-      <el-select v-model="exportTemplateId" placeholder="导出模板(可选)" size="small" clearable style="width:200px;margin-right:8px" @change="onExportTemplateChange">
-        <el-option v-for="t in exportTemplates" :key="t.id" :label="t.name" :value="t.id" />
-      </el-select>
       <el-button type="success" icon="el-icon-document" size="small" :disabled="selection.length === 0" :loading="exporting" @click="onExportSelected">导出数据(选中)</el-button>
       <el-button type="success" icon="el-icon-document" size="small" :loading="exporting" @click="onExportAll">导出数据(全部)</el-button>
       <el-button type="info" icon="el-icon-position" size="small" :disabled="selection.length === 0" @click="onSwitchExamQr(1)">开启考试二维码</el-button>
@@ -449,8 +446,6 @@ export default {
       selection: [],
       batchDownloading: null,
       exporting: false,
-      exportTemplateId: null,
-      exportTemplates: [],
       syncingUsers: false,
       unboundTemplateFilter: false,
       importDialog: false,
@@ -529,7 +524,6 @@ export default {
     this.loadList()
     // 加载证书模板选项(行内"绑定模板"弹窗用)
     templateList().then(r => { this.templateOptions = r.data || [] }).catch(() => {})
-    this.loadExportTemplates()
   },
   watch: {
     '$route.params.idx'() {
@@ -634,23 +628,6 @@ export default {
       this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' }
       this.dateRange = null
       this.loadList()
-    },
-    async loadExportTemplates() {
-      try {
-        const res = await templateList()
-        this.exportTemplates = (res.data || res) || []
-      } catch (e) {
-        this.exportTemplates = []
-      }
-    },
-    onExportTemplateChange() {
-      // 如果选了模板,且当前有选中行,检查是否绑定了该模板
-      if (this.exportTemplateId && this.selection.length > 0) {
-        const unbound = this.selection.filter(s => s.templateId !== this.exportTemplateId)
-        if (unbound.length > 0) {
-          this.$message.warning(`选中数据中有 ${unbound.length} 条未绑定该模板,导出时将自动过滤`)
-        }
-      }
     },
     onSyncFromStudents() {
       const certType = this.currentCertType
@@ -809,25 +786,22 @@ export default {
         this.$message.error('操作失败')
       }
     },
-    // 导出选中数据(Excel,与导入模板相同的20列结构)
+    // 导出选中数据(按证书绑定的模板自动分组,多模板打包ZIP)
     async onExportSelected() {
       if (this.selection.length === 0) return
-      let ids = this.selection.map(s => s.id)
-      // 如果选了模板,过滤掉未绑定该模板的证书
-      if (this.exportTemplateId) {
-        const filtered = this.selection.filter(s => s.templateId === this.exportTemplateId)
-        if (filtered.length === 0) {
-          this.$message.warning('选中的数据均未绑定该模板,无法导出')
-          return
-        }
-        if (filtered.length < this.selection.length) {
-          this.$message.info(`已过滤 ${this.selection.length - filtered.length} 条未绑定该模板的数据`)
-        }
-        ids = filtered.map(s => s.id)
+      // 检查是否有未绑定模板的数据
+      const unbound = this.selection.filter(s => !s.templateId)
+      if (unbound.length === this.selection.length) {
+        this.$message.warning('选中的数据均未绑定证书模板,无法导出')
+        return
       }
+      if (unbound.length > 0) {
+        this.$message.info(`已自动过滤 ${unbound.length} 条未绑定模板的数据`)
+      }
+      const ids = this.selection.filter(s => s.templateId).map(s => s.id)
       this.exporting = true
       try {
-        const { blob, fileName } = await exportCertificates({ ids, templateId: this.exportTemplateId })
+        const { blob, fileName } = await exportCertificates({ ids })
         triggerDownload(blob, fileName)
         this.$message.success('导出成功')
       } catch (e) {
@@ -836,7 +810,7 @@ export default {
         this.exporting = false
       }
     },
-    // 导出全部数据(按当前筛选条件)
+    // 导出全部数据(按当前筛选条件,按证书绑定的模板自动分组)
     async onExportAll() {
       this.exporting = true
       try {
@@ -846,8 +820,7 @@ export default {
           agency: this.query.agency,
           profession: this.query.profession,
           issueDateStart: this.query.issueDateStart,
-          issueDateEnd: this.query.issueDateEnd,
-          templateId: this.exportTemplateId
+          issueDateEnd: this.query.issueDateEnd
         }
         const { blob, fileName } = await exportCertificates(params)
         triggerDownload(blob, fileName)

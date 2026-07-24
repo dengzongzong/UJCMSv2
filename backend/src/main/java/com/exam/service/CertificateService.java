@@ -154,13 +154,14 @@ public interface CertificateService extends IService<Certificate> {
                                            String profession, String issueDateStart, String issueDateEnd);
 
     /**
-     * 导出证书数据(Excel,使用与导入模板相同的20列结构)
+     * 导出证书数据(Excel,按证书绑定的模板分组导出)
+     * 多个模板时导出ZIP(一个模板一个Excel文件),未绑定模板的证书自动过滤
      * @param ids 选中的证书ID列表(为空则按筛选条件导出全部)
      */
     void exportCertificates(HttpServletResponse response, String name, String idCard,
                             String agency, String profession,
                             String issueDateStart, String issueDateEnd,
-                            List<Long> ids, Long templateId);
+                            List<Long> ids);
 
     /**
      * 从学生管理同步数据到证书表(certificate)。

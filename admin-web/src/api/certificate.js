@@ -284,7 +284,8 @@ export function deleteCertificateUser(id) {
 }
 
 /**
- * 导出证书数据(Excel,使用与导入模板相同的20列结构)
+ * 导出证书数据(Excel,按证书绑定的模板自动分组导出)
+ * 多个模板时后端返回ZIP(一个模板一个Excel文件),单个模板返回Excel
  * @param {object} params - { name, idCard, agency, profession, issueDateStart, issueDateEnd, ids }
  *   ids 为空时按筛选条件导出全部;ids 非空时导出选中数据
  * @returns {Promise<{blob:Blob, fileName:string}>}
@@ -309,12 +310,17 @@ export async function exportCertificates(params) {
   if (params.ids && params.ids.length > 0) {
     params.ids.forEach(id => queryParts.push('ids=' + id))
   }
-  if (params.templateId) queryParts.push('templateId=' + params.templateId)
   const qs = queryParts.length > 0 ? '?' + queryParts.join('&') : ''
 
   const resp = await fetch(fullUrl + qs, { method: 'get', headers, credentials: 'include' })
   if (!resp.ok) throw new Error('导出失败 (HTTP ' + resp.status + ')')
   const cd = resp.headers.get('Content-Disposition') || ''
   const blob = await resp.blob()
-  return { blob, fileName: parseFileName(cd) || '证书数据导出.xlsx' }
+  // 根据Content-Type判断文件类型,设置默认文件名
+  const contentType = resp.headers.get('Content-Type') || ''
+  let defaultName = '证书数据导出.xlsx'
+  if (contentType.includes('zip')) {
+    defaultName = '证书数据导出.zip'
+  }
+  return { blob, fileName: parseFileName(cd) || defaultName }
 }

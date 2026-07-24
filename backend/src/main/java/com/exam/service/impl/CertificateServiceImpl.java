@@ -1101,24 +1101,20 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     }
 
     /**
-     * 导出证书数据(Excel,使用与导入模板完全相同的20列结构)
-     * 按选中ID导出,或按筛选条件导出全部
+     * 导出证书数据(Excel,按证书绑定的模板分组导出)
+     * - 未绑定模板的证书自动过滤,不导出
+     * - 多个模板时,每个模板生成一个Excel文件,打包成ZIP下载
+     * - 每个Excel的列配置由该模板的导出列配置决定(无配置则用默认20列)
      */
     @Override
     public void exportCertificates(HttpServletResponse response, String name, String idCard,
                                    String agency, String profession,
                                    String issueDateStart, String issueDateEnd,
-                                   List<Long> ids, Long templateId) {
+                                   List<Long> ids) {
         // 1. 查询数据
         List<Certificate> certs;
         if (ids != null && !ids.isEmpty()) {
             certs = this.listByIds(ids);
-            // 如果指定了模板ID,过滤掉未绑定该模板的证书
-            if (templateId != null) {
-                certs = certs.stream()
-                        .filter(c -> templateId.equals(c.getTemplateId()))
-                        .collect(java.util.stream.Collectors.toList());
-            }
         } else {
             LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                     .like(StringUtils.hasText(name), Certificate::getName, name)
@@ -1132,14 +1128,15 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             if (StringUtils.hasText(issueDateEnd)) {
                 w.le(Certificate::getIssueDate, parseDate(issueDateEnd));
             }
-            // 如果指定了模板ID,只导出绑定了该模板的证书(未绑定模板的不导出)
-            if (templateId != null) {
-                w.eq(Certificate::getTemplateId, templateId);
-            }
             certs = this.list(w);
         }
 
-        if (certs.isEmpty()) {
+        // 2. 过滤掉未绑定模板的证书
+        List<Certificate> boundCerts = certs.stream()
+                .filter(c -> c.getTemplateId() != null)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (boundCerts.isEmpty()) {
             try {
                 response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                 response.setCharacterEncoding("utf-8");
@@ -1154,47 +1151,107 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             return;
         }
 
-        // 2. 确定导出列配置
-        List<ExportColumnDef> columnDefs = resolveExportColumns(templateId);
+        // 3. 按templateId分组
+        Map<Long, List<Certificate>> grouped = boundCerts.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Certificate::getTemplateId));
 
-        // 3. 构建表头
-        List<List<String>> head = new ArrayList<>();
-        for (ExportColumnDef col : columnDefs) {
-            head.add(java.util.Arrays.asList(col.getColumnName()));
+        // 4. 查询模板名称(用于文件命名)
+        List<Long> templateIds = new ArrayList<>(grouped.keySet());
+        List<CertificateTemplate> templates = templateMapper.selectBatchIds(templateIds);
+        Map<Long, String> templateNameMap = new java.util.HashMap<>();
+        for (CertificateTemplate t : templates) {
+            templateNameMap.put(t.getId(), t.getName());
         }
 
-        // 4. 逐行构建导出数据
+        // 5. 为每个模板组生成Excel
         CertificateUrlConfig urlConfig = getUrlConfigForExport();
-        List<List<Object>> dataList = new ArrayList<>();
         DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
-        int idx = 1;
-        for (Certificate c : certs) {
-            Map<String, Object> extra = parseExtraJsonToMap(c.getExtraJson());
-            Map<String, String> qrValueMap = buildQrValueMap(c, extra);
-            String qr1 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr1Template(), qrValueMap, c.getQrUrl1());
-            String qr2 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr2Template(), qrValueMap, c.getQrUrl2());
-            String qr3 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr3Template(), qrValueMap, c.getQrUrl3());
 
-            List<Object> row = new ArrayList<>();
+        // 存储每个模板的Excel字节数据和文件名
+        List<ExcelFileEntry> excelFiles = new ArrayList<>();
+
+        for (Map.Entry<Long, List<Certificate>> entry : grouped.entrySet()) {
+            Long tplId = entry.getKey();
+            List<Certificate> groupCerts = entry.getValue();
+            String tplName = templateNameMap.getOrDefault(tplId, "模板" + tplId);
+
+            // 解析该模板的导出列配置
+            List<ExportColumnDef> columnDefs = resolveExportColumns(tplId);
+
+            // 构建表头
+            List<List<String>> head = new ArrayList<>();
             for (ExportColumnDef col : columnDefs) {
-                row.add(getFieldValue(col.getFieldKey(), c, extra, qr1, qr2, qr3, idx, dateFmt));
+                head.add(java.util.Arrays.asList(col.getColumnName()));
             }
-            idx++;
-            dataList.add(row);
+
+            // 逐行构建数据
+            List<List<Object>> dataList = new ArrayList<>();
+            int idx = 1;
+            for (Certificate c : groupCerts) {
+                Map<String, Object> extra = parseExtraJsonToMap(c.getExtraJson());
+                Map<String, String> qrValueMap = buildQrValueMap(c, extra);
+                String qr1 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr1Template(), qrValueMap, c.getQrUrl1());
+                String qr2 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr2Template(), qrValueMap, c.getQrUrl2());
+                String qr3 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr3Template(), qrValueMap, c.getQrUrl3());
+
+                List<Object> row = new ArrayList<>();
+                for (ExportColumnDef col : columnDefs) {
+                    row.add(getFieldValue(col.getFieldKey(), c, extra, qr1, qr2, qr3, idx, dateFmt));
+                }
+                idx++;
+                dataList.add(row);
+            }
+
+            // 写入内存
+            try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+                EasyExcel.write(baos).head(head).sheet("证书数据").doWrite(dataList);
+                String safeName = tplName.replaceAll("[\\\\/:*?\"<>|]", "_");
+                excelFiles.add(new ExcelFileEntry(safeName + ".xlsx", baos.toByteArray()));
+            } catch (Exception e) {
+                throw new BusinessException("生成Excel失败: " + e.getMessage());
+            }
         }
 
-        // 5. 写出Excel
+        // 6. 输出: 单个文件直接返回Excel,多个文件打包ZIP
         try {
-            String fileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
-                    .replaceAll("\\+", "%20");
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setCharacterEncoding("utf-8");
-            response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
-            try (OutputStream os = response.getOutputStream()) {
-                EasyExcel.write(os).head(head).sheet("证书数据").doWrite(dataList);
+            if (excelFiles.size() == 1) {
+                ExcelFileEntry entry = excelFiles.get(0);
+                String fileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
+                        .replaceAll("\\+", "%20");
+                response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                response.setCharacterEncoding("utf-8");
+                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+                response.getOutputStream().write(entry.data);
+                response.getOutputStream().flush();
+            } else {
+                // 多个文件 -> ZIP
+                String zipFileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
+                        .replaceAll("\\+", "%20");
+                response.setContentType("application/zip");
+                response.setCharacterEncoding("utf-8");
+                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + zipFileName + ".zip");
+                try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(response.getOutputStream())) {
+                    for (ExcelFileEntry entry : excelFiles) {
+                        java.util.zip.ZipEntry ze = new java.util.zip.ZipEntry(entry.fileName);
+                        zos.putNextEntry(ze);
+                        zos.write(entry.data);
+                        zos.closeEntry();
+                    }
+                }
+                response.getOutputStream().flush();
             }
         } catch (Exception e) {
             throw new BusinessException("导出失败: " + e.getMessage());
+        }
+    }
+
+    /** Excel文件条目(文件名+字节数据) */
+    private static class ExcelFileEntry {
+        final String fileName;
+        final byte[] data;
+        ExcelFileEntry(String fileName, byte[] data) {
+            this.fileName = fileName;
+            this.data = data;
         }
     }
 
