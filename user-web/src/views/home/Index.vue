@@ -182,11 +182,11 @@
                 <div class="evaluate-image-wrapper">
                   <img :src="resolveImg(img.imageUrl)" :alt="img.description ? stripHtml(img.description) : ''" class="evaluate-image" />
                 </div>
-                <div v-if="img.description" class="evaluate-desc" v-html="img.description"></div>
+                <div v-if="img.description" class="evaluate-desc" v-html="processRichContent(img.description)"></div>
               </template>
               <template v-else>
                 <div class="evaluate-text-content">
-                  <div v-if="img.description" class="evaluate-desc" v-html="img.description"></div>
+                  <div v-if="img.description" class="evaluate-desc" v-html="processRichContent(img.description)"></div>
                   <div v-else class="evaluate-title">{{ img.title || '' }}</div>
                 </div>
               </template>
@@ -334,7 +334,7 @@ import CooperationDialog from '@/components/CooperationDialog.vue'
 import DeclarationDialog from '@/components/DeclarationDialog.vue'
 import ComplaintDialog from '@/components/ComplaintDialog.vue'
 import { getBanners, getBannerImages, getAnnouncements, getNewsList, getEventsList, getFriendlyLinks, getCourseThreeImages, getPublicCourseList, getHomepageSections } from '@/api/home'
-import { resolveImg } from '@/utils/apiBase'
+import { resolveImg, processRichContent } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
 
 export default {
@@ -403,6 +403,7 @@ export default {
   },
   methods: {
     resolveImg,
+    processRichContent,
     onSubjectChange() {
       this.fetchCourses()
     },

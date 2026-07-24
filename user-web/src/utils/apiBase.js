@@ -65,3 +65,31 @@ export function resolveImg(url) {
   if (url.startsWith('/')) return apiBase() + '/api' + url
   return apiBase() + '/api/' + url
 }
+
+/**
+ * 处理富文本(v-html)中的图片路径。
+ *
+ * 旧系统导入的数据中,图片 src 可能是:
+ *  - 外部域名: https://www.zgrlosta.org.cn/static/upload/image/xxx.png
+ *  - 相对路径: /static/upload/image/xxx.png
+ *  - 相对路径: /uploads/xxx.png
+ *
+ * 本函数统一将其改写为 /api/static/... 或 /api/uploads/...,
+ * 由 Nginx 代理到后端静态资源处理器。
+ *
+ * @param {string} html - 原始 HTML
+ * @returns {string} 处理后的 HTML
+ */
+export function processRichContent(html) {
+  if (!html) return ''
+  let result = html
+  // 1) 外部域名的 /static/upload/xxx -> /api/static/upload/xxx
+  result = result.replace(/src=["']https?:\/\/[^"']*\/(static\/upload\/[^"']+)["']/g, 'src="/api/$1"')
+  // 2) 相对路径 /static/upload/xxx -> /api/static/upload/xxx
+  result = result.replace(/src=["'](\/static\/upload\/[^"']+)["']/g, 'src="/api$1"')
+  // 3) 相对路径 /static/其他子路径 -> /api/static/...
+  result = result.replace(/src=["'](\/static\/[^"']+)["']/g, 'src="/api$1"')
+  // 4) /uploads/xxx -> /api/uploads/xxx
+  result = result.replace(/src=["'](\/uploads\/[^"']+)["']/g, 'src="/api$1"')
+  return result
+}

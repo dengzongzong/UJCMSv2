@@ -13,7 +13,7 @@
           <!-- 关于我们(后台数据) -->
           <div class="section" v-if="aboutData.content">
             <div class="section-title">关于我们</div>
-            <div class="section-text rich-content" v-html="aboutData.content"></div>
+            <div class="section-text rich-content" v-html="processRichContent(aboutData.content)"></div>
           </div>
 
           <!-- 联系我们 -->
@@ -71,7 +71,7 @@
           <!-- 证书说明(后台配置) -->
           <div v-if="aboutData.disclaimer" class="section">
             <div class="section-title">证书说明</div>
-            <div class="section-text" v-html="aboutData.disclaimer"></div>
+            <div class="section-text" v-html="processRichContent(aboutData.disclaimer)"></div>
           </div>
 
           <!-- 版权信息 -->
@@ -94,7 +94,7 @@
 <script>
 import Header from '@/components/Header.vue'
 import { getAboutUs } from '@/api/profile'
-import { resolveImg } from '@/utils/apiBase'
+import { resolveImg, processRichContent } from '@/utils/apiBase'
 
 export default {
   name: 'About',
@@ -111,6 +111,7 @@ export default {
   },
   methods: {
     resolveImg,
+    processRichContent,
     async fetchAbout() {
       try {
         const res = await getAboutUs()

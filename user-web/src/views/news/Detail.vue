@@ -45,7 +45,7 @@
 <script>
 import Header from '@/components/Header.vue'
 import { getNewsList, getEventsList, getAnnouncementList, getHomepageSections } from '@/api/home'
-import { resolveImg } from '@/utils/apiBase'
+import { resolveImg, processRichContent } from '@/utils/apiBase'
 
 export default {
   name: 'NewsDetail',
@@ -83,12 +83,7 @@ export default {
     },
     processedContent() {
       if (!this.news || !this.news.content) return '暂无内容'
-      let html = this.news.content
-      // 修复富文本中的图片路径: /static/upload/xxx -> /api/static/upload/xxx
-      html = html.replace(/src=["'](\/static\/upload\/[^"']+)["']/g, 'src="/api$1"')
-      // 修复 /uploads/xxx -> /api/uploads/xxx
-      html = html.replace(/src=["'](\/uploads\/[^"']+)["']/g, 'src="/api$1"')
-      return html
+      return processRichContent(this.news.content)
     }
   },
   created() {

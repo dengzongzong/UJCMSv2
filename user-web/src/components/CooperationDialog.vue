@@ -13,7 +13,7 @@
         <!-- 左栏:单位背景 -->
         <div class="modal-col modal-col-left">
           <div class="col-title">单位背景</div>
-          <div class="col-content rich-content" v-html="setting.intro || '欢迎合作,共创人才测评未来。'"></div>
+          <div class="col-content rich-content" v-html="processRichContent(setting.intro || '欢迎合作,共创人才测评未来。')"></div>
           <div class="col-contact-block">
             <div class="col-subtitle">联系我们</div>
             <div class="col-phone">电话:{{ setting.phone1 || '010-xxxxxxxx' }}</div>
@@ -79,7 +79,7 @@
 <script>
 import { getCooperationSetting, submitFeedback } from '@/api/feedback'
 import { Toast } from 'vant'
-import { resolveImg, apiUrl } from '@/utils/apiBase'
+import { resolveImg, apiUrl, processRichContent } from '@/utils/apiBase'
 
 export default {
   name: 'CooperationDialog',
@@ -117,6 +117,7 @@ export default {
       return apiUrl(u)
     },
     resolveImg,
+    processRichContent,
     onClose() {
       this.$emit('input', false)
     },

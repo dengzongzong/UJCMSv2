@@ -15,7 +15,7 @@
       </div>
       <div class="modal-body" :class="{ 'is-loading': loading }">
         <van-loading v-if="loading" size="20" class="modal-loading">加载中...</van-loading>
-        <div class="declaration-content rich-content" v-html="declaration.content || '暂无声明内容'"></div>
+        <div class="declaration-content rich-content" v-html="processRichContent(declaration.content || '暂无声明内容')"></div>
         <div v-if="declaration.updateTime" class="declaration-time">
           最后更新:{{ declaration.updateTime }}
         </div>
@@ -26,6 +26,7 @@
 
 <script>
 import { getDeclaration } from '@/api/feedback'
+import { processRichContent } from '@/utils/apiBase'
 
 export default {
   name: 'DeclarationDialog',
@@ -44,6 +45,7 @@ export default {
     }
   },
   methods: {
+    processRichContent,
     onClose() { this.$emit('input', false) },
     async load() {
       this.loading = true
