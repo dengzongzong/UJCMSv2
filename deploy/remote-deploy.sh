@@ -162,6 +162,8 @@ fi
 
 # 7. 配置 Nginx (HTTP 模式,无域名无SSL)
 echo "[7/8] 配置 Nginx..."
+# 先备份当前配置
+cp /etc/nginx/conf.d/exam-platform.conf /etc/nginx/conf.d/exam-platform.conf.bak 2>/dev/null || true
 cat > /etc/nginx/conf.d/exam-platform.conf << 'NGINX_EOF'
 server {
     listen 80;
@@ -206,10 +208,12 @@ server {
 NGINX_EOF
 
 if nginx -t 2>/dev/null; then
-    systemctl reload nginx
+    systemctl reload nginx || true
     echo "  Nginx 配置已更新并重新加载"
 else
-    echo "  警告: Nginx 配置测试失败,跳过重载"
+    echo "  警告: Nginx 配置测试失败,跳过重载,使用旧配置"
+    # 恢复旧配置以确保 Nginx 正常运行
+    cp /etc/nginx/conf.d/exam-platform.conf.bak /etc/nginx/conf.d/exam-platform.conf 2>/dev/null || true
 fi
 
 # 8. 创建并启动 systemd 服务
