@@ -33,7 +33,7 @@
           <div v-for="item in resultList" :key="item.id" class="result-card" @click="showDetail(item)">
             <div class="result-card-header">
               <span class="result-unit-name">{{ item.unitName }}</span>
-              <span :class="['result-status', 'status-' + item.status]">{{ statusText(item.status) }}</span>
+              <span v-if="item.status !== 1" :class="['result-status', 'status-' + item.status]">{{ statusText(item.status) }}</span>
             </div>
             <div class="result-card-body">
               <div class="result-item">
@@ -53,8 +53,12 @@
                 <span class="result-value">{{ item.contactPhone || '—' }}</span>
               </div>
               <div class="result-item">
-                <span class="result-label">申请时间：</span>
+                <span class="result-label">授权日期：</span>
                 <span class="result-value">{{ formatDate(item.createTime) }}</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">授权有效期：</span>
+                <span class="result-value">{{ formatDate(item.authExpireDate) }}</span>
               </div>
             </div>
           </div>
@@ -76,8 +80,9 @@
           <div class="detail-row"><span class="detail-label">合作意向</span><span class="detail-value">{{ detail.cooperationIntent || '—' }}</span></div>
           <div class="detail-row"><span class="detail-label">联系人</span><span class="detail-value">{{ detail.contactName || '—' }}</span></div>
           <div class="detail-row"><span class="detail-label">联系电话</span><span class="detail-value">{{ detail.contactPhone || '—' }}</span></div>
-          <div class="detail-row"><span class="detail-label">审核状态</span><span class="detail-value">{{ statusText(detail.status) }}</span></div>
-          <div class="detail-row"><span class="detail-label">申请时间</span><span class="detail-value">{{ formatDate(detail.createTime) }}</span></div>
+          <div class="detail-row" v-if="detail.status !== 1"><span class="detail-label">审核状态</span><span class="detail-value">{{ statusText(detail.status) }}</span></div>
+          <div class="detail-row"><span class="detail-label">授权日期</span><span class="detail-value">{{ formatDate(detail.createTime) }}</span></div>
+          <div class="detail-row"><span class="detail-label">授权有效期</span><span class="detail-value">{{ formatDate(detail.authExpireDate) }}</span></div>
         </div>
       </div>
     </div>
@@ -143,14 +148,17 @@ export default {
       const map = { 0: '待审核', 1: '已通过', 2: '已拒绝' }
       return map[status] || '未知'
     },
-    formatDate(dateStr) {
+    formatDateCN(dateStr) {
       if (!dateStr) return '—'
       const d = new Date(dateStr)
       if (isNaN(d.getTime())) return dateStr
       const y = d.getFullYear()
       const m = String(d.getMonth() + 1).padStart(2, '0')
       const day = String(d.getDate()).padStart(2, '0')
-      return `${y}-${m}-${day}`
+      return `${y}年${m}月${day}日`
+    },
+    formatDate(dateStr) {
+      return this.formatDateCN(dateStr)
     }
   }
 }

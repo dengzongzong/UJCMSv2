@@ -55,6 +55,7 @@
       <el-table-column prop="creditCode" label="统一社会信用代码" width="200" show-overflow-tooltip />
       <el-table-column prop="legalPerson" label="法人姓名" width="110" />
       <el-table-column prop="authCode" label="授权管理编号" width="160" show-overflow-tooltip />
+      <el-table-column prop="authExpireDate" label="授权有效期" width="120" align="center" />
       <el-table-column label="联系人/电话" width="160">
         <template slot-scope="s">
           {{ s.row.contactName || '-' }} / {{ s.row.contactPhone || '-' }}
@@ -286,6 +287,17 @@
               <el-input v-model="form.authCode" placeholder="请输入授权管理编号" />
             </el-form-item>
           </el-col>
+          <el-col :span="8">
+            <el-form-item label="授权有效期" prop="authExpireDate">
+              <el-date-picker
+                v-model="form.authExpireDate"
+                type="date"
+                value-format="yyyy-MM-dd"
+                placeholder="请选择授权有效期截止日期"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
         </el-row>
 
         <!-- 三、合作意向与联系信息 -->
@@ -445,6 +457,7 @@ export default {
         recruitResource: '',
         otherBusiness: '',
         authCode: '',
+        authExpireDate: '',
         cooperationIntent: [],
         contactName: '',
         contactPhone: '',
@@ -547,6 +560,7 @@ export default {
         recruitResource: row.recruitResource || '',
         otherBusiness: row.otherBusiness || '',
         authCode: row.authCode || '',
+        authExpireDate: row.authExpireDate || '',
         cooperationIntent: row.cooperationIntent || [],
         contactName: row.contactName || '',
         contactPhone: row.contactPhone || '',

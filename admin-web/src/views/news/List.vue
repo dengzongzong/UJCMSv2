@@ -82,6 +82,13 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="置顶" width="80" align="center">
+          <template slot-scope="{ row }">
+            <el-tag :type="row.isTop === 1 ? 'danger' : 'info'" size="mini">
+              {{ row.isTop === 1 ? '置顶' : '普通' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
         <el-table-column label="操作" width="180" align="center" fixed="right">
@@ -126,7 +133,7 @@
           <RichEditor v-model="editDialog.form.content" height="350px" />
         </el-form-item>
         <el-row :gutter="16">
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="类型" prop="type">
               <el-select v-model="editDialog.form.type" style="width: 100%">
                 <el-option label="新闻动态" :value="1" />
@@ -134,7 +141,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="editDialog.form.status">
                 <el-radio :label="1">显示</el-radio>
@@ -142,7 +149,12 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
+            <el-form-item label="置顶" prop="isTop">
+              <el-switch v-model="editDialog.form.isTop" :active-value="1" :inactive-value="0" active-text="置顶" inactive-text="普通" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
             <el-form-item label="排序" prop="sort">
               <el-input-number v-model="editDialog.form.sort" :min="0" :max="9999" controls-position="right" style="width: 100%" />
             </el-form-item>
@@ -210,6 +222,7 @@ export default {
           type: 1,
           status: 1,
           sort: 0,
+          isTop: 0,
           publishTime: undefined,
           createTime: undefined
         },
@@ -279,7 +292,7 @@ export default {
     },
     handleAdd() {
       this.editDialog.isEdit = false
-      this.editDialog.form = { id: undefined, title: '', coverUrl: '', content: '', status: 1, sort: 0, publishTime: undefined, createTime: undefined }
+      this.editDialog.form = { id: undefined, title: '', coverUrl: '', content: '', status: 1, sort: 0, isTop: 0, publishTime: undefined, createTime: undefined }
       this.editDialog.visible = true
       this.$nextTick(() => {
         this.$refs.editForm && this.$refs.editForm.clearValidate()
@@ -289,6 +302,7 @@ export default {
       this.editDialog.isEdit = true
       this.editDialog.form = { ...row }
       this.editDialog.form.publishTime = row.publishTime
+      this.editDialog.form.isTop = row.isTop || 0
       this.editDialog.visible = true
       this.$nextTick(() => {
         this.$refs.editForm && this.$refs.editForm.clearValidate()

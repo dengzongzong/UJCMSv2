@@ -650,6 +650,7 @@ export default {
         },
         rules: {
           name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+          certType: [{ required: true, message: '请选择证书类型', trigger: 'change' }],
           phone: [
             { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
           ],

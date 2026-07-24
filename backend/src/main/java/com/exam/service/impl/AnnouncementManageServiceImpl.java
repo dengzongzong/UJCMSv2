@@ -27,7 +27,8 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
         LambdaQueryWrapper<Announcement> wrapper = new LambdaQueryWrapper<Announcement>()
                 .like(StringUtils.hasText(title), Announcement::getTitle, title)
                 .eq(status != null, Announcement::getStatus, status)
-                .orderByAsc(Announcement::getSort)
+                .orderByDesc(Announcement::getIsTop)
+                .orderByDesc(Announcement::getPublishTime)
                 .orderByDesc(Announcement::getCreateTime);
         Page<Announcement> p = new Page<>(page, size);
         Page<Announcement> result = this.page(p, wrapper);
@@ -85,7 +86,8 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
         List<Announcement> list = this.list(new LambdaQueryWrapper<Announcement>()
                 .eq(Announcement::getStatus, 1)
                 .and(w -> w.isNull(Announcement::getPublishTime).or().le(Announcement::getPublishTime, LocalDateTime.now()))
-                .orderByAsc(Announcement::getSort)
+                .orderByDesc(Announcement::getIsTop)
+                .orderByDesc(Announcement::getPublishTime)
                 .orderByDesc(Announcement::getCreateTime));
         return list.stream().collect(Collectors.toMap(
                 Announcement::getTitle, a -> a, (a1, a2) -> a1

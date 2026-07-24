@@ -28,7 +28,8 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
                 .like(StringUtils.hasText(title), News::getTitle, title)
                 .eq(type != null, News::getType, type)
                 .eq(status != null, News::getStatus, status)
-                .orderByAsc(News::getSort)
+                .orderByDesc(News::getIsTop)
+                .orderByDesc(News::getPublishTime)
                 .orderByDesc(News::getCreateTime);
         Page<News> p = new Page<>(page, size);
         Page<News> result = this.page(p, wrapper);
@@ -86,7 +87,8 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
         List<News> list = this.list(new LambdaQueryWrapper<News>()
                 .eq(News::getStatus, 1)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
-                .orderByAsc(News::getSort)
+                .orderByDesc(News::getIsTop)
+                .orderByDesc(News::getPublishTime)
                 .orderByDesc(News::getCreateTime));
         return dedupByTitle(list);
     }
@@ -97,7 +99,8 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
                 .eq(News::getStatus, 1)
                 .eq(type != null, News::getType, type)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
-                .orderByAsc(News::getSort)
+                .orderByDesc(News::getIsTop)
+                .orderByDesc(News::getPublishTime)
                 .orderByDesc(News::getCreateTime));
         return dedupByTitle(list);
     }
