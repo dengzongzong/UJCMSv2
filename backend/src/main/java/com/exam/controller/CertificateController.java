@@ -322,9 +322,10 @@ public class CertificateController {
                        @RequestParam(required = false) String issueDateStart,
                        @RequestParam(required = false) String issueDateEnd,
                        @RequestParam(required = false) List<Long> ids,
+                       @RequestParam(required = false) Long templateId,
                        HttpServletResponse response) {
         certificateService.exportCertificates(response, name, idCard, agency, profession,
-                issueDateStart, issueDateEnd, ids);
+                issueDateStart, issueDateEnd, ids, templateId);
     }
 
     /**

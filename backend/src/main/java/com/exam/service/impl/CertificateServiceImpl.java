@@ -21,6 +21,7 @@ import com.exam.entity.CertificateUser;
 import com.exam.entity.Profession;
 import com.exam.entity.Student;
 import com.exam.entity.StudentProfession;
+import com.exam.mapper.CertificateExportColumnMapper;
 import com.exam.mapper.CertificateFieldMapper;
 import com.exam.mapper.CertificateMapper;
 import com.exam.mapper.CertificatePhotoMapper;
@@ -92,6 +93,10 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     private CertificateTemplateMapper templateMapper;
     @Autowired
     private CertificateFieldMapper fieldMapper;
+    @Autowired
+    private CertificateExportColumnMapper exportColumnMapper;
+    @Autowired
+    private CertificateFieldMapper certificateFieldMapper;
     @Autowired
     private CertificatePhotoMapper photoMapper;
     @Autowired
@@ -1103,11 +1108,17 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     public void exportCertificates(HttpServletResponse response, String name, String idCard,
                                    String agency, String profession,
                                    String issueDateStart, String issueDateEnd,
-                                   List<Long> ids) {
+                                   List<Long> ids, Long templateId) {
         // 1. 查询数据
         List<Certificate> certs;
         if (ids != null && !ids.isEmpty()) {
             certs = this.listByIds(ids);
+            // 如果指定了模板ID,过滤掉未绑定该模板的证书
+            if (templateId != null) {
+                certs = certs.stream()
+                        .filter(c -> templateId.equals(c.getTemplateId()))
+                        .collect(java.util.stream.Collectors.toList());
+            }
         } else {
             LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                     .like(StringUtils.hasText(name), Certificate::getName, name)
@@ -1121,99 +1132,171 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             if (StringUtils.hasText(issueDateEnd)) {
                 w.le(Certificate::getIssueDate, parseDate(issueDateEnd));
             }
+            // 如果指定了模板ID,只导出绑定了该模板的证书(未绑定模板的不导出)
+            if (templateId != null) {
+                w.eq(Certificate::getTemplateId, templateId);
+            }
             certs = this.list(w);
         }
 
-        // 2. 构建与导入模板完全一致的20列表头
-        List<List<String>> head = new ArrayList<>();
-        head.add(Arrays.asList("序号"));
-        head.add(Arrays.asList("姓名"));
-        head.add(Arrays.asList("性别"));
-        head.add(Arrays.asList("证件号码"));
-        head.add(Arrays.asList("职业名称"));
-        head.add(Arrays.asList("技能等级"));
-        head.add(Arrays.asList("证书编号"));
-        head.add(Arrays.asList("颁发日期"));
-        head.add(Arrays.asList("报单机构"));
-        head.add(Arrays.asList("报单机构费用统计"));
-        head.add(Arrays.asList("培训专业"));
-        head.add(Arrays.asList("培训学时"));
-        head.add(Arrays.asList("培训日期"));
-        head.add(Arrays.asList("理论成绩"));
-        head.add(Arrays.asList("实操成绩"));
-        head.add(Arrays.asList("综合测评"));
-        head.add(Arrays.asList("证书二维码生成1"));
-        head.add(Arrays.asList("证书二维码生成2"));
-        head.add(Arrays.asList("证书二维码生成3"));
-        head.add(Arrays.asList("学员考试二维码"));
+        if (certs.isEmpty()) {
+            try {
+                response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                response.setCharacterEncoding("utf-8");
+                String fileName = URLEncoder.encode("证书数据", StandardCharsets.UTF_8.name()).replaceAll("\\+", "%20");
+                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+                try (OutputStream os = response.getOutputStream()) {
+                    EasyExcel.write(os).head(new ArrayList<List<String>>()).sheet("证书数据").doWrite(new ArrayList<>());
+                }
+            } catch (Exception e) {
+                throw new BusinessException("导出失败: " + e.getMessage());
+            }
+            return;
+        }
 
-        // 3. 逐行构建导出数据(严格按模板20列顺序，与导入模板完全一致)
-        // 0序号 1姓名 2性别 3证件号码 4职业名称 5技能等级
-        // 6证书编号 7颁发日期 8报单机构 9报单机构费用统计
-        // 10培训专业 11培训学时 12培训日期
-        // 13理论成绩 14实操成绩 15综合测评
-        // 16证书二维码1 17证书二维码2 18证书二维码3 19学员考试二维码
-        // 获取证书二维码URL配置(统一配置,非每个证书单独设置)
+        // 2. 确定导出列配置
+        List<ExportColumnDef> columnDefs = resolveExportColumns(templateId);
+
+        // 3. 构建表头
+        List<List<String>> head = new ArrayList<>();
+        for (ExportColumnDef col : columnDefs) {
+            head.add(java.util.Arrays.asList(col.getColumnName()));
+        }
+
+        // 4. 逐行构建导出数据
         CertificateUrlConfig urlConfig = getUrlConfigForExport();
         List<List<Object>> dataList = new ArrayList<>();
         DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
         int idx = 1;
         for (Certificate c : certs) {
             Map<String, Object> extra = parseExtraJsonToMap(c.getExtraJson());
-
-            // 构建二维码值映射
             Map<String, String> qrValueMap = buildQrValueMap(c, extra);
-            // 按URL配置规则生成二维码URL
             String qr1 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr1Template(), qrValueMap, c.getQrUrl1());
             String qr2 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr2Template(), qrValueMap, c.getQrUrl2());
             String qr3 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr3Template(), qrValueMap, c.getQrUrl3());
 
             List<Object> row = new ArrayList<>();
-            row.add(idx++);                                              // 0.序号
-            row.add(safeStr(c.getName()));                               // 1.姓名
-            row.add(c.getGender() != null ? (c.getGender() == 1 ? "男" : (c.getGender() == 2 ? "女" : "")) : ""); // 2.性别
-            row.add(safeStr(c.getIdCard()));                             // 3.证件号码
-            row.add(safeStr(c.getProfession()));                         // 4.职业名称
-            row.add(safeStr(c.getSkillLevel()));                         // 5.技能等级
-            row.add(safeStr(c.getCertNo()));                             // 6.证书编号
-            row.add(c.getIssueDate() != null ? c.getIssueDate().format(dateFmt) : ""); // 7.颁发日期
-            row.add(safeStr(c.getAgency()));                             // 8.报单机构
-            row.add(c.getAgencyFee() != null ? c.getAgencyFee().toPlainString() : ""); // 9.报单机构费用统计
-            row.add(safeStr(extra.get("trainingMajor")));                // 10.培训专业
-            row.add(safeStr(extra.get("trainingHours")));                // 11.培训学时
-            row.add(safeStr(extra.get("trainingDate")));                 // 12.培训日期
-            row.add(safeStr(c.getTheoryScore()));                        // 13.理论成绩
-            if (row.get(13) == null || row.get(13).toString().isEmpty()) {
-                row.set(13, safeStr(extra.get("theoryScore")));
+            for (ExportColumnDef col : columnDefs) {
+                row.add(getFieldValue(col.getFieldKey(), c, extra, qr1, qr2, qr3, idx, dateFmt));
             }
-            row.add(safeStr(c.getPracticalScore()));                     // 14.实操成绩
-            if (row.get(14) == null || row.get(14).toString().isEmpty()) {
-                row.set(14, safeStr(extra.get("practicalScore")));
-            }
-            row.add(safeStr(c.getComprehensiveEvaluation()));            // 15.综合测评
-            if (row.get(15) == null || row.get(15).toString().isEmpty()) {
-                row.set(15, safeStr(extra.get("comprehensiveEvaluation")));
-            }
-            row.add(safeStr(qr1));                                         // 16.证书二维码生成1(从URL配置生成)
-            row.add(safeStr(qr2));                                         // 17.证书二维码生成2(从URL配置生成)
-            row.add(safeStr(qr3));                                         // 18.证书二维码生成3(从URL配置生成)
-            row.add(safeStr(c.getExamQrUrl()));                            // 19.学员考试二维码
+            idx++;
             dataList.add(row);
         }
 
-        // 4. 写出Excel(直接用EasyExcel按20列表头输出,不使用模板,避免列错位)
+        // 5. 写出Excel
         try {
             String fileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
                     .replaceAll("\\+", "%20");
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("utf-8");
             response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
-
             try (OutputStream os = response.getOutputStream()) {
                 EasyExcel.write(os).head(head).sheet("证书数据").doWrite(dataList);
             }
         } catch (Exception e) {
             throw new BusinessException("导出失败: " + e.getMessage());
+        }
+    }
+
+    /** 导出列定义 */
+    private static class ExportColumnDef {
+        private final String fieldKey;
+        private final String columnName;
+        ExportColumnDef(String fieldKey, String columnName) {
+            this.fieldKey = fieldKey;
+            this.columnName = columnName;
+        }
+        String getFieldKey() { return fieldKey; }
+        String getColumnName() { return columnName; }
+    }
+
+    /** 解析导出列配置: 有自定义配置则用配置,否则用默认20列 */
+    private List<ExportColumnDef> resolveExportColumns(Long templateId) {
+        // 默认20列 (与导入模板一致)
+        String[][] defaults = {
+            {"seq", "序号"}, {"name", "姓名"}, {"gender", "性别"}, {"idCard", "证件号码"},
+            {"profession", "职业名称"}, {"skillLevel", "技能等级"}, {"certNo", "证书编号"},
+            {"issueDate", "颁发日期"}, {"agency", "报单机构"}, {"agencyFee", "报单机构费用统计"},
+            {"trainingMajor", "培训专业"}, {"trainingHours", "培训学时"}, {"trainingDate", "培训日期"},
+            {"theoryScore", "理论成绩"}, {"practicalScore", "实操成绩"}, {"comprehensiveEvaluation", "综合测评"},
+            {"qr1", "证书二维码生成1"}, {"qr2", "证书二维码生成2"}, {"qr3", "证书二维码生成3"},
+            {"examQr", "学员考试二维码"}
+        };
+
+        // 如果指定了模板,尝试加载自定义导出列配置
+        if (templateId != null) {
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.exam.entity.CertificateExportColumn> w =
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+            w.eq(com.exam.entity.CertificateExportColumn::getTemplateId, templateId)
+             .orderByAsc(com.exam.entity.CertificateExportColumn::getSort);
+            List<com.exam.entity.CertificateExportColumn> configured = exportColumnMapper.selectList(w);
+            if (configured != null && !configured.isEmpty()) {
+                List<ExportColumnDef> result = new ArrayList<>();
+                for (com.exam.entity.CertificateExportColumn col : configured) {
+                    result.add(new ExportColumnDef(col.getFieldKey(), col.getColumnName()));
+                }
+                return result;
+            }
+        }
+
+        // 使用默认配置
+        List<ExportColumnDef> result = new ArrayList<>();
+        for (String[] d : defaults) {
+            result.add(new ExportColumnDef(d[0], d[1]));
+        }
+        return result;
+    }
+
+    /** 根据fieldKey获取证书字段的值 */
+    private Object getFieldValue(String fieldKey, Certificate c, Map<String, Object> extra,
+                                  String qr1, String qr2, String qr3, int seq, DateTimeFormatter dateFmt) {
+        switch (fieldKey) {
+            case "seq": return seq;
+            case "name": return safeStr(c.getName());
+            case "gender": return c.getGender() != null ? (c.getGender() == 1 ? "男" : (c.getGender() == 2 ? "女" : "")) : "";
+            case "idCard": return safeStr(c.getIdCard());
+            case "profession": return safeStr(c.getProfession());
+            case "skillLevel": return safeStr(c.getSkillLevel());
+            case "certNo": return safeStr(c.getCertNo());
+            case "issueDate": return c.getIssueDate() != null ? c.getIssueDate().format(dateFmt) : "";
+            case "agency": return safeStr(c.getAgency());
+            case "agencyFee": return c.getAgencyFee() != null ? c.getAgencyFee().toPlainString() : "";
+            case "trainingMajor": return safeStr(extra.get("trainingMajor"));
+            case "trainingHours": return safeStr(extra.get("trainingHours"));
+            case "trainingDate": return safeStr(extra.get("trainingDate"));
+            case "theoryScore": {
+                String v = safeStr(c.getTheoryScore());
+                if (v.isEmpty()) v = safeStr(extra.get("theoryScore"));
+                return v;
+            }
+            case "practicalScore": {
+                String v = safeStr(c.getPracticalScore());
+                if (v.isEmpty()) v = safeStr(extra.get("practicalScore"));
+                return v;
+            }
+            case "comprehensiveEvaluation": {
+                String v = safeStr(c.getComprehensiveEvaluation());
+                if (v.isEmpty()) v = safeStr(extra.get("comprehensiveEvaluation"));
+                return v;
+            }
+            case "qr1": return safeStr(qr1);
+            case "qr2": return safeStr(qr2);
+            case "qr3": return safeStr(qr3);
+            case "examQr": return safeStr(c.getExamQrUrl());
+            case "certType": return safeStr(c.getCertType());
+            case "studentNo": return safeStr(c.getStudentNo());
+            case "birthday": {
+                String idCard = c.getIdCard();
+                if (idCard != null && idCard.length() >= 14) {
+                    return idCard.substring(6, 10) + "年" + idCard.substring(10, 12) + "月" + idCard.substring(12, 14) + "日";
+                }
+                return "";
+            }
+            case "phone": return safeStr(extra.get("phone"));
+            case "uploadTime": return c.getUploadTime() != null ? c.getUploadTime().toString() : "";
+            default:
+                // 自定义字段从extra_json中取
+                return safeStr(extra.get(fieldKey));
         }
     }
 

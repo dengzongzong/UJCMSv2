@@ -309,6 +309,7 @@ export async function exportCertificates(params) {
   if (params.ids && params.ids.length > 0) {
     params.ids.forEach(id => queryParts.push('ids=' + id))
   }
+  if (params.templateId) queryParts.push('templateId=' + params.templateId)
   const qs = queryParts.length > 0 ? '?' + queryParts.join('&') : ''
 
   const resp = await fetch(fullUrl + qs, { method: 'get', headers, credentials: 'include' })

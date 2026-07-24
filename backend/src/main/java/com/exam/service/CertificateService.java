@@ -160,7 +160,7 @@ public interface CertificateService extends IService<Certificate> {
     void exportCertificates(HttpServletResponse response, String name, String idCard,
                             String agency, String profession,
                             String issueDateStart, String issueDateEnd,
-                            List<Long> ids);
+                            List<Long> ids, Long templateId);
 
     /**
      * 从学生管理同步数据到证书表(certificate)。

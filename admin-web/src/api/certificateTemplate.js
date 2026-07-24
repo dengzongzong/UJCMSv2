@@ -15,3 +15,9 @@ export function deleteTemplate(id) {
 export function setDefaultTemplate(id) {
   return request({ url: '/admin/certificate/template/' + id + '/default', method: 'post' })
 }
+export function getExportColumns(id) {
+  return request({ url: '/admin/certificate/template/' + id + '/export-columns', method: 'get' })
+}
+export function saveExportColumns(id, data) {
+  return request({ url: '/admin/certificate/template/' + id + '/export-columns', method: 'put', data })
+}

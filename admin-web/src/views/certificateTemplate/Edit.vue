@@ -207,6 +207,55 @@
         </div>
       </div>
 
+      <!-- 导出列配置 -->
+      <el-divider content-position="left">导出列配置(可选)</el-divider>
+      <div class="export-column-config">
+        <p style="color:#999;font-size:12px;margin-bottom:12px">
+          配置该模板在「证书列表 - 导出数据」时导出哪些列及列的顺序。不配置则使用默认20列模板。
+        </p>
+        <div class="export-column-layout">
+          <div class="available-fields">
+            <div class="panel-title">可用字段</div>
+            <div class="field-list">
+              <div
+                v-for="f in availableFieldsForExport"
+                :key="f.fieldKey"
+                class="field-item"
+                @click="addFieldToExport(f)"
+              >
+                <i class="el-icon-plus" />
+                <span>{{ f.fieldName }}</span>
+                <small>({{ f.fieldKey }})</small>
+              </div>
+            </div>
+          </div>
+          <div class="selected-columns">
+            <div class="panel-title">
+              已选导出列
+              <el-button v-if="exportColumns.length > 0" type="text" size="mini" @click="clearExportColumns">清空</el-button>
+            </div>
+            <div class="column-list">
+              <div
+                v-for="(col, idx) in exportColumns"
+                :key="idx"
+                class="column-item"
+              >
+                <span class="col-order">{{ idx + 1 }}</span>
+                <el-input v-model="col.columnName" size="mini" style="width:160px" placeholder="列名" />
+                <span class="col-key">{{ col.fieldKey }}</span>
+                <el-button type="text" size="mini" icon="el-icon-arrow-up" :disabled="idx === 0" @click="moveExportColumn(idx, -1)" />
+                <el-button type="text" size="mini" icon="el-icon-arrow-down" :disabled="idx === exportColumns.length - 1" @click="moveExportColumn(idx, 1)" />
+                <el-button type="text" size="mini" icon="el-icon-delete" style="color:#f56c6c" @click="removeExportColumn(idx)" />
+              </div>
+              <div v-if="exportColumns.length === 0" class="empty-tip">
+                未配置导出列,将使用默认20列模板
+              </div>
+            </div>
+          </div>
+        </div>
+        <el-button type="warning" size="small" style="margin-top:12px" :loading="savingExportCols" @click="saveExportCols">保存导出列配置</el-button>
+      </div>
+
       <div v-if="template.bgImageUrl" style="margin-top:24px">
         <el-button type="primary" :loading="submitting" @click="onSave">保存</el-button>
         <el-button @click="$router.back()">取消</el-button>
@@ -216,7 +265,7 @@
 </template>
 
 <script>
-import { templateDetail, saveTemplate } from '@/api/certificateTemplate'
+import { templateDetail, saveTemplate, getExportColumns, saveExportColumns } from '@/api/certificateTemplate'
 import { fieldList } from '@/api/certificateField'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
@@ -261,7 +310,10 @@ export default {
         idx: null,
         startX: 0, startY: 0,
         originWidth: 0, originHeight: 0
-      }
+      },
+      exportColumns: [],
+      availableFieldsForExport: [],
+      savingExportCols: false
     }
   },
   computed: {
@@ -341,6 +393,7 @@ export default {
         fields: (res.data.fields || []).map(f => ({ ...f }))
       }
     }
+    this.loadExportColumns()
     // 监听全局 mousemove / mouseup,处理拖动
     window.addEventListener('mousemove', this.onWindowMouseMove)
     window.addEventListener('mouseup', this.onWindowMouseUp)
@@ -608,6 +661,61 @@ export default {
         this.$message.success('保存成功')
         this.$router.push('/certificate/template')
       } finally { this.submitting = false }
+    },
+    async loadExportColumns() {
+      if (!this.template.id) return
+      try {
+        const res = await getExportColumns(this.template.id)
+        const data = (res.data || res)
+        if (Array.isArray(data) && data.length > 0) {
+          this.exportColumns = (data[0].configured || []).map(c => ({ fieldKey: c.fieldKey, columnName: c.columnName }))
+          this.availableFieldsForExport = data[0].available || []
+        } else if (data && data.available) {
+          this.availableFieldsForExport = data.available || []
+          this.exportColumns = (data.configured || []).map(c => ({ fieldKey: c.fieldKey, columnName: c.columnName }))
+        }
+      } catch (e) {
+        // 模板还没保存过导出列配置,忽略错误
+      }
+    },
+    addFieldToExport(field) {
+      // 检查是否已添加
+      if (this.exportColumns.some(c => c.fieldKey === field.fieldKey)) {
+        this.$message.warning('该字段已添加')
+        return
+      }
+      this.exportColumns.push({
+        fieldKey: field.fieldKey,
+        columnName: field.fieldName
+      })
+    },
+    removeExportColumn(idx) {
+      this.exportColumns.splice(idx, 1)
+    },
+    moveExportColumn(idx, direction) {
+      const newIdx = idx + direction
+      if (newIdx < 0 || newIdx >= this.exportColumns.length) return
+      const temp = this.exportColumns[idx]
+      this.$set(this.exportColumns, idx, this.exportColumns[newIdx])
+      this.$set(this.exportColumns, newIdx, temp)
+    },
+    clearExportColumns() {
+      this.exportColumns = []
+    },
+    async saveExportCols() {
+      if (!this.template.id) {
+        this.$message.warning('请先保存模板基本信息')
+        return
+      }
+      this.savingExportCols = true
+      try {
+        await saveExportColumns(this.template.id, this.exportColumns)
+        this.$message.success('导出列配置已保存')
+      } catch (e) {
+        this.$message.error('保存失败: ' + (e.message || '未知错误'))
+      } finally {
+        this.savingExportCols = false
+      }
     }
   }
 }
@@ -768,5 +876,71 @@ export default {
 }
 .editor-empty {
   padding: 40px 0;
+}
+.export-column-config {
+  margin-top: 16px;
+}
+.export-column-layout {
+  display: flex;
+  gap: 20px;
+}
+.available-fields, .selected-columns {
+  flex: 1;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.panel-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.field-list .field-item, .column-list .column-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.field-list .field-item:hover {
+  background: #f5f7fa;
+}
+.field-item small {
+  color: #999;
+  font-size: 11px;
+}
+.column-item {
+  cursor: default;
+  border: 1px solid #ebeef5;
+  margin-bottom: 4px;
+}
+.col-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #409eff;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.col-key {
+  color: #999;
+  font-size: 11px;
+  min-width: 80px;
+}
+.empty-tip {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-size: 13px;
 }
 </style>

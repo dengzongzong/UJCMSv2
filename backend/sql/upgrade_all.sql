@@ -726,3 +726,18 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 -- 验证
 SELECT '证书模板导入结果' AS info;
 SELECT id, name, bg_image_url, bg_width, bg_height, is_default FROM certificate_template ORDER BY id;
+
+-- ============================================================
+-- 证书导出列配置表 (每个模板可自定义导出哪些列及顺序)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `certificate_export_column` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `template_id` BIGINT NOT NULL COMMENT '证书模板ID',
+  `field_key` VARCHAR(50) NOT NULL COMMENT '字段键(引用certificate_field.field_key)',
+  `column_name` VARCHAR(100) NOT NULL COMMENT 'Excel列头名称',
+  `sort` INT NOT NULL DEFAULT 0 COMMENT '排序(从0开始)',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_template_field` (`template_id`, `field_key`),
+  KEY `idx_template_id` (`template_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书导出列配置';
