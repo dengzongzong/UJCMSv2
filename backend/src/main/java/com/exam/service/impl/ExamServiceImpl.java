@@ -1,8 +1,11 @@
 package com.exam.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.exam.common.BusinessException;
+import com.exam.common.PageResult;
 import com.exam.dto.AnswerDTO;
 import com.exam.dto.SubmitExamDTO;
 import com.exam.entity.Certificate;
@@ -188,6 +191,115 @@ public class ExamServiceImpl extends ServiceImpl<ExamMapper, Exam> implements Ex
             result.add(vo);
         }
         return result;
+    }
+
+    @Override
+    public PageResult<ExamListItemVO> getExamListPage(Long studentId, Long professionId, Long subjectId,
+                                                       String keyword, Integer page, Integer pageSize, Boolean purchasedOnly) {
+        // 参数默认值
+        int pageNum = (page == null || page < 1) ? 1 : page;
+        int size = (pageSize == null || pageSize < 1) ? 50 : Math.min(pageSize, 50);
+
+        LambdaQueryWrapper<Exam> examWrapper = new LambdaQueryWrapper<>();
+        examWrapper.eq(Exam::getStatus, 1)
+                .like(org.springframework.util.StringUtils.hasText(keyword), Exam::getName, keyword)
+                .orderByDesc(Exam::getCreateTime);
+
+        // purchasedOnly=true 且已登录: 仅返回当前学生已开通的考试
+        if (Boolean.TRUE.equals(purchasedOnly) && studentId != null) {
+            LambdaQueryWrapper<StudentExam> seW = new LambdaQueryWrapper<StudentExam>()
+                    .eq(StudentExam::getStudentId, studentId)
+                    .select(StudentExam::getExamId);
+            Set<Long> purchasedExamIds = studentExamMapper.selectList(seW).stream()
+                    .map(StudentExam::getExamId)
+                    .collect(Collectors.toSet());
+            if (purchasedExamIds.isEmpty()) {
+                return new PageResult<>(0, pageNum, size, new ArrayList<>());
+            }
+            examWrapper.in(Exam::getId, purchasedExamIds);
+        }
+
+        // 分页查询
+        Page<Exam> pageParam = new Page<>(pageNum, size);
+        IPage<Exam> examPage = this.page(pageParam, examWrapper);
+        List<Exam> exams = examPage.getRecords();
+
+        // 一次性查专业名称
+        Set<Long> professionIds = exams.stream()
+                .map(Exam::getProfessionId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> professionNameMap = new HashMap<>();
+        if (!professionIds.isEmpty()) {
+            List<Profession> professions = professionMapper.selectBatchIds(professionIds);
+            for (Profession p : professions) {
+                professionNameMap.put(p.getId(), p.getName());
+            }
+        }
+
+        // 一次性查学生已开通考试(当 purchasedOnly=false 时需要标注 purchased)
+        Set<Long> purchasedIds = new HashSet<>();
+        if (studentId != null && !Boolean.TRUE.equals(purchasedOnly)) {
+            LambdaQueryWrapper<StudentExam> seW = new LambdaQueryWrapper<StudentExam>()
+                    .eq(StudentExam::getStudentId, studentId)
+                    .select(StudentExam::getExamId);
+            studentExamMapper.selectList(seW).forEach(r -> purchasedIds.add(r.getExamId()));
+        }
+
+        // 批量统计每个考试的已开通人数
+        Map<Long, Integer> examCountMap = new HashMap<>();
+        if (!exams.isEmpty()) {
+            Set<Long> examIds = exams.stream().map(Exam::getId).collect(Collectors.toSet());
+            LambdaQueryWrapper<StudentExam> countWrapper = new LambdaQueryWrapper<StudentExam>()
+                    .in(StudentExam::getExamId, examIds)
+                    .select(StudentExam::getExamId);
+            studentExamMapper.selectList(countWrapper).forEach(r -> examCountMap.merge(r.getExamId(), 1, Integer::sum));
+        }
+        final Set<Long> _purchased = Boolean.TRUE.equals(purchasedOnly)
+                ? exams.stream().map(Exam::getId).collect(Collectors.toSet())
+                : purchasedIds;
+
+        List<ExamListItemVO> result = new ArrayList<>();
+        for (Exam exam : exams) {
+            ExamListItemVO vo = new ExamListItemVO();
+            vo.setId(exam.getId());
+            vo.setName(exam.getName());
+            vo.setCategory(exam.getCategory());
+            vo.setCoverUrl(exam.getCoverUrl());
+            vo.setQuestionCount(exam.getQuestionCount());
+            vo.setTotalScore(exam.getTotalScore());
+            vo.setDuration(exam.getDuration());
+            int baseExamCount = exam.getBaseExamCount() == null ? 0 : exam.getBaseExamCount();
+            vo.setExamCount(baseExamCount + examCountMap.getOrDefault(exam.getId(), 0));
+            vo.setPurchased(_purchased.contains(exam.getId()));
+            vo.setProfessionId(exam.getProfessionId());
+            if (exam.getProfessionId() == null) {
+                vo.setProfessionName("通用考试");
+            } else {
+                vo.setProfessionName(professionNameMap.getOrDefault(exam.getProfessionId(), "通用考试"));
+            }
+
+            // 只有已登录且已开通时, 才查上次考试记录
+            if (studentId != null && vo.getPurchased()) {
+                try {
+                    LambdaQueryWrapper<ExamRecord> recordWrapper = new LambdaQueryWrapper<>();
+                    recordWrapper.eq(ExamRecord::getStudentId, studentId)
+                            .eq(ExamRecord::getExamId, exam.getId())
+                            .select(ExamRecord::getScore, ExamRecord::getSubmitTime, ExamRecord::getCreateTime)
+                            .orderByDesc(ExamRecord::getCreateTime)
+                            .last("LIMIT 1");
+                    ExamRecord lastRecord = examRecordMapper.selectOne(recordWrapper);
+                    if (lastRecord != null) {
+                        vo.setLastScore(lastRecord.getScore());
+                        vo.setLastTime(lastRecord.getSubmitTime() != null ? lastRecord.getSubmitTime() : lastRecord.getCreateTime());
+                    }
+                } catch (Exception e) {
+                    log.warn("查询考试记录失败: studentId={}, examId={}", studentId, exam.getId(), e);
+                }
+            }
+            result.add(vo);
+        }
+        return new PageResult<>(examPage.getTotal(), examPage.getCurrent(), examPage.getSize(), result);
     }
 
     @Override
@@ -766,6 +878,80 @@ public class ExamServiceImpl extends ServiceImpl<ExamMapper, Exam> implements Ex
             result.add(vo);
         }
         return result;
+    }
+
+    @Override
+    public Map<String, Object> getExamRecordsPage(Long studentId, Integer page, Integer pageSize) {
+        // 参数默认值
+        int pageNum = (page == null || page < 1) ? 1 : page;
+        int size = (pageSize == null || pageSize < 1) ? 50 : Math.min(pageSize, 50);
+
+        // 统计概览基于该学生全部考试记录(不分页)
+        LambdaQueryWrapper<ExamRecord> statWrapper = new LambdaQueryWrapper<>();
+        statWrapper.eq(ExamRecord::getStudentId, studentId)
+                .ne(ExamRecord::getSubmitStatus, 0); // 只统计已提交的
+        List<ExamRecord> allRecords = examRecordMapper.selectList(statWrapper);
+
+        int totalAll = allRecords.size();
+        BigDecimal avgScore = BigDecimal.ZERO;
+        BigDecimal maxScore = BigDecimal.ZERO;
+        int passCount = 0;
+        if (totalAll > 0) {
+            BigDecimal sumScore = BigDecimal.ZERO;
+            for (ExamRecord r : allRecords) {
+                BigDecimal score = r.getScore() == null ? BigDecimal.ZERO : r.getScore();
+                sumScore = sumScore.add(score);
+                if (score.compareTo(maxScore) > 0) {
+                    maxScore = score;
+                }
+                if (score.compareTo(new BigDecimal("60")) >= 0) {
+                    passCount++;
+                }
+            }
+            avgScore = sumScore.divide(BigDecimal.valueOf(totalAll), 2, RoundingMode.HALF_UP);
+        }
+        BigDecimal passRate = totalAll > 0
+                ? BigDecimal.valueOf(passCount).multiply(new BigDecimal("100"))
+                        .divide(BigDecimal.valueOf(totalAll), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // 分页查询考试记录(包含未提交的记录)
+        LambdaQueryWrapper<ExamRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExamRecord::getStudentId, studentId)
+                .orderByDesc(ExamRecord::getCreateTime);
+        Page<ExamRecord> pageParam = new Page<>(pageNum, size);
+        IPage<ExamRecord> recordPage = examRecordMapper.selectPage(pageParam, wrapper);
+        List<ExamRecord> records = recordPage.getRecords();
+
+        List<ExamRecordVO> result = new ArrayList<>();
+        for (ExamRecord record : records) {
+            ExamRecordVO vo = new ExamRecordVO();
+            vo.setId(record.getId());
+            vo.setExamId(record.getExamId());
+            vo.setScore(record.getScore());
+            vo.setDuration(record.getDuration());
+            vo.setSubmitStatus(record.getSubmitStatus());
+            vo.setSubmitTime(record.getSubmitTime());
+
+            Exam exam = getById(record.getExamId());
+            if (exam != null) {
+                vo.setExamName(exam.getName());
+            } else {
+                vo.setExamName(record.getExamName() != null ? record.getExamName() : "已删除考试");
+            }
+            result.add(vo);
+        }
+
+        Map<String, Object> resultMap = new LinkedHashMap<>();
+        resultMap.put("total", recordPage.getTotal());
+        resultMap.put("page", recordPage.getCurrent());
+        resultMap.put("size", recordPage.getSize());
+        resultMap.put("records", result);
+        resultMap.put("totalCount", totalAll);
+        resultMap.put("avgScore", avgScore);
+        resultMap.put("maxScore", maxScore);
+        resultMap.put("passRate", passRate);
+        return resultMap;
     }
 
     /**

@@ -134,14 +134,30 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      * 查询证书记录(带 templateName,JOIN certificate_template 拿模板名)
      * <p>替代 page() 给 List 页用: 多返一个 templateName 字段,用于"模板"列展示</p>
      */
+    @Override
     public PageResult<Map<String, Object>> pageWithTemplateName(Integer page, Integer size,
                                                                 String name, String idCard,
                                                                 String agency,
                                                                 String issueDateStart,
                                                                 String issueDateEnd) {
-        // 先调基础 page() 拿 cert 记录
-        PageResult<Certificate> base = this.page(page, size, name, idCard, agency,
-                issueDateStart, issueDateEnd);
+        // 兼容旧调用: certType 传 null, 走新的 SQL 级过滤方法
+        return pageWithTemplateName(page, size, name, idCard, agency, issueDateStart, issueDateEnd, null);
+    }
+
+    /**
+     * 查询证书记录(带 templateName,JOIN certificate_template 拿模板名, 支持按 certType SQL 级过滤)
+     * <p>certType 非空时, 在 SQL 中追加 WHERE cert_type = ? 条件, 避免查 1 万条再内存过滤。</p>
+     */
+    @Override
+    public PageResult<Map<String, Object>> pageWithTemplateName(Integer page, Integer size,
+                                                                String name, String idCard,
+                                                                String agency,
+                                                                String issueDateStart,
+                                                                String issueDateEnd,
+                                                                String certType) {
+        // 先调基础查询拿 cert 记录(certType 已下推到 SQL)
+        PageResult<Certificate> base = this.pageBase(page, size, name, idCard, agency,
+                certType, issueDateStart, issueDateEnd);
         List<Certificate> records = base.getRecords();
         if (records == null || records.isEmpty()) {
             return new PageResult<>(base.getTotal(), base.getPage(), base.getSize(),
@@ -193,13 +209,31 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      * 新增:支持按专业(profession) 模糊过滤
      * 行为与 pageWithTemplateName 一致,只是多一个 profession 过滤参数
      */
+    @Override
     public PageResult<Map<String, Object>> pageWithTemplateNameAndProfession(Integer page, Integer size,
                                                                             String name, String idCard,
                                                                             String agency,
                                                                             String profession,
                                                                             String issueDateStart,
                                                                             String issueDateEnd) {
-        PageResult<Certificate> base = this.pageWithProfession(page, size, name, idCard, agency, profession,
+        // 兼容旧调用: certType 传 null, 走新的 SQL 级过滤方法
+        return pageWithTemplateNameAndProfession(page, size, name, idCard, agency, profession,
+                issueDateStart, issueDateEnd, null);
+    }
+
+    /**
+     * 支持按专业(profession) 模糊过滤 + 按 certType SQL 级过滤
+     * <p>certType 非空时, 在 SQL 中追加 WHERE cert_type = ? 条件, 避免查 1 万条再内存过滤。</p>
+     */
+    @Override
+    public PageResult<Map<String, Object>> pageWithTemplateNameAndProfession(Integer page, Integer size,
+                                                                            String name, String idCard,
+                                                                            String agency,
+                                                                            String profession,
+                                                                            String issueDateStart,
+                                                                            String issueDateEnd,
+                                                                            String certType) {
+        PageResult<Certificate> base = this.pageWithProfessionAndCertType(page, size, name, idCard, agency, profession, certType,
                 issueDateStart, issueDateEnd);
         List<Certificate> records = base.getRecords();
         if (records == null || records.isEmpty()) {
@@ -284,9 +318,13 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     map.put("practicalScore", extra.get("practicalScore"));
                     map.put("comprehensiveEvaluation", extra.get("comprehensiveEvaluation"));
                     map.put("birthday", extra.get("birthday"));
-                    map.put("certType", extra.get("cert_type"));
+                    // cert_type 优先用数据库列的值(beanToMap 已写入 certType);
+                    // 仅当列为空时, 才回退到 extra_json(兼容历史数据未迁移的情况)
                     if (map.get("certType") == null) {
-                        map.put("certType", extra.get("certType"));
+                        map.put("certType", extra.get("cert_type"));
+                        if (map.get("certType") == null) {
+                            map.put("certType", extra.get("certType"));
+                        }
                     }
                 }
             } catch (Exception ignored) {
@@ -322,6 +360,56 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
                 .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
                 .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
+                .orderByDesc(Certificate::getCreateTime);
+        if (StringUtils.hasText(issueDateStart)) {
+            w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
+        }
+        if (StringUtils.hasText(issueDateEnd)) {
+            w.le(Certificate::getIssueDate, parseDate(issueDateEnd));
+        }
+        Page<Certificate> p = new Page<>(page, size);
+        return new PageResult<>(this.page(p, w));
+    }
+
+    /**
+     * 基础分页查询(不含 profession),支持按 cert_type 在 SQL 级过滤。
+     * certType 为空时不追加条件,与原 page() 行为一致。
+     */
+    private PageResult<Certificate> pageBase(Integer page, Integer size,
+                                              String name, String idCard, String agency,
+                                              String certType,
+                                              String issueDateStart, String issueDateEnd) {
+        LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
+                .like(StringUtils.hasText(name), Certificate::getName, name)
+                .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
+                .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
+                .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
+                .orderByDesc(Certificate::getCreateTime);
+        if (StringUtils.hasText(issueDateStart)) {
+            w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
+        }
+        if (StringUtils.hasText(issueDateEnd)) {
+            w.le(Certificate::getIssueDate, parseDate(issueDateEnd));
+        }
+        Page<Certificate> p = new Page<>(page, size);
+        return new PageResult<>(this.page(p, w));
+    }
+
+    /**
+     * 分页查询(含 profession 模糊过滤),支持按 cert_type 在 SQL 级过滤。
+     * certType 为空时不追加条件,与原 pageWithProfession() 行为一致。
+     */
+    private PageResult<Certificate> pageWithProfessionAndCertType(Integer page, Integer size,
+                                                                   String name, String idCard,
+                                                                   String agency, String profession,
+                                                                   String certType,
+                                                                   String issueDateStart, String issueDateEnd) {
+        LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
+                .like(StringUtils.hasText(name), Certificate::getName, name)
+                .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
+                .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
+                .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
+                .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getCreateTime);
         if (StringUtils.hasText(issueDateStart)) {
             w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
@@ -470,6 +558,24 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         // 导入时间(新增/导入时自动填写;以导入时间作为后续筛选/排序依据)
         c.setUploadTime(LocalDateTime.now());
         this.save(c);
+
+        // ====== 自动绑定证书模板: 按 certType 匹配同名模板 ======
+        if (StringUtils.hasText(c.getCertType()) && c.getTemplateId() == null) {
+            try {
+                CertificateTemplate matched = templateMapper.selectOne(
+                        new LambdaQueryWrapper<CertificateTemplate>()
+                                .eq(CertificateTemplate::getName, c.getCertType().trim())
+                                .last("LIMIT 1"));
+                if (matched != null) {
+                    c.setTemplateId(matched.getId());
+                    // 绑定模板时自动生成证书编号
+                    numberService.fillCertNoIfEmpty(c, matched.getId());
+                    this.updateById(c);
+                }
+            } catch (Exception e) {
+                // 自动绑定失败不阻断主流程,用户可后续手动绑定
+            }
+        }
         return true;
     }
 
@@ -522,7 +628,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .eq(Certificate::getId, dto.getId())
                 .set(Certificate::getTemplateId, dto.getTemplateId())
                 .set(dto.getCertNo() != null, Certificate::getCertNo, dto.getCertNo())
-                .set(dto.getStudentNo() != null, Certificate::getStudentNo, dto.getStudentNo()));
+                .set(dto.getStudentNo() != null, Certificate::getStudentNo, dto.getStudentNo())
+                .set(dto.getCertType() != null, Certificate::getCertType, dto.getCertType()));
         // 绑定模板时(编辑页选择模板),若证书编号仍为空则自动生成(证书编号在绑定模板时才生成)
         if (dto.getTemplateId() != null) {
             Certificate latest = this.getById(dto.getId());
@@ -534,6 +641,32 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                         .set(Certificate::getCertNo, latest.getCertNo())
                         .set(Certificate::getCertNoPrefix, latest.getCertNoPrefix())
                         .set(Certificate::getCertNoMiddle, latest.getCertNoMiddle()));
+            }
+        }
+        // ====== 自动绑定证书模板: 按 certType 匹配同名模板(编辑时 certType 变更且未手动绑定模板) ======
+        if (StringUtils.hasText(dto.getCertType()) && dto.getTemplateId() == null) {
+            try {
+                CertificateTemplate matched = templateMapper.selectOne(
+                        new LambdaQueryWrapper<CertificateTemplate>()
+                                .eq(CertificateTemplate::getName, dto.getCertType().trim())
+                                .last("LIMIT 1"));
+                if (matched != null) {
+                    this.update(new LambdaUpdateWrapper<Certificate>()
+                            .eq(Certificate::getId, dto.getId())
+                            .set(Certificate::getTemplateId, matched.getId()));
+                    // 绑定模板时自动生成证书编号
+                    Certificate latest2 = this.getById(dto.getId());
+                    if (latest2 != null && !StringUtils.hasText(latest2.getCertNo())) {
+                        numberService.fillCertNoIfEmpty(latest2, matched.getId());
+                        this.update(new LambdaUpdateWrapper<Certificate>()
+                                .eq(Certificate::getId, dto.getId())
+                                .set(Certificate::getCertNo, latest2.getCertNo())
+                                .set(Certificate::getCertNoPrefix, latest2.getCertNoPrefix())
+                                .set(Certificate::getCertNoMiddle, latest2.getCertNoMiddle()));
+                    }
+                }
+            } catch (Exception e) {
+                // 自动绑定失败不阻断主流程
             }
         }
     }
@@ -920,6 +1053,18 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         head.add(Arrays.asList("证书二维码生成2"));
         head.add(Arrays.asList("证书二维码生成3"));
         head.add(Arrays.asList("学员考试二维码"));
+        // 证书类型: 动态获取系统设置中的证书类型名称
+        String certTypeHint = "证书类型（选填）";
+        try {
+            List<String> typeNames = certificateTypeService.listAll().stream()
+                    .filter(t -> t.getStatus() == null || t.getStatus() == 1)
+                    .map(t -> t.getName())
+                    .collect(java.util.stream.Collectors.toList());
+            if (!typeNames.isEmpty()) {
+                certTypeHint = "证书类型（选填，可选值：" + String.join("/", typeNames) + "）";
+            }
+        } catch (Exception e) { /* ignore */ }
+        head.add(Arrays.asList(certTypeHint));
         // 示例行
         List<List<Object>> sample = new ArrayList<>();
         List<Object> s1 = new ArrayList<>();
@@ -943,7 +1088,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         s1.add("");
         s1.add("");
         s1.add("");
-        s1.add("专业技能证书");
+        s1.add("专项职业证书");
         sample.add(s1);
         try (OutputStream os = response.getOutputStream()) {
             EasyExcel.write(os).head(head).sheet(sheetName).doWrite(sample);
@@ -1205,6 +1350,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         c.setExamQrEnabled(dto.getExamQrEnabled() == null ? 0 : dto.getExamQrEnabled());
         c.setRemark(dto.getRemark());
         c.setTemplateId(dto.getTemplateId());
+        c.setCertType(dto.getCertType());
     }
 
     @Override
@@ -1244,6 +1390,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         r.setQr2(trimToNull(row.get(17)));
         r.setQr3(trimToNull(row.get(18)));
         r.setExamQr(trimToNull(row.get(19)));
+        // 证书类型(第21列,选填;为空则不设置)
+        r.setCertType(trimToNull(row.get(20)));
         // ============ 字段限制/校验 ============
         List<String> errs = new ArrayList<>();
         if (r.getName() == null) {
@@ -1350,6 +1498,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         // 证书类型
         if (StringUtils.hasText(r.getCertType())) {
             extra.put("cert_type", r.getCertType().trim());
+            d.setCertType(r.getCertType().trim());
         }
         d.setExtra(extra);
         return d;
@@ -1456,14 +1605,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     : studentProfessionMapper.selectByStudentId(student.getId());
             if (sps.isEmpty()) {
                 // 没有专业关联:按 idCard 查是否已有证书(profession 为空的)
-                created += createIfNotExists(student, idCard, null, professionNameMap);
+                created += createIfNotExists(student, idCard, null, professionNameMap, certType);
             } else {
                 for (StudentProfession sp : sps) {
                     String profName = sp.getProfessionName();
                     if (profName == null && sp.getProfessionId() != null) {
                         profName = professionNameMap.get(sp.getProfessionId());
                     }
-                    created += createIfNotExists(student, idCard, profName, professionNameMap);
+                    created += createIfNotExists(student, idCard, profName, professionNameMap, certType);
                 }
             }
         }
@@ -1672,7 +1821,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      * @return 1=新建,0=已存在跳过
      */
     private int createIfNotExists(Student student, String idCard, String profession,
-                                  Map<Long, String> professionNameMap) {
+                                  Map<Long, String> professionNameMap, String certType) {
         // 查是否已有 姓名+身份证号+专业+级别 的证书记录
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                 .eq(Certificate::getName, student.getName() != null ? student.getName() : "");
@@ -1696,6 +1845,11 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         c.setIssueDate(LocalDate.now());
         c.setCertNo(null); // 证书编号在绑定模板时生成
         c.setStudentNo(null); // 下方自动生成
+        // 设置证书类型(优先用传入的 certType,其次用学生自身的 certType)
+        String effectiveCertType = StringUtils.hasText(certType) ? certType : student.getCertType();
+        if (StringUtils.hasText(effectiveCertType)) {
+            c.setCertType(effectiveCertType.trim());
+        }
         // 自动生成学员编号(日期取自颁发日期=今天)
         numberService.fillStudentNoIfEmpty(c);
         // extra_json: 成绩为空(前端显示横杠)
@@ -1712,6 +1866,23 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         c.setUpdateTime(LocalDateTime.now());
         c.setUploadTime(LocalDateTime.now());
         this.save(c);
+
+        // ====== 自动绑定证书模板: 按 certType 匹配同名模板 ======
+        if (StringUtils.hasText(c.getCertType()) && c.getTemplateId() == null) {
+            try {
+                CertificateTemplate matched = templateMapper.selectOne(
+                        new LambdaQueryWrapper<CertificateTemplate>()
+                                .eq(CertificateTemplate::getName, c.getCertType().trim())
+                                .last("LIMIT 1"));
+                if (matched != null) {
+                    c.setTemplateId(matched.getId());
+                    numberService.fillCertNoIfEmpty(c, matched.getId());
+                    this.updateById(c);
+                }
+            } catch (Exception e) {
+                // 自动绑定失败不阻断主流程
+            }
+        }
         return 1;
     }
 }

@@ -39,7 +39,7 @@
                 <div v-for="item in results.news" :key="item.id" class="result-item" @click="goNewsDetail(item)">
                   <span class="result-marker"></span>
                   <span class="result-title">{{ item.title }}</span>
-                  <span class="result-date">{{ formatDate(item.createTime) }}</span>
+                  <span class="result-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
                 </div>
               </div>
               <div v-else class="empty-state">暂无相关新闻</div>
@@ -51,7 +51,7 @@
                 <div v-for="item in results.announcements" :key="item.id" class="result-item" @click="goAnnouncementDetail(item)">
                   <span class="result-marker"></span>
                   <span class="result-title">{{ item.title }}</span>
-                  <span class="result-date">{{ formatDate(item.createTime) }}</span>
+                  <span class="result-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
                 </div>
               </div>
               <div v-else class="empty-state">暂无相关公告</div>
@@ -87,7 +87,7 @@
                 <div v-for="item in results.policies" :key="item.id" class="result-item" @click="goPolicyDetail(item)">
                   <span class="result-marker"></span>
                   <span class="result-title">{{ item.title }}</span>
-                  <span class="result-date">{{ formatDate(item.createTime) }}</span>
+                  <span class="result-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
                 </div>
               </div>
               <div v-else class="empty-state">暂无相关政策法规</div>

@@ -57,6 +57,12 @@
         <el-form-item label="报单机构费用">
           <el-input-number v-model="form.agencyFee" :min="0" :precision="2" :step="100" />
         </el-form-item>
+        <el-form-item label="证书类型">
+          <el-select v-model="form.certType" placeholder="请选择证书类型" clearable filterable style="width: 100%">
+            <el-option v-for="t in certTypeOptions" :key="t.id" :label="t.name" :value="t.name" />
+          </el-select>
+          <div class="form-tip">选择证书类型后,保存时将自动绑定同名的证书模板</div>
+        </el-form-item>
         <el-form-item label="证书二维码1">
           <el-input v-model="form.qrUrl1" placeholder="https://..." />
         </el-form-item>
@@ -141,12 +147,14 @@ export default {
         qrUrl1: '', qrUrl2: '', qrUrl3: '', examQrUrl: '',
         examQrEnabled: 0, remark: '',
         templateId: null,
+        certType: '',
         extra: {}
       },
       examQrEnabled: 0,
       customFields: [],
       scoreFields: [],
       templateOptions: [],
+      certTypeOptions: [],
       professionOptions: [],
       skillLevelOptions: ['五级/初级', '四级/中级', '三级/高级', '二级/技师', '一级/高级技师'],
       rules: {
@@ -200,6 +208,10 @@ export default {
     this.customFields = (fields || []).filter(f => f.isSystem === 0 && !SCORE_FIELD_KEYS.includes(f.fieldKey))
     // 加载证书模板选项(用于"证书模板"下拉;支持一人多证绑定不同模板)
     templateList().then(r => { this.templateOptions = r.data || [] }).catch(() => {})
+    // 加载证书类型选项(用于"证书类型"下拉)
+    request({ url: '/public/certificate-types', method: 'get' }).then(r => {
+      this.certTypeOptions = r.data || []
+    }).catch(() => {})
     // 加载专业选项(用于"专业名称"下拉)
     request({ url: '/public/professions', method: 'get' }).then(r => {
       this.professionOptions = r.data || []
@@ -227,6 +239,7 @@ export default {
           qrUrl1: d.qrUrl1, qrUrl2: d.qrUrl2, qrUrl3: d.qrUrl3, examQrUrl: d.examQrUrl,
           examQrEnabled: d.examQrEnabled || 0, remark: d.remark,
           templateId: d.templateId || null,
+          certType: d.certType || '',
           extra: d.extra || {}
         }
       this.examQrEnabled = d.examQrEnabled || 0

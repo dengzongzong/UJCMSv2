@@ -32,76 +32,84 @@
         />
 
         <!-- 课程列表:按视频分类分组展示 -->
-        <div v-if="groupedCourses.length > 0">
-          <div
-            v-for="group in groupedCourses"
-            :key="group.name"
-            class="course-group"
-          >
-            <div class="group-title">
-              <span class="group-name">{{ group.name }}</span>
-            </div>
-            <div class="course-grid">
-              <div
-                v-for="course in group.courses"
-                :key="course.id"
-                class="course-card"
-                :class="{ 'course-locked': !course.purchased }"
-              >
-                <!-- 封面图 -->
-                <div class="card-cover" @click="goDetail(course)">
-                  <img :src="resolveImg(course.coverUrl || course.coverImage || defaultCover)" :alt="course.name" />
-                  <div v-if="!course.purchased" class="locked-tag">
-                    <van-icon name="lock" /> 未开通
-                  </div>
-                  <div v-if="course.purchased" class="cover-mask">
-                    <van-icon name="play-circle-o" size="40" color="#fff" />
-                  </div>
-                </div>
-                <!-- 卡片内容 -->
-                <div class="card-content">
-                  <!-- 课程标题 -->
-                  <div class="card-name" @click="goDetail(course)">{{ course.name }}</div>
-                  <!-- 已开通时显示学习进度 -->
-                  <div v-if="course.purchased" class="card-progress">
-                    <van-progress
-                      :percentage="course.progress || 0"
-                      color="#1989fa"
-                      :show-pivot="false"
-                      stroke-width="3"
-                    />
-                    <span class="progress-text">已学习 {{ course.progress || 0 }}%</span>
-                  </div>
-                  <!-- 学习数据:已有多少人学过 + 学时 -->
-                  <div class="card-stats">
-                    <van-icon name="friends-o" size="14" color="#909399" />
-                    <span>已有 {{ course.studyCount || 0 }} 人学过</span>
-                    <span class="stat-divider">·</span>
-                    <span>学时：{{ course.studyHours || 0 }}</span>
-                  </div>
-                  <!-- 底部:价格 + 查看详情按钮 -->
-                  <div class="card-footer">
-                    <div class="card-price">
-                      <span v-if="course.price > 0" class="price-value">¥{{ course.price }}</span>
-                      <span v-else class="price-free">免费</span>
+        <van-list
+          v-model="loading"
+          :finished="finished"
+          :immediate-check="false"
+          finished-text="没有更多了"
+          @load="onLoad"
+        >
+          <div v-if="groupedCourses.length > 0">
+            <div
+              v-for="group in groupedCourses"
+              :key="group.name"
+              class="course-group"
+            >
+              <div class="group-title">
+                <span class="group-name">{{ group.name }}</span>
+              </div>
+              <div class="course-grid">
+                <div
+                  v-for="course in group.courses"
+                  :key="course.id"
+                  class="course-card"
+                  :class="{ 'course-locked': !course.purchased }"
+                >
+                  <!-- 封面图 -->
+                  <div class="card-cover" @click="goDetail(course)">
+                    <img :src="resolveImg(course.coverUrl || course.coverImage || defaultCover)" :alt="course.name" />
+                    <div v-if="!course.purchased" class="locked-tag">
+                      <van-icon name="lock" /> 未开通
                     </div>
-                    <van-button
-                      size="small"
-                      type="danger"
-                      round
-                      icon="eye-o"
-                      @click="goDetail(course)"
-                    >
-                      查看详情
-                    </van-button>
+                    <div v-if="course.purchased" class="cover-mask">
+                      <van-icon name="play-circle-o" size="40" color="#fff" />
+                    </div>
+                  </div>
+                  <!-- 卡片内容 -->
+                  <div class="card-content">
+                    <!-- 课程标题 -->
+                    <div class="card-name" @click="goDetail(course)">{{ course.name }}</div>
+                    <!-- 已开通时显示学习进度 -->
+                    <div v-if="course.purchased" class="card-progress">
+                      <van-progress
+                        :percentage="course.progress || 0"
+                        color="#1989fa"
+                        :show-pivot="false"
+                        stroke-width="3"
+                      />
+                      <span class="progress-text">已学习 {{ course.progress || 0 }}%</span>
+                    </div>
+                    <!-- 学习数据:已有多少人学过 + 学时 -->
+                    <div class="card-stats">
+                      <van-icon name="friends-o" size="14" color="#909399" />
+                      <span>已有 {{ course.studyCount || 0 }} 人学过</span>
+                      <span class="stat-divider">·</span>
+                      <span>学时：{{ course.studyHours || 0 }}</span>
+                    </div>
+                    <!-- 底部:价格 + 查看详情按钮 -->
+                    <div class="card-footer">
+                      <div class="card-price">
+                        <span v-if="course.price > 0" class="price-value">¥{{ course.price }}</span>
+                        <span v-else class="price-free">免费</span>
+                      </div>
+                      <van-button
+                        size="small"
+                        type="danger"
+                        round
+                        icon="eye-o"
+                        @click="goDetail(course)"
+                      >
+                        查看详情
+                      </van-button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <van-empty v-else-if="!loading" description="暂无课程" />
+          <van-empty v-else-if="!loading" description="暂无课程" />
+        </van-list>
       </div>
     </div>
   </div>
@@ -122,6 +130,9 @@ export default {
       courseList: [],
       videoCategories: [],
       loading: false,
+      finished: false,
+      page: 1,
+      pageSize: 50,
       // 搜索关键词
       searchKeyword: '',
       searchTimer: null,
@@ -222,8 +233,27 @@ export default {
         this.videoCategories = []
       }
     },
+    /**
+     * 重置列表并加载第一页(搜索/初始加载/切换专业时调用)
+     */
     async fetchCourses() {
+      this.page = 1
+      this.courseList = []
+      this.finished = false
       this.loading = true
+      await this.loadData()
+    },
+    /**
+     * van-list 滚动到底部时加载下一页
+     */
+    async onLoad() {
+      this.page++
+      await this.loadData()
+    },
+    /**
+     * 实际加载分页数据并追加到 courseList
+     */
+    async loadData() {
       try {
         // 未登录时不带专业条件(查所有);登录后按 Header 选的专业过滤;支持关键词搜索
         let professionId
@@ -233,11 +263,18 @@ export default {
             professionId = subject.professionId || subject.id
           }
         }
-        const res = await getPublicCourseList(professionId, this.searchKeyword)
+        const res = await getPublicCourseList(professionId, this.searchKeyword, this.page, this.pageSize)
         const data = res.data || res
-        this.courseList = Array.isArray(data) ? data : (data.list || data.records || [])
+        const records = Array.isArray(data) ? data : (data.list || data.records || [])
+        this.courseList.push(...records)
+        if (data.total !== undefined) {
+          this.finished = this.courseList.length >= data.total
+        } else {
+          this.finished = records.length < this.pageSize
+        }
       } catch (error) {
         this.courseList = []
+        this.finished = true
       } finally {
         this.loading = false
       }

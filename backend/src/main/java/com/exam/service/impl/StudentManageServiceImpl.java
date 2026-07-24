@@ -654,10 +654,21 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             // 身份证号合法性校验:校验异常不拦截,正常导入(前端会用浅红色背景标注异常身份证)
             // 仅记录日志,不加入 failList
 
-            // 匹配专业
+            // 匹配专业,不存在则自动创建
             Long professionId = null;
             if (StringUtils.hasText(professionName)) {
-                professionId = professionNameMap.get(professionName);
+                String pName = professionName.trim();
+                professionId = professionNameMap.get(pName);
+                if (professionId == null) {
+                    // 专业不存在,自动创建
+                    Profession newProf = new Profession();
+                    newProf.setName(pName);
+                    newProf.setSort(0);
+                    newProf.setStatus(1);
+                    professionMapper.insert(newProf);
+                    professionId = newProf.getId();
+                    professionNameMap.put(pName, professionId);
+                }
             }
 
             try {

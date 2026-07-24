@@ -34,6 +34,8 @@ public class Certificate {
     private String profession;
     /** 技能等级 */
     private String skillLevel;
+    /** 证书类型 */
+    private String certType;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate issueDate;
     /** 证书编号前缀字母 */

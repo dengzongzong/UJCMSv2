@@ -8,33 +8,38 @@
           <p>您已开通的考试</p>
         </div>
         <van-search v-model="searchKeyword" placeholder="搜索考试名称" shape="round" @search="onSearch" @clear="onSearch" />
-        <div v-if="loading" class="loading-wrapper">
-          <van-loading size="24px">加载中...</van-loading>
-        </div>
-        <div v-else-if="filteredExams.length > 0" class="exam-list">
-          <div v-for="exam in filteredExams" :key="exam.id" class="exam-card" @click="goExam(exam)">
-            <div class="exam-cover">
-              <img v-if="exam.coverUrl" :src="apiUrl(exam.coverUrl)" alt="" />
-              <div v-else class="cover-default"><van-icon name="notes-o" size="32" /></div>
-            </div>
-            <div class="exam-info">
-              <div class="exam-name">{{ exam.name }}</div>
-              <div class="exam-meta">
-                <span v-if="exam.category"><van-icon name="label-o" /> {{ exam.category }}</span>
-                <span><van-icon name="clock-o" /> {{ exam.duration }}分钟</span>
-                <span><van-icon name="gold-coin-o" /> {{ exam.totalScore }}分</span>
+        <van-list
+          v-model="loading"
+          :finished="finished"
+          :immediate-check="false"
+          finished-text="没有更多了"
+          @load="onLoad"
+        >
+          <div v-if="examList.length > 0" class="exam-list">
+            <div v-for="exam in examList" :key="exam.id" class="exam-card" @click="goExam(exam)">
+              <div class="exam-cover">
+                <img v-if="exam.coverUrl" :src="apiUrl(exam.coverUrl)" alt="" />
+                <div v-else class="cover-default"><van-icon name="notes-o" size="32" /></div>
               </div>
-              <div class="exam-status">
-                <span v-if="exam.lastScore != null" :class="exam.lastScore >= 60 ? 'score-pass' : 'score-fail'">
-                  上次成绩: {{ exam.lastScore }}分
-                </span>
-                <span v-else class="not-taken">尚未考试</span>
+              <div class="exam-info">
+                <div class="exam-name">{{ exam.name }}</div>
+                <div class="exam-meta">
+                  <span v-if="exam.category"><van-icon name="label-o" /> {{ exam.category }}</span>
+                  <span><van-icon name="clock-o" /> {{ exam.duration }}分钟</span>
+                  <span><van-icon name="gold-coin-o" /> {{ exam.totalScore }}分</span>
+                </div>
+                <div class="exam-status">
+                  <span v-if="exam.lastScore != null" :class="exam.lastScore >= 60 ? 'score-pass' : 'score-fail'">
+                    上次成绩: {{ exam.lastScore }}分
+                  </span>
+                  <span v-else class="not-taken">尚未考试</span>
+                </div>
               </div>
+              <van-icon name="arrow" class="arrow-icon" />
             </div>
-            <van-icon name="arrow" class="arrow-icon" />
           </div>
-        </div>
-        <van-empty v-else description="暂无已开通考试" />
+          <van-empty v-if="examList.length === 0 && !loading" description="暂无已开通考试" />
+        </van-list>
       </div>
     </div>
   </div>
@@ -42,7 +47,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { getExamList } from '@/api/exam'
+import { getMyExams } from '@/api/exam'
 import { apiUrl } from '@/utils/apiBase'
 
 export default {
@@ -56,34 +61,70 @@ export default {
     return {
       examList: [],
       loading: false,
-      searchKeyword: ''
+      finished: false,
+      page: 1,
+      pageSize: 50,
+      searchKeyword: '',
+      searchTimer: null
     }
   },
-  computed: {
-    filteredExams() {
-      if (!this.searchKeyword) return this.examList
-      const kw = this.searchKeyword.toLowerCase()
-      return this.examList.filter(e => e.name && e.name.toLowerCase().includes(kw))
+  watch: {
+    searchKeyword() {
+      if (this.searchTimer) clearTimeout(this.searchTimer)
+      this.searchTimer = setTimeout(() => {
+        this.fetchExams()
+      }, 300)
     }
   },
   methods: {
     apiUrl,
+    onSearch() {
+      if (this.searchTimer) {
+        clearTimeout(this.searchTimer)
+        this.searchTimer = null
+      }
+      this.fetchExams()
+    },
+    /**
+     * 重置列表并加载第一页(搜索/初始加载时调用)
+     */
     async fetchExams() {
+      this.page = 1
+      this.examList = []
+      this.finished = false
       this.loading = true
+      await this.loadData()
+    },
+    /**
+     * van-list 滚动到底部时加载下一页
+     */
+    async onLoad() {
+      this.page++
+      await this.loadData()
+    },
+    /**
+     * 实际加载分页数据并追加到 examList
+     */
+    async loadData() {
       try {
-        const res = await getExamList()
+        var params = { page: this.page, pageSize: this.pageSize }
+        if (this.searchKeyword) params.keyword = this.searchKeyword
+        const res = await getMyExams(params)
         const data = res.data || res
-        const allExams = Array.isArray(data) ? data : (data.list || data.records || [])
-        // 只显示已开通的考试(purchased === true)
-        this.examList = allExams.filter(e => e.purchased === true)
+        const records = Array.isArray(data) ? data : (data.records || data.list || [])
+        this.examList.push(...records)
+        if (data.total !== undefined) {
+          this.finished = this.examList.length >= data.total
+        } else {
+          this.finished = records.length < this.pageSize
+        }
       } catch (error) {
-        this.examList = []
+        this.finished = true
         this.$toast.fail((error && error.message) || '加载失败,请稍后重试')
       } finally {
         this.loading = false
       }
     },
-    onSearch() {},
     goExam(exam) {
       this.$router.push(`/exam/intro/${exam.id}`).catch(() => {})
     }

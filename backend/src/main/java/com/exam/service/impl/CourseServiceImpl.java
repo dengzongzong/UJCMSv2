@@ -1,8 +1,11 @@
 package com.exam.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.exam.common.BusinessException;
+import com.exam.common.PageResult;
 import com.exam.dto.VideoProgressDTO;
 import com.exam.entity.Course;
 import com.exam.entity.CourseSection;
@@ -186,6 +189,126 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             vo.setPurchased(_purchased.contains(course.getId()));
             return vo;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResult<CourseListItemVO> getCourseListPage(Long professionId, Long subjectId, Long categoryId,
+                                                           Long studentId, String keyword, Integer page, Integer pageSize) {
+        int pageNum = (page == null || page < 1) ? 1 : page;
+        int size = (pageSize == null || pageSize < 1) ? 50 : Math.min(pageSize, 50);
+
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Course::getStatus, 1);
+        wrapper.like(org.springframework.util.StringUtils.hasText(keyword), Course::getName, keyword);
+        if (categoryId != null) {
+            wrapper.eq(Course::getCategoryId, categoryId);
+        }
+        wrapper.orderByDesc(Course::getIsTop)
+                .orderByAsc(Course::getTopSort)
+                .orderByAsc(Course::getSort)
+                .orderByDesc(Course::getCreateTime);
+
+        Page<Course> pageParam = new Page<>(pageNum, size);
+        IPage<Course> coursePage = this.page(pageParam, wrapper);
+        List<Course> courses = coursePage.getRecords();
+
+        // 一次性查学生已开通课程
+        Set<Long> purchasedIds = new HashSet<>();
+        if (studentId != null) {
+            LambdaQueryWrapper<StudentCourse> sc = new LambdaQueryWrapper<StudentCourse>()
+                    .eq(StudentCourse::getStudentId, studentId)
+                    .select(StudentCourse::getCourseId);
+            studentCourseMapper.selectList(sc).forEach(r -> purchasedIds.add(r.getCourseId()));
+        }
+
+        // 批量统计每个课程的已开通人数
+        Map<Long, Integer> studyCountMap = new HashMap<>();
+        Set<Long> courseIds = courses.stream().map(Course::getId).collect(Collectors.toSet());
+        if (!courseIds.isEmpty()) {
+            LambdaQueryWrapper<StudentCourse> countWrapper = new LambdaQueryWrapper<StudentCourse>()
+                    .in(StudentCourse::getCourseId, courseIds)
+                    .select(StudentCourse::getCourseId);
+            List<StudentCourse> all = studentCourseMapper.selectList(countWrapper);
+            for (StudentCourse sc : all) {
+                studyCountMap.merge(sc.getCourseId(), 1, Integer::sum);
+            }
+        }
+
+        // 批量查询课程分类名称
+        Set<Long> catIds = courses.stream()
+                .map(Course::getCategoryId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> categoryNameMap = new HashMap<>();
+        if (!catIds.isEmpty()) {
+            List<VideoCategory> categories = videoCategoryMapper.selectBatchIds(catIds);
+            for (VideoCategory vc : categories) {
+                categoryNameMap.put(vc.getId(), vc.getName());
+            }
+        }
+
+        // 批量计算每个课程的视频总时长
+        Map<Long, Integer> videoDurationMap = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            LambdaQueryWrapper<CourseSection> sectionWrapper = new LambdaQueryWrapper<>();
+            sectionWrapper.in(CourseSection::getCourseId, courseIds)
+                    .select(CourseSection::getId, CourseSection::getCourseId);
+            List<CourseSection> sections = courseSectionMapper.selectList(sectionWrapper);
+            if (!sections.isEmpty()) {
+                Map<Long, Long> sectionCourseMap = new HashMap<>();
+                for (CourseSection s : sections) {
+                    sectionCourseMap.put(s.getId(), s.getCourseId());
+                }
+                Set<Long> sectionIds = sections.stream().map(CourseSection::getId).collect(Collectors.toSet());
+                LambdaQueryWrapper<CourseSectionVideo> csvWrapper = new LambdaQueryWrapper<>();
+                csvWrapper.in(CourseSectionVideo::getSectionId, sectionIds)
+                        .select(CourseSectionVideo::getSectionId, CourseSectionVideo::getVideoId);
+                List<CourseSectionVideo> csvList = courseSectionVideoMapper.selectList(csvWrapper);
+                if (!csvList.isEmpty()) {
+                    Set<Long> videoIds = csvList.stream().map(CourseSectionVideo::getVideoId).collect(Collectors.toSet());
+                    LambdaQueryWrapper<Video> videoWrapper = new LambdaQueryWrapper<>();
+                    videoWrapper.in(Video::getId, videoIds)
+                            .select(Video::getId, Video::getDuration);
+                    List<Video> videos = videoMapper.selectList(videoWrapper);
+                    Map<Long, Integer> videoDurMap = new HashMap<>();
+                    for (Video v : videos) {
+                        videoDurMap.put(v.getId(), v.getDuration() == null ? 0 : v.getDuration());
+                    }
+                    for (CourseSectionVideo csv : csvList) {
+                        Long courseId = sectionCourseMap.get(csv.getSectionId());
+                        if (courseId != null) {
+                            Integer dur = videoDurMap.get(csv.getVideoId());
+                            if (dur != null) {
+                                videoDurationMap.merge(courseId, dur, Integer::sum);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        final Set<Long> _purchased = purchasedIds;
+        List<CourseListItemVO> result = courses.stream().map(course -> {
+            CourseListItemVO vo = new CourseListItemVO();
+            vo.setId(course.getId());
+            vo.setName(course.getName());
+            vo.setCoverUrl(course.getCoverUrl());
+            vo.setTag(course.getTag());
+            vo.setPrice(course.getPrice());
+            vo.setSectionCount(course.getSectionCount());
+            vo.setTotalDuration(videoDurationMap.getOrDefault(course.getId(), 0));
+            int baseStudyCount = course.getBaseStudyCount() == null ? 0 : course.getBaseStudyCount();
+            vo.setStudyCount(baseStudyCount + studyCountMap.getOrDefault(course.getId(), 0));
+            vo.setStudyHours(course.getBaseStudyHours() == null ? 0 : course.getBaseStudyHours());
+            Long catId = course.getCategoryId();
+            vo.setCategoryId(catId);
+            vo.setCategoryName(catId == null ? null : categoryNameMap.get(catId));
+            vo.setProgress(studentId == null ? 0 : calcCourseProgress(course.getId(), studentId));
+            vo.setPurchased(_purchased.contains(course.getId()));
+            return vo;
+        }).collect(Collectors.toList());
+
+        return new PageResult<>(coursePage.getTotal(), coursePage.getCurrent(), coursePage.getSize(), result);
     }
 
     /**
@@ -386,6 +509,97 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             result.add(vo);
         }
         return result;
+    }
+
+    @Override
+    public PageResult<MyCourseVO> getMyCoursesPage(Long studentId, Integer page, Integer pageSize) {
+        int pageNum = (page == null || page < 1) ? 1 : page;
+        int size = (pageSize == null || pageSize < 1) ? 50 : Math.min(pageSize, 50);
+
+        // 查询学生已开通的课程
+        LambdaQueryWrapper<StudentCourse> scWrapper = new LambdaQueryWrapper<>();
+        scWrapper.eq(StudentCourse::getStudentId, studentId);
+        List<StudentCourse> studentCourses = studentCourseMapper.selectList(scWrapper);
+
+        if (CollectionUtils.isEmpty(studentCourses)) {
+            return new PageResult<>(0, pageNum, size, new ArrayList<>());
+        }
+
+        List<Long> courseIds = studentCourses.stream()
+                .map(StudentCourse::getCourseId)
+                .collect(Collectors.toList());
+
+        LambdaQueryWrapper<Course> courseWrapper = new LambdaQueryWrapper<>();
+        courseWrapper.in(Course::getId, courseIds)
+                .orderByDesc(Course::getCreateTime);
+        List<Course> courses = list(courseWrapper);
+
+        // 找出已被删除的课程ID
+        Set<Long> foundIds = courses.stream().map(Course::getId).collect(Collectors.toSet());
+        Map<Long, String> deletedCourseNames = studentCourses.stream()
+                .filter(sc -> !foundIds.contains(sc.getCourseId()))
+                .collect(Collectors.toMap(StudentCourse::getCourseId,
+                        sc -> sc.getCourseName() != null ? sc.getCourseName() : "已删除课程",
+                        (a, b) -> a));
+
+        // 构建完整列表(现有课程 + 已删除课程)
+        List<MyCourseVO> allResult = new ArrayList<>();
+        for (Course course : courses) {
+            MyCourseVO vo = new MyCourseVO();
+            vo.setId(course.getId());
+            vo.setName(course.getName());
+            vo.setCoverUrl(course.getCoverUrl());
+            vo.setTag(course.getTag());
+            vo.setPrice(course.getPrice());
+            vo.setTotalDuration(course.getTotalDuration());
+            vo.setSectionCount(course.getSectionCount());
+
+            LambdaQueryWrapper<VideoStudyRecord> vsrWrapper = new LambdaQueryWrapper<>();
+            vsrWrapper.eq(VideoStudyRecord::getStudentId, studentId)
+                    .eq(VideoStudyRecord::getCourseId, course.getId());
+            List<VideoStudyRecord> records = videoStudyRecordMapper.selectList(vsrWrapper);
+            int watchedDuration = records.stream()
+                    .mapToInt(r -> r.getWatchedDuration() == null ? 0 : r.getWatchedDuration())
+                    .sum();
+            vo.setWatchedDuration(watchedDuration);
+
+            BigDecimal studyProgress = BigDecimal.ZERO;
+            if (course.getTotalDuration() != null && course.getTotalDuration() > 0) {
+                studyProgress = BigDecimal.valueOf(watchedDuration)
+                        .multiply(new BigDecimal("100"))
+                        .divide(BigDecimal.valueOf(course.getTotalDuration()), 2, RoundingMode.HALF_UP);
+            }
+            vo.setStudyProgress(studyProgress);
+            allResult.add(vo);
+        }
+        // 追加已删除的课程
+        for (Map.Entry<Long, String> entry : deletedCourseNames.entrySet()) {
+            MyCourseVO vo = new MyCourseVO();
+            vo.setId(entry.getKey());
+            vo.setName(entry.getValue());
+            vo.setSectionCount(0);
+            vo.setTotalDuration(0);
+            LambdaQueryWrapper<VideoStudyRecord> vsrWrapper = new LambdaQueryWrapper<>();
+            vsrWrapper.eq(VideoStudyRecord::getStudentId, studentId)
+                    .eq(VideoStudyRecord::getCourseId, entry.getKey());
+            List<VideoStudyRecord> records = videoStudyRecordMapper.selectList(vsrWrapper);
+            int watchedDuration = records.stream()
+                    .mapToInt(r -> r.getWatchedDuration() == null ? 0 : r.getWatchedDuration())
+                    .sum();
+            vo.setWatchedDuration(watchedDuration);
+            vo.setStudyProgress(BigDecimal.ZERO);
+            allResult.add(vo);
+        }
+
+        // 手动分页
+        int total = allResult.size();
+        int fromIndex = (pageNum - 1) * size;
+        int toIndex = Math.min(fromIndex + size, total);
+        List<MyCourseVO> pageResult = fromIndex < total
+                ? allResult.subList(fromIndex, toIndex)
+                : new ArrayList<>();
+
+        return new PageResult<>(total, pageNum, size, pageResult);
     }
 
     @Override

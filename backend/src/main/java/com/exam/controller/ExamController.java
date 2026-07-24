@@ -1,6 +1,7 @@
 package com.exam.controller;
 
 import com.exam.common.Result;
+import com.exam.common.PageResult;
 import com.exam.dto.SaveAnswerDTO;
 import com.exam.dto.SubmitExamDTO;
 import com.exam.service.ExamService;
@@ -33,24 +34,38 @@ public class ExamController {
 
     /**
      * 考试中心(列表): 所有启用考试, 未登录也能浏览; 已登录则标记 purchased
+     * <p>支持分页: 传入 page/pageSize 时返回 PageResult; 不传时返回全量 List(向后兼容)</p>
+     * <p>purchasedOnly=true 且已登录时, 仅返回当前学生已开通的考试(用于"我的考试"页)</p>
      */
     @GetMapping("/list")
-    public Result<List<ExamListItemVO>> list(@RequestAttribute(value = "userId", required = false) Long userId,
-                                             @RequestParam(required = false) Long professionId,
-                                             @RequestParam(required = false) Long subjectId,
-                                             @RequestParam(required = false) String keyword) {
+    public Result<Object> list(@RequestAttribute(value = "userId", required = false) Long userId,
+                               @RequestParam(required = false) Long professionId,
+                               @RequestParam(required = false) Long subjectId,
+                               @RequestParam(required = false) String keyword,
+                               @RequestParam(required = false) Integer page,
+                               @RequestParam(required = false) Integer pageSize,
+                               @RequestParam(required = false, defaultValue = "false") Boolean purchasedOnly) {
+        if (page != null) {
+            return Result.success(examService.getExamListPage(userId, professionId, subjectId, keyword, page, pageSize, purchasedOnly));
+        }
         return Result.success(examService.getExamList(userId, professionId, subjectId, keyword));
     }
 
     /**
      * 考试中心(公开): 允许未登录访问
      * <p>等同 /user/exam/list,放在 /public/** 下以便 JwtInterceptor 不强制要求登录</p>
+     * <p>支持分页: 传入 page/pageSize 时返回 PageResult; 不传时返回全量 List(向后兼容)</p>
      */
     @GetMapping("/public/list")
-    public Result<List<ExamListItemVO>> publicList(@RequestAttribute(value = "userId", required = false) Long userId,
-                                                   @RequestParam(required = false) Long professionId,
-                                                   @RequestParam(required = false) Long subjectId,
-                                                   @RequestParam(required = false) String keyword) {
+    public Result<Object> publicList(@RequestAttribute(value = "userId", required = false) Long userId,
+                                     @RequestParam(required = false) Long professionId,
+                                     @RequestParam(required = false) Long subjectId,
+                                     @RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) Integer page,
+                                     @RequestParam(required = false) Integer pageSize) {
+        if (page != null) {
+            return Result.success(examService.getExamListPage(userId, professionId, subjectId, keyword, page, pageSize, false));
+        }
         return Result.success(examService.getExamList(userId, professionId, subjectId, keyword));
     }
 
@@ -146,9 +161,15 @@ public class ExamController {
 
     /**
      * 我的考试记录列表
+     * <p>支持分页: 传入 page/pageSize 时返回含统计概览的 Map; 不传时返回全量 List(向后兼容)</p>
      */
     @GetMapping("/records")
-    public Result<List<ExamRecordVO>> records(@RequestAttribute("userId") Long userId) {
+    public Result<Object> records(@RequestAttribute("userId") Long userId,
+                                  @RequestParam(required = false) Integer page,
+                                  @RequestParam(required = false) Integer pageSize) {
+        if (page != null) {
+            return Result.success(examService.getExamRecordsPage(userId, page, pageSize));
+        }
         return Result.success(examService.getExamRecords(userId));
     }
 

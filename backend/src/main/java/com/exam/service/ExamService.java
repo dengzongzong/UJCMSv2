@@ -1,6 +1,7 @@
 package com.exam.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.exam.common.PageResult;
 import com.exam.dto.SubmitExamDTO;
 import com.exam.entity.Exam;
 import com.exam.vo.ExamIntroVO;
@@ -22,6 +23,21 @@ public interface ExamService extends IService<Exam> {
      * 考试列表（已开通的考试，含上次成绩，可按专业科目筛选，可按关键词搜索名称）
      */
     List<ExamListItemVO> getExamList(Long studentId, Long professionId, Long subjectId, String keyword);
+
+    /**
+     * 考试列表(分页版本)
+     * <p>用于考试中心 / 我的考试 等列表页无限滚动加载, 每页最多 50 条。</p>
+     *
+     * @param studentId     学生ID(可选, 登录后用于标注 purchased / 上次成绩)
+     * @param professionId  专业ID(保留参数, 兼容旧签名)
+     * @param subjectId     科目ID(保留参数, 兼容旧签名)
+     * @param keyword       关键词(可选, 按考试名称模糊匹配)
+     * @param page          页码(从 1 开始)
+     * @param pageSize      每页条数
+     * @param purchasedOnly 为 true 且 studentId 不为空时, 仅返回当前学生已开通的考试
+     */
+    PageResult<ExamListItemVO> getExamListPage(Long studentId, Long professionId, Long subjectId,
+                                               String keyword, Integer page, Integer pageSize, Boolean purchasedOnly);
 
     /**
      * 试卷介绍页
@@ -67,6 +83,17 @@ public interface ExamService extends IService<Exam> {
      * 我的考试记录列表
      */
     List<ExamRecordVO> getExamRecords(Long studentId);
+
+    /**
+     * 我的考试记录列表(分页版本, 同时返回统计概览)
+     * <p>返回 Map 结构: { total, page, size, records, avgScore, maxScore, passRate }。
+     * 统计概览(平均分/最高分/通过率)基于该学生全部考试记录计算, records 仅为当前分页。</p>
+     *
+     * @param studentId 学生ID
+     * @param page      页码(从 1 开始)
+     * @param pageSize  每页条数
+     */
+    Map<String, Object> getExamRecordsPage(Long studentId, Integer page, Integer pageSize);
 
     /**
      * 考试访问闸门校验(进入介绍页/开始考试前的权限闸门)

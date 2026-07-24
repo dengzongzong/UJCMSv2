@@ -36,4 +36,6 @@ public class CertificateDTO {
     private String remark;
     /** 已绑定的证书模板ID */
     private Long templateId;
+    /** 证书类型(与certificate_type.name对应,用于自动绑定模板) */
+    private String certType;
 }

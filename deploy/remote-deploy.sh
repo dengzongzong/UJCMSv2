@@ -183,6 +183,11 @@ server {
     location /uploads/ {
         proxy_pass http://127.0.0.1:8080/api/uploads/;
     }
+
+    # 静态资源(旧系统导入的图片路径 /static/upload/xxx)
+    location /static/ {
+        proxy_pass http://127.0.0.1:8080/api/static/;
+    }
 }
 NGINX_EOF
 

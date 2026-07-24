@@ -36,7 +36,7 @@
                 <li v-for="item in list" :key="item.id" class="news-item" @click="goDetail(item)">
                   <span class="news-marker"></span>
                   <span class="news-title">{{ item.title }}</span>
-                  <span class="news-date">{{ formatDate(item.createTime) }}</span>
+                  <span class="news-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
                 </li>
               </ul>
               <div v-else class="empty-state">暂无数据</div>

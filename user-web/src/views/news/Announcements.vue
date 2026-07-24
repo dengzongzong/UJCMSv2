@@ -23,7 +23,7 @@
           >
             <div class="ann-text">
               <div class="ann-title">{{ item.title }}</div>
-              <div class="ann-date">{{ formatDate(item.createTime) }}</div>
+              <div class="ann-date">{{ formatDate(item.publishTime || item.createTime) }}</div>
             </div>
             <van-icon name="arrow" class="arrow-icon" />
           </li>

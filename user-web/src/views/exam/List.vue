@@ -31,75 +31,83 @@
           style="margin-bottom: 16px"
         />
 
-        <div
-          v-for="(group, categoryName) in groupedExams"
-          :key="categoryName"
-          class="exam-group"
+        <van-list
+          v-model="loading"
+          :finished="finished"
+          :immediate-check="false"
+          finished-text="没有更多了"
+          @load="onLoad"
         >
-          <div class="group-title">
-            <span class="title-bar"></span>
-            {{ categoryName }}
-          </div>
-          <div class="exam-grid">
-            <div
-              v-for="exam in group"
-              :key="exam.id"
-              class="exam-card"
-              :class="{ 'exam-locked': !exam.purchased }"
-              @click="goExam(exam)"
-            >
-              <div class="exam-cover">
-                <img :src="resolveImg(exam.coverUrl || exam.coverImage || defaultCover)" :alt="exam.name" />
-                <div v-if="!exam.purchased" class="locked-tag">
-                  <van-icon name="lock" /> 未开通
+          <div
+            v-for="(group, categoryName) in groupedExams"
+            :key="categoryName"
+            class="exam-group"
+          >
+            <div class="group-title">
+              <span class="title-bar"></span>
+              {{ categoryName }}
+            </div>
+            <div class="exam-grid">
+              <div
+                v-for="exam in group"
+                :key="exam.id"
+                class="exam-card"
+                :class="{ 'exam-locked': !exam.purchased }"
+                @click="goExam(exam)"
+              >
+                <div class="exam-cover">
+                  <img :src="resolveImg(exam.coverUrl || exam.coverImage || defaultCover)" :alt="exam.name" />
+                  <div v-if="!exam.purchased" class="locked-tag">
+                    <van-icon name="lock" /> 未开通
+                  </div>
+                  <div v-if="exam.purchased && exam.lastScore !== null && exam.lastScore !== undefined" class="last-score">
+                    上次:{{ exam.lastScore }} 分
+                  </div>
+                  <div v-if="exam.purchased" class="exam-mask">
+                    <van-icon name="play-circle-o" size="40" color="#fff" />
+                  </div>
                 </div>
-                <div v-if="exam.purchased && exam.lastScore !== null && exam.lastScore !== undefined" class="last-score">
-                  上次:{{ exam.lastScore }} 分
-                </div>
-                <div v-if="exam.purchased" class="exam-mask">
-                  <van-icon name="play-circle-o" size="40" color="#fff" />
-                </div>
-              </div>
-              <div class="exam-info">
-                <div class="exam-name">{{ exam.name }}</div>
-                <div class="exam-meta">
-                  <span class="meta-tag">
-                    <van-icon name="question-o" size="14" />
-                    {{ exam.questionCount }}题
-                  </span>
-                  <span class="meta-tag">
-                    <van-icon name="gem-o" size="14" />
-                    {{ exam.totalScore }}分
-                  </span>
-                  <span class="meta-tag">
-                    <van-icon name="clock-o" size="14" />
-                    {{ exam.duration }}分钟
-                  </span>
-                  <span class="meta-tag">
-                    <van-icon name="friends-o" size="14" />
-                    已有 {{ exam.examCount || 0 }} 人考过
-                  </span>
-                </div>
-                <div class="exam-footer">
-                  <span class="last-time" v-if="exam.lastTime || exam.lastExamTime">
-                    上次考试:{{ exam.lastTime || exam.lastExamTime }}
-                  </span>
-                  <van-button
-                    class="exam-action-btn"
-                    size="small"
-                    :type="exam.purchased ? 'primary' : 'warning'"
-                    round
-                  >
-                    <van-icon :name="exam.purchased ? 'play' : 'lock'" />
-                    {{ exam.purchased ? (exam.lastScore !== null && exam.lastScore !== undefined ? '再次考试' : '去考试') : '未开通' }}
-                  </van-button>
+                <div class="exam-info">
+                  <div class="exam-name">{{ exam.name }}</div>
+                  <div class="exam-meta">
+                    <span class="meta-tag">
+                      <van-icon name="question-o" size="14" />
+                      {{ exam.questionCount }}题
+                    </span>
+                    <span class="meta-tag">
+                      <van-icon name="gem-o" size="14" />
+                      {{ exam.totalScore }}分
+                    </span>
+                    <span class="meta-tag">
+                      <van-icon name="clock-o" size="14" />
+                      {{ exam.duration }}分钟
+                    </span>
+                    <span class="meta-tag">
+                      <van-icon name="friends-o" size="14" />
+                      已有 {{ exam.examCount || 0 }} 人考过
+                    </span>
+                  </div>
+                  <div class="exam-footer">
+                    <span class="last-time" v-if="exam.lastTime || exam.lastExamTime">
+                      上次考试:{{ exam.lastTime || exam.lastExamTime }}
+                    </span>
+                    <van-button
+                      class="exam-action-btn"
+                      size="small"
+                      :type="exam.purchased ? 'primary' : 'warning'"
+                      round
+                    >
+                      <van-icon :name="exam.purchased ? 'play' : 'lock'" />
+                      {{ exam.purchased ? (exam.lastScore !== null && exam.lastScore !== undefined ? '再次考试' : '去考试') : '未开通' }}
+                    </van-button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <van-empty v-if="examList.length === 0 && !loading" description="暂无考试" />
+          <van-empty v-if="examList.length === 0 && !loading" description="暂无考试" />
+        </van-list>
       </div>
     </div>
   </div>
@@ -118,6 +126,9 @@ export default {
     return {
       examList: [],
       loading: false,
+      finished: false,
+      page: 1,
+      pageSize: 50,
       // 搜索关键词
       searchKeyword: '',
       searchTimer: null,
@@ -161,15 +172,40 @@ export default {
       }
       this.fetchExamList()
     },
+    /**
+     * 重置列表并加载第一页(搜索/初始加载时调用)
+     */
     async fetchExamList() {
+      this.page = 1
+      this.examList = []
+      this.finished = false
       this.loading = true
+      await this.loadData()
+    },
+    /**
+     * van-list 滚动到底部时加载下一页
+     */
+    async onLoad() {
+      this.page++
+      await this.loadData()
+    },
+    /**
+     * 实际加载分页数据并追加到 examList
+     */
+    async loadData() {
       try {
-        // 考试中心按分类分组展示所有考试,支持关键词搜索
-        const res = await getPublicExamList(undefined, undefined, this.searchKeyword)
+        const res = await getPublicExamList(undefined, undefined, this.searchKeyword, this.page, this.pageSize)
         const data = res.data || res
-        this.examList = Array.isArray(data) ? data : (data.list || data.records || [])
+        const records = Array.isArray(data) ? data : (data.records || data.list || [])
+        this.examList.push(...records)
+        if (data.total !== undefined) {
+          this.finished = this.examList.length >= data.total
+        } else {
+          this.finished = records.length < this.pageSize
+        }
       } catch (error) {
         this.examList = []
+        this.finished = true
       } finally {
         this.loading = false
       }

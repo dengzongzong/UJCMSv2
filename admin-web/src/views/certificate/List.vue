@@ -69,6 +69,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="name" label="姓名" width="100" />
+      <el-table-column prop="certType" label="证书类型" min-width="140" show-overflow-tooltip>
+        <template slot-scope="s">
+          <el-tag v-if="s.row.certType" size="mini" type="warning">{{ s.row.certType }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="性别" width="60">
         <template slot-scope="s">{{ s.row.gender === 1 ? '男' : s.row.gender === 2 ? '女' : '-' }}</template>
       </el-table-column>

@@ -8,30 +8,35 @@
           <p>您已开通的课程</p>
         </div>
         <van-search v-model="searchKeyword" placeholder="搜索课程名称" shape="round" @search="onSearch" @clear="onSearch" />
-        <div v-if="loading" class="loading-wrapper">
-          <van-loading size="24px">加载中...</van-loading>
-        </div>
-        <div v-else-if="filteredCourses.length > 0" class="course-list">
-          <div v-for="course in filteredCourses" :key="course.id" class="course-card" @click="goDetail(course.id)">
-            <div class="course-cover">
-              <img v-if="course.coverUrl" :src="resolveImg(course.coverUrl)" alt="" />
-              <div v-else class="cover-default"><van-icon name="photo-o" size="32" /></div>
-            </div>
-            <div class="course-info">
-              <div class="course-name">{{ course.name }}</div>
-              <div class="course-meta">
-                <span v-if="course.professionName"><van-icon name="bookmark-o" /> {{ course.professionName }}</span>
-                <span v-if="course.sectionCount"><van-icon name="description" /> {{ course.sectionCount }}节</span>
-                <span v-if="course.totalDuration && course.totalDuration > 0"><van-icon name="clock-o" /> {{ formatDuration(course.totalDuration) }}</span>
+        <van-list
+          v-model="loading"
+          :finished="finished"
+          :immediate-check="false"
+          finished-text="没有更多了"
+          @load="onLoad"
+        >
+          <div v-if="filteredCourses.length > 0" class="course-list">
+            <div v-for="course in filteredCourses" :key="course.id" class="course-card" @click="goDetail(course.id)">
+              <div class="course-cover">
+                <img v-if="course.coverUrl" :src="resolveImg(course.coverUrl)" alt="" />
+                <div v-else class="cover-default"><van-icon name="photo-o" size="32" /></div>
               </div>
-              <div class="course-progress" v-if="course.progress != null">
-                <van-progress :percentage="course.progress" color="#1989fa" />
+              <div class="course-info">
+                <div class="course-name">{{ course.name }}</div>
+                <div class="course-meta">
+                  <span v-if="course.professionName"><van-icon name="bookmark-o" /> {{ course.professionName }}</span>
+                  <span v-if="course.sectionCount"><van-icon name="description" /> {{ course.sectionCount }}节</span>
+                  <span v-if="course.totalDuration && course.totalDuration > 0"><van-icon name="clock-o" /> {{ formatDuration(course.totalDuration) }}</span>
+                </div>
+                <div class="course-progress" v-if="course.progress != null">
+                  <van-progress :percentage="course.progress" color="#1989fa" />
+                </div>
               </div>
+              <van-icon name="arrow" class="arrow-icon" />
             </div>
-            <van-icon name="arrow" class="arrow-icon" />
           </div>
-        </div>
-        <van-empty v-else description="暂无已开通课程" />
+          <van-empty v-if="filteredCourses.length === 0 && !loading" description="暂无已开通课程" />
+        </van-list>
       </div>
     </div>
   </div>
@@ -49,6 +54,9 @@ export default {
     return {
       courseList: [],
       loading: false,
+      finished: false,
+      page: 1,
+      pageSize: 50,
       searchKeyword: ''
     }
   },
@@ -69,14 +77,40 @@ export default {
       var mins = minutes % 60
       return mins > 0 ? hours + '小时' + mins + '分钟' : hours + '小时'
     },
+    /**
+     * 重置列表并加载第一页(初始加载时调用)
+     */
     async fetchCourses() {
+      this.page = 1
+      this.courseList = []
+      this.finished = false
       this.loading = true
+      await this.loadData()
+    },
+    /**
+     * van-list 滚动到底部时加载下一页
+     */
+    async onLoad() {
+      this.page++
+      await this.loadData()
+    },
+    /**
+     * 实际加载分页数据并追加到 courseList
+     */
+    async loadData() {
       try {
-        const res = await getMyCourses()
+        const res = await getMyCourses(this.page, this.pageSize)
         const data = res.data || res
-        this.courseList = Array.isArray(data) ? data : (data.list || data.records || [])
+        const records = Array.isArray(data) ? data : (data.list || data.records || [])
+        this.courseList.push(...records)
+        if (data.total !== undefined) {
+          this.finished = this.courseList.length >= data.total
+        } else {
+          this.finished = records.length < this.pageSize
+        }
       } catch (error) {
         this.courseList = []
+        this.finished = true
       } finally {
         this.loading = false
       }

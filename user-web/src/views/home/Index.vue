@@ -37,7 +37,7 @@
                     <path d="M5 7.5h6M5 9.5h6M5 11.5h4" stroke="#c41e3a" stroke-width="1.2" stroke-linecap="round"/>
                   </svg>
                   <span class="news-text">{{ item.title }}</span>
-                  <span class="news-date">{{ formatDate(item.createTime) }}</span>
+                  <span class="news-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
                 </li>
                 <li v-if="newsList.length === 0" class="news-empty">暂无新闻</li>
               </ul>
@@ -49,7 +49,7 @@
                     <path d="M5 7.5h6M5 9.5h6M5 11.5h4" stroke="#c41e3a" stroke-width="1.2" stroke-linecap="round"/>
                   </svg>
                   <span class="news-text">{{ item.title }}</span>
-                  <span class="news-date">{{ formatDate(item.createTime) }}</span>
+                  <span class="news-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
                 </li>
                 <li v-if="eventsList.length === 0" class="news-empty">暂无活动</li>
               </ul>
@@ -61,7 +61,7 @@
                     <path d="M5 7.5h6M5 9.5h6M5 11.5h4" stroke="#c41e3a" stroke-width="1.2" stroke-linecap="round"/>
                   </svg>
                   <span class="news-text">{{ item.title }}</span>
-                  <span class="news-date">{{ formatDate(item.createTime) }}</span>
+                  <span class="news-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
                 </li>
                 <li v-if="announcements.length === 0" class="news-empty">暂无公告</li>
               </ul>
@@ -144,7 +144,7 @@
               <li v-for="item in displayPolicyNews" :key="'p'+item.id" class="panel-item" @click="onSectionClick(item, '政策法规')">
                 <span class="item-dot"></span>
                 <span class="item-text">{{ item.title }}</span>
-                <span class="item-date">{{ formatDate(item.createTime) }}</span>
+                <span class="item-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
               </li>
               <li v-if="displayPolicyNews.length === 0" class="panel-empty">暂无内容</li>
             </ul>
@@ -159,7 +159,7 @@
               <li v-for="item in displayDisclosureNews" :key="'d'+item.id" class="panel-item" @click="onSectionClick(item, '信息公开')">
                 <span class="item-dot"></span>
                 <span class="item-text">{{ item.title }}</span>
-                <span class="item-date">{{ formatDate(item.createTime) }}</span>
+                <span class="item-date">{{ formatDate(item.publishTime || item.createTime) }}</span>
               </li>
               <li v-if="displayDisclosureNews.length === 0" class="panel-empty">暂无内容</li>
             </ul>

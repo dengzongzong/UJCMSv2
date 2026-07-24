@@ -24,16 +24,16 @@
           <div class="news-header">
             <h1 class="news-title">{{ news.title }}</h1>
             <div class="news-meta">
-              <span><van-icon name="clock-o" /> {{ formatDate(news.createTime) }}</span>
+              <span><van-icon name="clock-o" /> {{ formatDate(news.publishTime || news.createTime) }}</span>
             </div>
           </div>
           <van-image
             v-if="news.coverUrl"
-            :src="news.coverUrl"
+            :src="resolveImg(news.coverUrl)"
             class="news-cover"
             fit="cover"
           />
-          <div class="news-content" v-html="news.content || '暂无内容'"></div>
+          <div class="news-content" v-html="processedContent"></div>
         </div>
 
         <van-empty v-else description="新闻不存在或已删除" />
@@ -45,6 +45,7 @@
 <script>
 import Header from '@/components/Header.vue'
 import { getNewsList, getEventsList, getAnnouncementList, getHomepageSections } from '@/api/home'
+import { resolveImg } from '@/utils/apiBase'
 
 export default {
   name: 'NewsDetail',
@@ -79,6 +80,15 @@ export default {
         'news': '/news/center'
       }
       return map[this.detailType] || '/news/center'
+    },
+    processedContent() {
+      if (!this.news || !this.news.content) return '暂无内容'
+      let html = this.news.content
+      // 修复富文本中的图片路径: /static/upload/xxx -> /api/static/upload/xxx
+      html = html.replace(/src=["'](\/static\/upload\/[^"']+)["']/g, 'src="/api$1"')
+      // 修复 /uploads/xxx -> /api/uploads/xxx
+      html = html.replace(/src=["'](\/uploads\/[^"']+)["']/g, 'src="/api$1"')
+      return html
     }
   },
   created() {
@@ -93,6 +103,7 @@ export default {
     }
   },
   methods: {
+    resolveImg,
     formatDate(date) {
       if (!date) return ''
       const d = new Date(date)

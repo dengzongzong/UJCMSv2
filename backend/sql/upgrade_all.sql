@@ -106,6 +106,7 @@ CALL safe_add_column('certificate', 'cert_url', 'VARCHAR(500) DEFAULT NULL COMME
 CALL safe_add_column('certificate', 'student_no', 'VARCHAR(100) DEFAULT NULL COMMENT ''学员编号''');
 CALL safe_add_column('certificate', 'skill_level', 'VARCHAR(50) DEFAULT NULL COMMENT ''技能等级''');
 CALL safe_add_column('certificate', 'agency', 'VARCHAR(200) DEFAULT NULL COMMENT ''发证机构''');
+CALL safe_add_column('certificate', 'cert_type', 'VARCHAR(100) DEFAULT NULL COMMENT ''证书类型''');
 
 -- certificate_photo 表
 CALL safe_add_column('certificate_photo', 'certificate_id', 'BIGINT DEFAULT NULL COMMENT ''关联证书记录ID''');
@@ -193,11 +194,12 @@ CREATE TABLE IF NOT EXISTS `certificate_type` (
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书类型';
 
--- 种子数据: 默认3种证书类型
+-- 种子数据: 默认证书类型(使用 INSERT IGNORE,不删除用户已有的类型)
 INSERT IGNORE INTO `certificate_type` (`name`, `code`, `sort`, `status`) VALUES
-('职业技能等级证书', '3', 1, 1),
-('职业技能等级证书含成绩', '4', 2, 1),
-('岗位/专业证书', '5', 3, 1);
+('专项职业证书', '1', 1, 1),
+('人才数据库', '2', 2, 1),
+('职业能力证书', '3', 3, 1),
+('能力等级证书', '4', 4, 1);
 
 -- 学生表新增 cert_type 字段
 CALL safe_add_column('student', 'cert_type', 'VARCHAR(100) DEFAULT NULL COMMENT ''证书类型''');
@@ -245,12 +247,13 @@ SET s.cert_type = JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type'))
 WHERE s.cert_type IS NULL
   AND JSON_UNQUOTE(JSON_EXTRACT(c.extra_json, '$.cert_type')) IS NOT NULL;
 
--- 证书类型: 清空重建为正确的三种类型
-TRUNCATE TABLE certificate_type;
-INSERT INTO certificate_type (id, name, code, sort, status) VALUES
-(1, '专业技能证书', '3', 1, 1),
-(2, '专项职业技能证书', '4', 2, 1),
-(3, '人才数据入库证书', '5', 3, 1);
+-- 证书类型: 幂等补齐默认类型(不清空表,保留用户手动新增的类型)
+-- 使用 INSERT IGNORE,已存在的类型不会重复插入,也不会删除用户自定义类型
+INSERT IGNORE INTO certificate_type (name, code, sort, status) VALUES
+('专项职业证书', '1', 1, 1),
+('人才数据库', '2', 2, 1),
+('职业能力证书', '3', 3, 1),
+('能力等级证书', '4', 4, 1);
 
 UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专业技能证书')
 WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('职业技能等级证书');
@@ -258,6 +261,11 @@ UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专项�
 WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
 UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '人才数据入库证书')
 WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('岗位专业证书', '岗位/专业证书');
+
+-- 数据迁移: 将 extra_json 中的 cert_type 提取到新列 cert_type(兼容 certType 驼峰写法)
+-- 仅更新 cert_type 列为空的记录,可重复执行(幂等)
+UPDATE certificate SET cert_type = JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) WHERE cert_type IS NULL;
+UPDATE certificate SET cert_type = JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.certType')) WHERE cert_type IS NULL;
 
 UPDATE certificate_user SET cert_type = '专业技能证书' WHERE cert_type IN ('职业技能等级证书');
 UPDATE certificate_user SET cert_type = '专项职业技能证书' WHERE cert_type IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
@@ -628,3 +636,93 @@ CALL safe_add_column('announcement', 'is_top', 'TINYINT NOT NULL DEFAULT 0 COMME
 CALL safe_add_column('cooperation_apply', 'auth_start_date', 'DATE DEFAULT NULL COMMENT ''授权开始日期''');
 CALL safe_add_column('cooperation_apply', 'auth_expire_date', 'DATE DEFAULT NULL COMMENT ''授权有效期截止日期''');
 DROP PROCEDURE IF EXISTS `safe_add_column`;
+
+-- ============================================================
+-- 证书模板种子数据(幂等,每次升级不会丢失)
+-- 图片路径: /uploads/static/证书模板图/
+-- ============================================================
+
+-- 给 certificate_template.name 添加唯一索引(幂等)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate_template' AND INDEX_NAME = 'uk_name');
+SET @sql = IF(@idx_exists = 0, 'ALTER TABLE certificate_template ADD UNIQUE INDEX uk_name (name)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- 1. 专项职业证书 (zs.png, 2989x2162)
+INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
+VALUES ('专项职业证书', '/uploads/static/证书模板图/zs.png', 2989, 2162, 1, '专业技能证书模板(横向)')
+ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), is_default = 1, remark = VALUES(remark);
+
+SET @tpl_1 = (SELECT id FROM certificate_template WHERE name = '专项职业证书');
+DELETE FROM certificate_template_field WHERE template_id = @tpl_1;
+INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+(@tpl_1, 'name', 2050, 580, 36, '#000000', 2, 1, 300, 1),
+(@tpl_1, 'gender', 2050, 680, 36, '#000000', 1, 1, 300, 2),
+(@tpl_1, 'idCard', 2050, 780, 36, '#000000', 1, 1, 400, 3),
+(@tpl_1, 'profession', 2050, 880, 36, '#000000', 1, 1, 400, 4),
+(@tpl_1, 'skillLevel', 2050, 980, 36, '#000000', 1, 1, 300, 5),
+(@tpl_1, 'certNo', 2050, 1080, 36, '#000000', 1, 1, 400, 6),
+(@tpl_1, 'issueYear', 2050, 1180, 36, '#000000', 1, 1, 100, 7),
+(@tpl_1, 'issueMonth', 2200, 1180, 36, '#000000', 1, 1, 80, 8),
+(@tpl_1, 'issueDay', 2320, 1180, 36, '#000000', 1, 1, 80, 9);
+
+-- 2. 能力等级证书 (zs1.jpg, 1170x816)
+INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
+VALUES ('能力等级证书', '/uploads/static/证书模板图/zs1.jpg', 1170, 816, 0, '职业技能等级证书(含成绩)')
+ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), remark = VALUES(remark);
+
+SET @tpl_2 = (SELECT id FROM certificate_template WHERE name = '能力等级证书');
+DELETE FROM certificate_template_field WHERE template_id = @tpl_2;
+INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+(@tpl_2, 'name', 60, 200, 22, '#000000', 1, 1, 200, 1),
+(@tpl_2, 'gender', 60, 240, 22, '#000000', 1, 1, 200, 2),
+(@tpl_2, 'certNo', 60, 280, 22, '#000000', 1, 1, 250, 3),
+(@tpl_2, 'idCard', 60, 320, 22, '#000000', 1, 1, 250, 4),
+(@tpl_2, 'profession', 650, 200, 22, '#000000', 1, 1, 250, 5),
+(@tpl_2, 'skillLevel', 650, 240, 22, '#000000', 1, 1, 200, 6),
+(@tpl_2, 'theoryScore', 650, 280, 22, '#000000', 1, 1, 200, 7),
+(@tpl_2, 'practicalScore', 650, 320, 22, '#000000', 1, 1, 200, 8),
+(@tpl_2, 'comprehensiveEvaluation', 650, 360, 22, '#000000', 1, 1, 200, 9),
+(@tpl_2, 'issueYear', 650, 400, 22, '#000000', 1, 1, 100, 10),
+(@tpl_2, 'issueMonth', 780, 400, 22, '#000000', 1, 1, 80, 11),
+(@tpl_2, 'issueDay', 880, 400, 22, '#000000', 1, 1, 80, 12);
+
+-- 3. 人才数据库 (zs3.jpg, 1075x1522, 竖版)
+INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
+VALUES ('人才数据库', '/uploads/static/证书模板图/zs3.jpg', 1075, 1522, 0, '技能人才入库证书(竖版)')
+ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), remark = VALUES(remark);
+
+SET @tpl_3 = (SELECT id FROM certificate_template WHERE name = '人才数据库');
+DELETE FROM certificate_template_field WHERE template_id = @tpl_3;
+INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+(@tpl_3, 'name', 280, 580, 30, '#000000', 1, 1, 300, 1),
+(@tpl_3, 'gender', 280, 640, 30, '#000000', 1, 1, 300, 2),
+(@tpl_3, 'idCard', 280, 700, 30, '#000000', 1, 1, 350, 3),
+(@tpl_3, 'certNo', 280, 760, 30, '#000000', 1, 1, 350, 4),
+(@tpl_3, 'profession', 280, 820, 30, '#000000', 1, 1, 350, 5),
+(@tpl_3, 'issueYear', 280, 880, 30, '#000000', 1, 1, 100, 6),
+(@tpl_3, 'issueMonth', 420, 880, 30, '#000000', 1, 1, 80, 7),
+(@tpl_3, 'issueDay', 540, 880, 30, '#000000', 1, 1, 80, 8);
+
+-- 4. 职业能力证书 (bg.jpg, 1920x1599)
+INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
+VALUES ('职业能力证书', '/uploads/static/证书模板图/bg.jpg', 1920, 1599, 0, '职业能力证书模板(背景图)')
+ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), is_default = VALUES(is_default), remark = VALUES(remark);
+
+SET @tpl_4 = (SELECT id FROM certificate_template WHERE name = '职业能力证书');
+DELETE FROM certificate_template_field WHERE template_id = @tpl_4;
+INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+(@tpl_4, 'name', 960, 700, 32, '#000000', 2, 2, 300, 0),
+(@tpl_4, 'gender', 960, 780, 28, '#000000', 1, 2, 200, 1),
+(@tpl_4, 'idCard', 960, 860, 28, '#000000', 1, 2, 400, 2),
+(@tpl_4, 'profession', 960, 940, 28, '#000000', 1, 2, 400, 3),
+(@tpl_4, 'skillLevel', 960, 1020, 28, '#000000', 1, 2, 300, 4),
+(@tpl_4, 'certNo', 960, 1100, 24, '#333333', 1, 2, 400, 5),
+(@tpl_4, 'issueYear', 800, 1200, 24, '#000000', 1, 1, 100, 6),
+(@tpl_4, 'issueMonth', 950, 1200, 24, '#000000', 1, 1, 80, 7),
+(@tpl_4, 'issueDay', 1080, 1200, 24, '#000000', 1, 1, 80, 8);
+
+-- 验证
+SELECT '证书模板导入结果' AS info;
+SELECT id, name, bg_image_url, bg_width, bg_height, is_default FROM certificate_template ORDER BY id;

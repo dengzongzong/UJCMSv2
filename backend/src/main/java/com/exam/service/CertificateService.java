@@ -33,6 +33,17 @@ public interface CertificateService extends IService<Certificate> {
                                                         String issueDateEnd);
 
     /**
+     * 分页查询证书(带 templateName,JOIN certificate_template 拿模板名, 支持按 certType SQL 级过滤)
+     * <p>certType 非空时, 在 SQL 中追加 WHERE cert_type = ? 条件, 避免查 1 万条再内存过滤。</p>
+     */
+    PageResult<Map<String, Object>> pageWithTemplateName(Integer page, Integer size,
+                                                        String name, String idCard,
+                                                        String agency,
+                                                        String issueDateStart,
+                                                        String issueDateEnd,
+                                                        String certType);
+
+    /**
      * 分页查询证书(带 templateName + 按 profession 模糊过滤)
      */
     PageResult<Map<String, Object>> pageWithTemplateNameAndProfession(Integer page, Integer size,
@@ -41,6 +52,18 @@ public interface CertificateService extends IService<Certificate> {
                                                                      String profession,
                                                                      String issueDateStart,
                                                                      String issueDateEnd);
+
+    /**
+     * 分页查询证书(带 templateName + 按 profession 模糊过滤 + 按 certType SQL 级过滤)
+     * <p>certType 非空时, 在 SQL 中追加 WHERE cert_type = ? 条件, 避免查 1 万条再内存过滤。</p>
+     */
+    PageResult<Map<String, Object>> pageWithTemplateNameAndProfession(Integer page, Integer size,
+                                                                     String name, String idCard,
+                                                                     String agency,
+                                                                     String profession,
+                                                                     String issueDateStart,
+                                                                     String issueDateEnd,
+                                                                     String certType);
 
     /**
      * 证书详情

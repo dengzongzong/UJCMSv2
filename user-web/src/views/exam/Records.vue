@@ -6,25 +6,25 @@
       <div :class="embedded ? 'embedded-container' : 'container'">
         <div class="page-title">
           <span class="title-text">考试记录</span>
-          <span class="title-sub">共 {{ records.length }} 次考试</span>
+          <span class="title-sub">共 {{ totalCount }} 次考试</span>
         </div>
 
         <!-- 统计概览 -->
         <div class="overview-row">
           <div class="overview-card">
-            <div class="ov-value">{{ records.length }}</div>
+            <div class="ov-value">{{ totalCount }}</div>
             <div class="ov-label">考试次数</div>
           </div>
           <div class="overview-card">
-            <div class="ov-value">{{ avgScore }}</div>
+            <div class="ov-value">{{ statAvgScore }}</div>
             <div class="ov-label">平均分</div>
           </div>
           <div class="overview-card">
-            <div class="ov-value">{{ maxScore }}</div>
+            <div class="ov-value">{{ statMaxScore }}</div>
             <div class="ov-label">最高分</div>
           </div>
           <div class="overview-card">
-            <div class="ov-value">{{ passRate }}%</div>
+            <div class="ov-value">{{ statPassRate }}%</div>
             <div class="ov-label">通过率</div>
           </div>
         </div>
@@ -40,48 +40,56 @@
             <div class="th col-action">操作</div>
           </div>
 
-          <div
-            v-for="record in records"
-            :key="record.id"
-            class="table-row"
+          <van-list
+            v-model="loading"
+            :finished="finished"
+            :immediate-check="false"
+            finished-text="没有更多了"
+            @load="onLoad"
           >
-            <div class="td col-name">
-              <van-icon name="notes-o" color="#1989fa" size="16" />
-              <span>{{ record.examName }}</span>
+            <div
+              v-for="record in records"
+              :key="record.id"
+              class="table-row"
+            >
+              <div class="td col-name">
+                <van-icon name="notes-o" color="#1989fa" size="16" />
+                <span>{{ record.examName }}</span>
+              </div>
+              <div class="td col-score">
+                <span class="score" :class="getScoreClass(record.score)">{{ record.score }}</span>
+              </div>
+              <div class="td col-result">
+                <van-tag :type="isPassed(record) ? 'success' : 'danger'" round size="medium">
+                  {{ isPassed(record) ? '通过' : '未通过' }}
+                </van-tag>
+              </div>
+              <div class="td col-time">{{ formatDuration(record.duration) }}</div>
+              <div class="td col-date">{{ formatDate(record.submitTime) }}</div>
+              <div class="td col-action">
+                <van-button
+                  size="mini"
+                  type="primary"
+                  plain
+                  round
+                  @click="viewResult(record)"
+                >
+                  查看解析
+                </van-button>
+                <van-button
+                  size="mini"
+                  type="warning"
+                  plain
+                  round
+                  @click="retryExam(record)"
+                >
+                  再考一次
+                </van-button>
+              </div>
             </div>
-            <div class="td col-score">
-              <span class="score" :class="getScoreClass(record.score)">{{ record.score }}</span>
-            </div>
-            <div class="td col-result">
-              <van-tag :type="isPassed(record) ? 'success' : 'danger'" round size="medium">
-                {{ isPassed(record) ? '通过' : '未通过' }}
-              </van-tag>
-            </div>
-            <div class="td col-time">{{ formatDuration(record.duration) }}</div>
-            <div class="td col-date">{{ formatDate(record.submitTime) }}</div>
-            <div class="td col-action">
-              <van-button
-                size="mini"
-                type="primary"
-                plain
-                round
-                @click="viewResult(record)"
-              >
-                查看解析
-              </van-button>
-              <van-button
-                size="mini"
-                type="warning"
-                plain
-                round
-                @click="retryExam(record)"
-              >
-                再考一次
-              </van-button>
-            </div>
-          </div>
 
-          <van-empty v-if="records.length === 0" description="暂无考试记录" />
+            <van-empty v-if="records.length === 0 && !loading" description="暂无考试记录" />
+          </van-list>
         </div>
       </div>
     </div>
@@ -102,23 +110,15 @@ export default {
   data() {
     return {
       records: [],
-      loading: false
-    }
-  },
-  computed: {
-    avgScore() {
-      if (this.records.length === 0) return 0
-      const total = this.records.reduce((sum, r) => sum + (r.score || 0), 0)
-      return Math.round(total / this.records.length)
-    },
-    maxScore() {
-      if (this.records.length === 0) return 0
-      return Math.max(...this.records.map(r => r.score || 0))
-    },
-    passRate() {
-      if (this.records.length === 0) return 0
-      const passed = this.records.filter(r => this.isPassed(r)).length
-      return Math.round((passed / this.records.length) * 100)
+      loading: false,
+      finished: false,
+      page: 1,
+      pageSize: 50,
+      // 统计概览(来自后端, 基于全部考试记录计算)
+      totalCount: 0,
+      statAvgScore: 0,
+      statMaxScore: 0,
+      statPassRate: 0
     }
   },
   created() {
@@ -126,14 +126,37 @@ export default {
   },
   methods: {
     async fetchRecords() {
+      this.page = 1
+      this.records = []
+      this.finished = false
       this.loading = true
+      await this.loadData()
+    },
+    async onLoad() {
+      this.page++
+      await this.loadData()
+    },
+    async loadData() {
       try {
-        const res = await getExamRecords()
+        const res = await getExamRecords(this.page, this.pageSize)
         const data = res.data || res
-        this.records = Array.isArray(data) ? data : (data.list || data.records || [])
+        // 分页数据
+        const records = Array.isArray(data) ? data : (data.records || data.list || [])
+        this.records.push(...records)
+        // 统计概览(后端基于全部记录计算)
+        if (data.totalCount !== undefined) this.totalCount = data.totalCount
+        if (data.avgScore !== undefined) this.statAvgScore = Number(data.avgScore) || 0
+        if (data.maxScore !== undefined) this.statMaxScore = Number(data.maxScore) || 0
+        if (data.passRate !== undefined) this.statPassRate = Number(data.passRate) || 0
+        // 判断是否加载完毕
+        if (data.total !== undefined) {
+          this.finished = this.records.length >= data.total
+        } else {
+          this.finished = records.length < this.pageSize
+        }
       } catch (error) {
         console.error('获取考试记录失败:', error)
-        this.records = []
+        this.finished = true
       } finally {
         this.loading = false
       }

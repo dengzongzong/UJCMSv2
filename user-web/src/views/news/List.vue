@@ -23,7 +23,7 @@
           >
             <div class="news-text">
               <div class="news-title">{{ item.title }}</div>
-              <div class="news-date">{{ formatDate(item.createTime) }}</div>
+              <div class="news-date">{{ formatDate(item.publishTime || item.createTime) }}</div>
             </div>
             <van-icon name="arrow" class="arrow-icon" />
           </li>

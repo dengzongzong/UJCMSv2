@@ -1,6 +1,7 @@
 package com.exam.controller;
 
 import com.exam.common.Result;
+import com.exam.common.PageResult;
 import com.exam.dto.VideoProgressDTO;
 import com.exam.service.CourseService;
 import com.exam.vo.CourseDetailVO;
@@ -30,28 +31,40 @@ public class CourseController {
 
     /**
      * 课程中心(列表): 所有上架课程, 未登录也能浏览; 已登录则标记 purchased
+     * <p>支持分页: 传入 page/pageSize 时返回 PageResult; 不传时返回全量 List(向后兼容)</p>
      */
     @GetMapping("/list")
-    public Result<List<CourseListItemVO>> list(
+    public Result<Object> list(
             @RequestParam(required = false) Long professionId,
             @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize,
             @RequestAttribute(value = "userId", required = false) Long userId) {
+        if (page != null) {
+            return Result.success(courseService.getCourseListPage(professionId, subjectId, categoryId, userId, keyword, page, pageSize));
+        }
         return Result.success(courseService.getCourseList(professionId, subjectId, categoryId, userId, keyword));
     }
 
     /**
      * 课程中心(公开): 允许未登录访问
      * <p>等同 /user/course/list,放在 /public/** 下以便 JwtInterceptor 不拦截</p>
+     * <p>支持分页: 传入 page/pageSize 时返回 PageResult; 不传时返回全量 List(向后兼容)</p>
      */
     @GetMapping("/public/list")
-    public Result<List<CourseListItemVO>> publicList(
+    public Result<Object> publicList(
             @RequestParam(required = false) Long professionId,
             @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize,
             @RequestAttribute(value = "userId", required = false) Long userId) {
+        if (page != null) {
+            return Result.success(courseService.getCourseListPage(professionId, subjectId, categoryId, userId, keyword, page, pageSize));
+        }
         return Result.success(courseService.getCourseList(professionId, subjectId, categoryId, userId, keyword));
     }
 
@@ -77,9 +90,15 @@ public class CourseController {
 
     /**
      * 我的课程列表(含学习进度)
+     * <p>支持分页: 传入 page/pageSize 时返回 PageResult; 不传时返回全量 List(向后兼容)</p>
      */
     @GetMapping("/my")
-    public Result<List<MyCourseVO>> my(@RequestAttribute("userId") Long userId) {
+    public Result<Object> my(@RequestAttribute("userId") Long userId,
+                             @RequestParam(required = false) Integer page,
+                             @RequestParam(required = false) Integer pageSize) {
+        if (page != null) {
+            return Result.success(courseService.getMyCoursesPage(userId, page, pageSize));
+        }
         return Result.success(courseService.getMyCourses(userId));
     }
 

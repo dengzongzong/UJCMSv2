@@ -2,6 +2,7 @@ import request from '@/utils/request'
 
 /**
  * 获取考试列表(需登录,返回已开通考试)
+ * @param {Object} params - { professionId, subjectId, keyword, page, pageSize, purchasedOnly }
  */
 export function getExamList(params) {
   return request({
@@ -13,9 +14,11 @@ export function getExamList(params) {
 
 /**
  * 获取我已开通的考试(等价 getExamList,语义更清晰)
+ * @param {Object} [params] - { page, pageSize, keyword }
  */
 export function getMyExams(params) {
-  return getExamList(params)
+  var merged = Object.assign({ purchasedOnly: true }, params || {})
+  return getExamList(merged)
 }
 
 /**
@@ -48,12 +51,16 @@ export function viewPaper(examId) {
  * @param {string|number} [professionId] 专业 ID(可选)
  * @param {string|number} [subjectId]    科目 ID(可选)
  * @param {string}        [keyword]      搜索关键词(可选,后端按考试名称模糊匹配)
+ * @param {number}        [page]         页码(可选,从 1 开始,传入后返回分页结构)
+ * @param {number}        [pageSize]     每页条数(可选,最大 50)
  */
-export function getPublicExamList(professionId, subjectId, keyword) {
+export function getPublicExamList(professionId, subjectId, keyword, page, pageSize) {
   var params = {}
   if (professionId) params.professionId = professionId
   if (subjectId) params.subjectId = subjectId
   if (keyword) params.keyword = keyword
+  if (page) params.page = page
+  if (pageSize) params.pageSize = pageSize
   return request({
     url: '/user/exam/public/list',
     method: 'get',
@@ -156,11 +163,17 @@ export function getExamResult(recordId) {
 
 /**
  * 获取考试记录列表
+ * @param {number} [page]     页码(可选,从 1 开始,传入后返回分页结构含统计概览)
+ * @param {number} [pageSize] 每页条数(可选,最大 50)
  */
-export function getExamRecords() {
+export function getExamRecords(page, pageSize) {
+  var params = {}
+  if (page) params.page = page
+  if (pageSize) params.pageSize = pageSize
   return request({
     url: '/user/exam/records',
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 

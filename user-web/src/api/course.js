@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 /**
  * 获取课程列表(需登录,返回已开通课程)
- * @param {Object} params - { professionId, page, pageSize }
+ * @param {Object} params - { professionId, subjectId, categoryId, keyword, page, pageSize }
  */
 export function getCourseList(params) {
   return request({
@@ -16,11 +16,15 @@ export function getCourseList(params) {
  * 课程中心(公开列表): 未登录也可浏览所有上架课程
  * @param {string|number} [professionId] 专业 ID(可选)
  * @param {string}        [keyword]      搜索关键词(可选,后端按课程名称模糊匹配)
+ * @param {number}        [page]         页码(可选,从 1 开始,传入后返回分页结构)
+ * @param {number}        [pageSize]     每页条数(可选,最大 50)
  */
-export function getPublicCourseList(professionId, keyword) {
+export function getPublicCourseList(professionId, keyword, page, pageSize) {
   var params = {}
   if (professionId) params.professionId = professionId
   if (keyword) params.keyword = keyword
+  if (page) params.page = page
+  if (pageSize) params.pageSize = pageSize
   return request({
     url: '/user/course/public/list',
     method: 'get',
@@ -41,11 +45,17 @@ export function getCourseDetail(courseId) {
 
 /**
  * 获取我的课程列表
+ * @param {number} [page]     页码(可选,从 1 开始,传入后返回分页结构)
+ * @param {number} [pageSize] 每页条数(可选,最大 50)
  */
-export function getMyCourses() {
+export function getMyCourses(page, pageSize) {
+  var params = {}
+  if (page) params.page = page
+  if (pageSize) params.pageSize = pageSize
   return request({
     url: '/user/course/my',
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 

@@ -38,6 +38,8 @@ public class CertificateVO {
     private Long templateId;
     /** 模板名(只读,来自 templateId JOIN) */
     private String templateName;
+    /** 证书类型 */
+    private String certType;
     private String createTime;
     private String updateTime;
     /** 当前证书可用的全部字段定义(用于前端动态渲染) */

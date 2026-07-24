@@ -91,25 +91,21 @@ public class CertificateController {
                                                 @RequestParam(required = false) String issueDateEnd,
                                                 @RequestParam(required = false) Integer unboundTemplate,
                                                 @RequestParam(required = false) String certType) {
-        // 未绑定模板筛选:用大页查询后在内存中过滤
+        // 未绑定模板筛选:用大页查询后在内存中过滤 templateId 为空的
+        // (certType 已下推到 SQL, 不再在内存中过滤)
         if (unboundTemplate != null && unboundTemplate == 1) {
             // 查全部数据(不分页),过滤 templateId 为空的
             int maxSize = 10000;
             PageResult<Map<String, Object>> all;
             if (profession == null || profession.isEmpty()) {
-                all = certificateService.pageWithTemplateName(1, maxSize, name, idCard, agency, issueDateStart, issueDateEnd);
+                all = certificateService.pageWithTemplateName(1, maxSize, name, idCard, agency, issueDateStart, issueDateEnd, certType);
             } else {
-                all = certificateService.pageWithTemplateNameAndProfession(1, maxSize, name, idCard, agency, profession, issueDateStart, issueDateEnd);
+                all = certificateService.pageWithTemplateNameAndProfession(1, maxSize, name, idCard, agency, profession, issueDateStart, issueDateEnd, certType);
             }
             List<Map<String, Object>> filtered = new java.util.ArrayList<>();
             for (Map<String, Object> row : all.getRecords()) {
                 Object tid = row.get("templateId");
                 if (tid == null) {
-                    // certType 过滤: extra_json 中 cert_type 字段匹配
-                    if (certType != null && !certType.isEmpty()) {
-                        Object rowCertType = row.get("certType");
-                        if (rowCertType == null || !certType.equals(rowCertType.toString())) continue;
-                    }
                     filtered.add(row);
                 }
             }
@@ -123,36 +119,11 @@ public class CertificateController {
             result.setTotal((long) total);
             return Result.success(result);
         }
-        // certType 过滤: 用大页查询后在内存中过滤
-        if (certType != null && !certType.isEmpty()) {
-            int maxSize = 10000;
-            PageResult<Map<String, Object>> all;
-            if (profession == null || profession.isEmpty()) {
-                all = certificateService.pageWithTemplateName(1, maxSize, name, idCard, agency, issueDateStart, issueDateEnd);
-            } else {
-                all = certificateService.pageWithTemplateNameAndProfession(1, maxSize, name, idCard, agency, profession, issueDateStart, issueDateEnd);
-            }
-            List<Map<String, Object>> filtered = new java.util.ArrayList<>();
-            for (Map<String, Object> row : all.getRecords()) {
-                Object rowCertType = row.get("certType");
-                if (rowCertType != null && certType.equals(rowCertType.toString())) {
-                    filtered.add(row);
-                }
-            }
-            int total = filtered.size();
-            int fromIndex = (page - 1) * size;
-            int toIndex = Math.min(fromIndex + size, total);
-            List<Map<String, Object>> pageRecords = fromIndex < total ? filtered.subList(fromIndex, toIndex) : new java.util.ArrayList<>();
-            PageResult<Map<String, Object>> result = new PageResult<>();
-            result.setRecords(pageRecords);
-            result.setTotal((long) total);
-            return Result.success(result);
-        }
-        // 兼容旧调用:profession 为空时走原方法
+        // 正常分页: certType 过滤已下推到 SQL(WHERE cert_type = ?), 不再查 1 万条再内存过滤
         if (profession == null || profession.isEmpty()) {
-            return Result.success(certificateService.pageWithTemplateName(page, size, name, idCard, agency, issueDateStart, issueDateEnd));
+            return Result.success(certificateService.pageWithTemplateName(page, size, name, idCard, agency, issueDateStart, issueDateEnd, certType));
         }
-        return Result.success(certificateService.pageWithTemplateNameAndProfession(page, size, name, idCard, agency, profession, issueDateStart, issueDateEnd));
+        return Result.success(certificateService.pageWithTemplateNameAndProfession(page, size, name, idCard, agency, profession, issueDateStart, issueDateEnd, certType));
     }
 
     @GetMapping("/{id}")

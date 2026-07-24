@@ -43,7 +43,7 @@ echo ""
 # 解压
 TMP_DIR="/tmp/exam-restore-$$"
 mkdir -p "${TMP_DIR}"
-unzip -o "${ZIP_FILE}" -d /tmp/ -q
+unzip -o -q "${ZIP_FILE}" -d /tmp/
 BACKUP_DIR=$(ls -d /tmp/exam-backup-* 2>/dev/null | head -1)
 
 if [ -z "${BACKUP_DIR}" ] || [ ! -d "${BACKUP_DIR}" ]; then

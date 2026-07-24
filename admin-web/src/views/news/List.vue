@@ -20,6 +20,10 @@
         >
           <el-option label="新闻动态" :value="1" />
           <el-option label="重大活动" :value="2" />
+          <el-option label="报考条件" :value="3" />
+          <el-option label="热门工种" :value="4" />
+          <el-option label="行业信息" :value="5" />
+          <el-option label="校企合作" :value="6" />
         </el-select>
         <el-select
           v-model="query.status"
@@ -65,8 +69,8 @@
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
         <el-table-column label="类型" width="100" align="center">
           <template slot-scope="{ row }">
-            <el-tag :type="row.type === 2 ? 'danger' : ''" size="mini">
-              {{ row.type === 2 ? '重大活动' : '新闻动态' }}
+            <el-tag :type="newsTagType(row.type)" size="mini">
+              {{ newsTypeName(row.type) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -138,6 +142,10 @@
               <el-select v-model="editDialog.form.type" style="width: 100%">
                 <el-option label="新闻动态" :value="1" />
                 <el-option label="重大活动" :value="2" />
+                <el-option label="报考条件" :value="3" />
+                <el-option label="热门工种" :value="4" />
+                <el-option label="行业信息" :value="5" />
+                <el-option label="校企合作" :value="6" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -237,12 +245,21 @@ export default {
     this.fetchList()
   },
   methods: {
+    newsTypeName(type) {
+      const map = { 1: '新闻动态', 2: '重大活动', 3: '报考条件', 4: '热门工种', 5: '行业信息', 6: '校企合作' }
+      return map[type] || '新闻动态'
+    },
+    newsTagType(type) {
+      const map = { 1: '', 2: 'danger', 3: 'warning', 4: 'success', 5: 'info', 6: 'warning' }
+      return map[type] || ''
+    },
     fetchList() {
       this.loading = true
       const params = {
         page: this.query.page,
         size: this.query.size,
         title: this.query.title,
+        type: this.query.type,
         status: this.query.status
       }
       newsPage(params)
@@ -278,7 +295,7 @@ export default {
       this.fetchList()
     },
     handleReset() {
-      this.query = { page: 1, size: 10, title: '', status: undefined }
+      this.query = { page: 1, size: 10, title: '', type: undefined, status: undefined }
       this.fetchList()
     },
     handleSizeChange(size) {
@@ -292,7 +309,7 @@ export default {
     },
     handleAdd() {
       this.editDialog.isEdit = false
-      this.editDialog.form = { id: undefined, title: '', coverUrl: '', content: '', status: 1, sort: 0, isTop: 0, publishTime: undefined, createTime: undefined }
+      this.editDialog.form = { id: undefined, title: '', coverUrl: '', content: '', type: 1, status: 1, sort: 0, isTop: 0, publishTime: undefined, createTime: undefined }
       this.editDialog.visible = true
       this.$nextTick(() => {
         this.$refs.editForm && this.$refs.editForm.clearValidate()
