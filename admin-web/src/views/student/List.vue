@@ -327,9 +327,11 @@
             <el-form-item label="专业" prop="professionIds">
               <el-select
                 v-model="addDialog.form.professionIds"
-                placeholder="请选择专业"
+                placeholder="请选择或输入新专业"
                 multiple
                 filterable
+                allow-create
+                default-first-option
                 clearable
                 style="width: 100%"
               >
@@ -472,7 +474,7 @@
         />
       </el-form-item>
       <el-form-item label="专业">
-        <el-select v-model="editDialog.form.professionIds" placeholder="可选" multiple filterable clearable style="width: 100%">
+        <el-select v-model="editDialog.form.professionIds" placeholder="请选择或输入新专业" multiple filterable allow-create default-first-option clearable style="width: 100%">
           <el-option
             v-for="p in professionOptions"
             :key="p.id"
@@ -531,7 +533,7 @@ import {
 } from '@/api/student'
 import { closeCourseStudent } from '@/api/course'
 import { closeExamStudent } from '@/api/exam'
-import { professions } from '@/api/setting'
+import { professions, addProfession } from '@/api/setting'
 import { certificateTypeList } from '@/api/certificateType'
 import { downloadBlob } from '@/utils'
 
@@ -796,30 +798,54 @@ export default {
         this.$refs.addForm && this.$refs.addForm.clearValidate()
       })
     },
-    submitAdd() {
-      this.$refs.addForm.validate((valid) => {
+    async submitAdd() {
+      this.$refs.addForm.validate(async (valid) => {
         if (!valid) return
         this.addDialog.submitting = true
-        const data = { ...this.addDialog.form }
-        if (!data.password) delete data.password
-        if (!data.studentNo) delete data.studentNo
-        if (!data.professionIds || data.professionIds.length === 0) {
-          delete data.professionIds
+        try {
+          const data = { ...this.addDialog.form }
+          if (!data.password) delete data.password
+          if (!data.studentNo) delete data.studentNo
+          // 处理专业: allow-create 产生的是字符串(新专业名),需先创建拿ID
+          if (data.professionIds && data.professionIds.length > 0) {
+            const existingIds = this.professionOptions.map(p => p.id)
+            const newNames = data.professionIds.filter(v => !existingIds.includes(v))
+            // 先创建新专业,拿到ID后替换
+            for (const name of newNames) {
+              try {
+                const res = await addProfession({ name: String(name), sort: 0, status: 1 })
+                // addProfession 返回成功后,重新拉取专业列表获取新ID
+                await this.fetchProfessions()
+                const created = this.professionOptions.find(p => p.name === String(name))
+                if (created) {
+                  const idx = data.professionIds.indexOf(name)
+                  if (idx >= 0) data.professionIds[idx] = created.id
+                }
+              } catch (e) {
+                // 专业可能已存在(并发),尝试从列表中找
+                await this.fetchProfessions()
+                const found = this.professionOptions.find(p => p.name === String(name))
+                if (found) {
+                  const idx = data.professionIds.indexOf(name)
+                  if (idx >= 0) data.professionIds[idx] = found.id
+                }
+              }
+            }
+          }
+          if (!data.professionIds || data.professionIds.length === 0) {
+            delete data.professionIds
+          }
+          delete data.professionId
+          await addStudent(data)
+          this.$message.success('新增成功')
+          this.addDialog.visible = false
+          this.query.page = 1
+          this.fetchList()
+        } catch (err) {
+          this.$message.error((err && err.message) || '新增失败')
+        } finally {
+          this.addDialog.submitting = false
         }
-        delete data.professionId
-        addStudent(data)
-          .then(() => {
-            this.$message.success('新增成功')
-            this.addDialog.visible = false
-            this.query.page = 1
-            this.fetchList()
-          })
-          .catch((err) => {
-            this.$message.error((err && err.message) || '新增失败')
-          })
-          .finally(() => {
-            this.addDialog.submitting = false
-          })
       })
     },
     handleFreeze(row) {
@@ -852,34 +878,52 @@ export default {
       }
       this.editDialog.visible = true
     },
-    submitEdit() {
-      this.$refs.editForm.validate((valid) => {
+    async submitEdit() {
+      this.$refs.editForm.validate(async (valid) => {
         if (!valid) return
         this.editDialog.submitting = true
-        // 提交前剥离未填写项,避免空值覆盖后端
-        const payload = { ...this.editDialog.form }
-        // 学号留空 → 不提交,后端保留原值(如果一定要改,后端 updateStudent 也只在新值非空时更新)
-        if (!payload.studentNo) delete payload.studentNo
-        if (!payload.nickname) delete payload.nickname
-        if (!payload.password) delete payload.password
-        if (!payload.professionIds || payload.professionIds.length === 0) {
-          delete payload.professionIds
+        try {
+          const payload = { ...this.editDialog.form }
+          if (!payload.studentNo) delete payload.studentNo
+          if (!payload.nickname) delete payload.nickname
+          if (!payload.password) delete payload.password
+          // 处理专业: allow-create 产生的是字符串(新专业名),需先创建拿ID
+          if (payload.professionIds && payload.professionIds.length > 0) {
+            const existingIds = this.professionOptions.map(p => p.id)
+            const newNames = payload.professionIds.filter(v => !existingIds.includes(v))
+            for (const name of newNames) {
+              try {
+                await addProfession({ name: String(name), sort: 0, status: 1 })
+                await this.fetchProfessions()
+                const created = this.professionOptions.find(p => p.name === String(name))
+                if (created) {
+                  const idx = payload.professionIds.indexOf(name)
+                  if (idx >= 0) payload.professionIds[idx] = created.id
+                }
+              } catch (e) {
+                await this.fetchProfessions()
+                const found = this.professionOptions.find(p => p.name === String(name))
+                if (found) {
+                  const idx = payload.professionIds.indexOf(name)
+                  if (idx >= 0) payload.professionIds[idx] = found.id
+                }
+              }
+            }
+          }
+          if (!payload.professionIds || payload.professionIds.length === 0) {
+            delete payload.professionIds
+          }
+          delete payload.professionId
+          if (payload.idCard == null) delete payload.idCard
+          await updateStudent(this.editDialog.form.id, payload)
+          this.$message.success('保存成功')
+          this.editDialog.visible = false
+          this.fetchList()
+        } catch (err) {
+          this.$message.error((err && err.message) || '保存失败')
+        } finally {
+          this.editDialog.submitting = false
         }
-        delete payload.professionId
-        // 身份证号:留空时,显式置空(不删除字段,后端会清空);非空时更新
-        if (payload.idCard == null) delete payload.idCard
-        updateStudent(this.editDialog.form.id, payload)
-          .then(() => {
-            this.$message.success('保存成功')
-            this.editDialog.visible = false
-            this.fetchList()
-          })
-          .catch((err) => {
-            this.$message.error((err && err.message) || '保存失败')
-          })
-          .finally(() => {
-            this.editDialog.submitting = false
-          })
       })
     },
     onEditDialogClosed() {

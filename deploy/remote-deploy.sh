@@ -20,10 +20,14 @@ set -e
 # ===== 配置区 =====
 DEPLOY_DIR="/opt/exam-platform"
 SERVER_IP="43.162.107.232"
+SERVER_DOMAIN="zgrlosta.org.cn"
 MYSQL_DB="exam_platform"
 MYSQL_USER="root"
 MYSQL_PASS="${MYSQL_PASS:-修改成你的数据库root密码}"
 JWT_SECRET="${JWT_SECRET:-修改成你的随机密钥字符串至少40个字符}"
+# SSL 证书路径(需提前上传到服务器)
+SSL_CERT="/etc/nginx/ssl/zgrlosta.org.cn_bundle.crt"
+SSL_KEY="/etc/nginx/ssl/zgrlosta.org.cn.key"
 # ================================
 
 echo "========================================"
@@ -122,7 +126,7 @@ jwt:
 
 upload:
   path: /opt/exam-platform/uploads
-  access-prefix: http://${SERVER_IP}/api/uploads/
+  access-prefix: https://${SERVER_DOMAIN}/api/uploads/
 
 async:
   task:
@@ -181,36 +185,55 @@ if [ -f "fix_publish_time_v2.sql" ]; then
     echo "  文章发布时间分散修复完成"
 fi
 
-# 7. 配置 Nginx (HTTP 模式,无域名无SSL)
-echo "[7/8] 配置 Nginx..."
+# 7. 配置 Nginx (HTTPS 模式,带域名和SSL证书)
+echo "[7/8] 配置 Nginx (HTTPS)..."
 # 先备份当前配置
 cp /etc/nginx/conf.d/exam-platform.conf /etc/nginx/conf.d/exam-platform.conf.bak 2>/dev/null || true
-cat > /etc/nginx/conf.d/exam-platform.conf << 'NGINX_EOF'
+
+# 检查 SSL 证书是否存在,不存在则回退到 HTTP 模式
+if [ -f "${SSL_CERT}" ] && [ -f "${SSL_KEY}" ]; then
+cat > /etc/nginx/conf.d/exam-platform.conf << NGINX_EOF
+# HTTP -> HTTPS 自动跳转
 server {
     listen 80;
-    server_name 43.162.107.232;
+    server_name ${SERVER_DOMAIN} www.${SERVER_DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+# HTTPS 主配置
+server {
+    listen 443 ssl;
+    server_name ${SERVER_DOMAIN} www.${SERVER_DOMAIN};
+
+    ssl_certificate     ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
 
     # 管理后台 admin-web
     location /admin/ {
         alias /opt/exam-platform/admin-web/dist/;
-        try_files $uri $uri/ /admin/index.html;
+        try_files \$uri \$uri/ /admin/index.html;
         index index.html;
     }
 
-    # 学员端 user-web (根路径直接访问 user-web，不跳转到 admin)
+    # 学员端 user-web (根路径直接访问 user-web)
     location / {
         root /opt/exam-platform/user-web/dist/;
-        try_files $uri $uri/ /index.html;
+        try_files \$uri \$uri/ /index.html;
         index index.html;
     }
 
     # 后端 API
     location /api/ {
         proxy_pass http://127.0.0.1:8080/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         client_max_body_size 1500m;
         proxy_read_timeout 300s;
         proxy_send_timeout 300s;
@@ -227,6 +250,47 @@ server {
     }
 }
 NGINX_EOF
+    echo "  Nginx HTTPS 配置已写入"
+else
+    echo "  警告: SSL 证书不存在 (${SSL_CERT}),回退到 HTTP 模式"
+cat > /etc/nginx/conf.d/exam-platform.conf << 'NGINX_EOF'
+server {
+    listen 80;
+    server_name 43.162.107.232;
+
+    location /admin/ {
+        alias /opt/exam-platform/admin-web/dist/;
+        try_files $uri $uri/ /admin/index.html;
+        index index.html;
+    }
+
+    location / {
+        root /opt/exam-platform/user-web/dist/;
+        try_files $uri $uri/ /index.html;
+        index index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 1500m;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:8080/api/uploads/;
+    }
+
+    location /static/ {
+        proxy_pass http://127.0.0.1:8080/api/static/;
+    }
+}
+NGINX_EOF
+fi
 
 if nginx -t 2>/dev/null; then
     systemctl reload nginx || true
@@ -272,8 +336,9 @@ echo "========================================"
 echo "  部署完成!"
 echo "========================================"
 echo ""
-echo "  管理后台: http://${SERVER_IP}/admin/"
-echo "  学员端:   http://${SERVER_IP}/"
+echo "  管理后台: https://${SERVER_DOMAIN}/admin/"
+echo "  学员端:   https://${SERVER_DOMAIN}/"
+echo "  (HTTP 自动跳转 HTTPS)"
 echo ""
 echo "  查看日志: journalctl -u exam-platform -f"
 echo ""
