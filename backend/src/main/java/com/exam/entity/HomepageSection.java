@@ -19,6 +19,8 @@ public class HomepageSection {
     private Integer type;         // 1-政策法规 2-信息公开
     private Integer status;       // 0-隐藏 1-显示
     private Integer sort;         // 排序(升序)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime publishTime;  // 发布时间(null=用创建时间)
     @TableField(fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

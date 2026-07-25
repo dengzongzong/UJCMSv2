@@ -8,6 +8,8 @@ import com.exam.common.PageResult;
 import com.exam.entity.HomepageSection;
 import com.exam.mapper.HomepageSectionMapper;
 import com.exam.service.HomepageSectionService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,6 +30,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
                 .eq(type != null, HomepageSection::getType, type)
                 .eq(status != null, HomepageSection::getStatus, status)
                 .orderByAsc(HomepageSection::getSort)
+                .orderByDesc(HomepageSection::getPublishTime)
                 .orderByDesc(HomepageSection::getCreateTime);
         Page<HomepageSection> p = new Page<>(page, size);
         Page<HomepageSection> result = this.page(p, wrapper);
@@ -36,6 +39,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "homepageSections", allEntries = true)
     public void add(HomepageSection section) {
         if (!StringUtils.hasText(section.getTitle())) {
             throw new BusinessException("标题不能为空");
@@ -54,6 +58,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "homepageSections", allEntries = true)
     public void update(HomepageSection section) {
         if (section.getId() == null) {
             throw new BusinessException("ID不能为空");
@@ -66,6 +71,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "homepageSections", allEntries = true)
     public void delete(Long id) {
         if (this.getById(id) == null) {
             throw new BusinessException("记录不存在");
@@ -75,6 +81,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "homepageSections", allEntries = true)
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
@@ -83,13 +90,18 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
     }
 
     @Override
+    @Cacheable(value = "homepageSections", key = "#type", unless = "#result == null || #result.isEmpty()")
     public List<HomepageSection> listEnabled(Integer type) {
         LambdaQueryWrapper<HomepageSection> wrapper = new LambdaQueryWrapper<HomepageSection>()
+                .select(HomepageSection::getId, HomepageSection::getTitle, HomepageSection::getType,
+                        HomepageSection::getSort, HomepageSection::getPublishTime,
+                        HomepageSection::getCreateTime, HomepageSection::getCoverUrl)
                 .eq(HomepageSection::getStatus, 1);
         if (type != null) {
             wrapper.eq(HomepageSection::getType, type);
         }
         wrapper.orderByAsc(HomepageSection::getSort)
+               .orderByDesc(HomepageSection::getPublishTime)
                .orderByDesc(HomepageSection::getCreateTime);
         List<HomepageSection> list = this.list(wrapper);
         return list.stream().collect(Collectors.toMap(

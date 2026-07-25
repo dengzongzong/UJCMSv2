@@ -8,6 +8,8 @@ import com.exam.common.PageResult;
 import com.exam.entity.Announcement;
 import com.exam.mapper.AnnouncementMapper;
 import com.exam.service.AnnouncementManageService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -37,6 +39,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "announcements", allEntries = true)
     public void add(Announcement announcement) {
         if (!StringUtils.hasText(announcement.getTitle())) {
             throw new BusinessException("标题不能为空");
@@ -52,6 +55,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "announcements", allEntries = true)
     public void update(Announcement announcement) {
         if (announcement.getId() == null) {
             throw new BusinessException("ID不能为空");
@@ -65,6 +69,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "announcements", allEntries = true)
     public void delete(Long id) {
         if (this.getById(id) == null) {
             throw new BusinessException("公告不存在");
@@ -74,6 +79,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "announcements", allEntries = true)
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
@@ -82,8 +88,12 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
     }
 
     @Override
+    @Cacheable(value = "announcements", unless = "#result == null || #result.isEmpty()")
     public List<Announcement> listEnabled() {
         List<Announcement> list = this.list(new LambdaQueryWrapper<Announcement>()
+                .select(Announcement::getId, Announcement::getTitle,
+                        Announcement::getSort, Announcement::getIsTop,
+                        Announcement::getPublishTime, Announcement::getCreateTime)
                 .eq(Announcement::getStatus, 1)
                 .and(w -> w.isNull(Announcement::getPublishTime).or().le(Announcement::getPublishTime, LocalDateTime.now()))
                 .orderByDesc(Announcement::getIsTop)

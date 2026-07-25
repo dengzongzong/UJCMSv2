@@ -212,9 +212,9 @@ CALL safe_add_column('certificate_user', 'id_card', 'VARCHAR(20) DEFAULT NULL CO
 CALL safe_add_column('certificate_user', 'name', 'VARCHAR(100) DEFAULT NULL COMMENT ''姓名''');
 
 -- ============================================================
--- 7.1 证书类型去重 + 数据修复
+-- 7.1 证书类型去重 + 唯一索引(保留用户自定义类型)
 -- ============================================================
--- 去重: 每个名称只保留id最小的一条,删除多余的
+-- 去重: 同名类型只保留id最小的一条(为加唯一索引做准备,不会删除用户自定义的不同名称类型)
 DELETE t1 FROM certificate_type t1
 INNER JOIN certificate_type t2
 WHERE t1.name = t2.name AND t1.id > t2.id;
@@ -255,25 +255,28 @@ INSERT IGNORE INTO certificate_type (name, code, sort, status) VALUES
 ('职业能力证书', '3', 3, 1),
 ('能力等级证书', '4', 4, 1);
 
-UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专业技能证书')
-WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('职业技能等级证书');
-UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专项职业技能证书')
-WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
-UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '人才数据入库证书')
-WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('岗位专业证书', '岗位/专业证书');
+-- 一次性数据迁移: 旧类型名 -> 新类型名 (已执行过,保留注释供参考)
+-- 注意: 以下迁移语句已注释,不再每次部署都执行,避免覆盖用户自定义类型
+-- UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专业技能证书')
+-- WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('职业技能等级证书');
+-- UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '专项职业技能证书')
+-- WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
+-- UPDATE certificate SET extra_json = JSON_SET(extra_json, '$.cert_type', '人才数据入库证书')
+-- WHERE JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) IN ('岗位专业证书', '岗位/专业证书');
 
 -- 数据迁移: 将 extra_json 中的 cert_type 提取到新列 cert_type(兼容 certType 驼峰写法)
 -- 仅更新 cert_type 列为空的记录,可重复执行(幂等)
 UPDATE certificate SET cert_type = JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.cert_type')) WHERE cert_type IS NULL;
 UPDATE certificate SET cert_type = JSON_UNQUOTE(JSON_EXTRACT(extra_json, '$.certType')) WHERE cert_type IS NULL;
 
-UPDATE certificate_user SET cert_type = '专业技能证书' WHERE cert_type IN ('职业技能等级证书');
-UPDATE certificate_user SET cert_type = '专项职业技能证书' WHERE cert_type IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
-UPDATE certificate_user SET cert_type = '人才数据入库证书' WHERE cert_type IN ('岗位专业证书', '岗位/专业证书');
-
-UPDATE student SET cert_type = '专业技能证书' WHERE cert_type IN ('职业技能等级证书');
-UPDATE student SET cert_type = '专项职业技能证书' WHERE cert_type IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
-UPDATE student SET cert_type = '人才数据入库证书' WHERE cert_type IN ('岗位专业证书', '岗位/专业证书');
+-- 一次性数据迁移: certificate_user / student 表旧类型名改写 (已执行过,保留注释供参考)
+-- 注意: 以下迁移语句已注释,不再每次部署都执行,避免覆盖用户自定义类型
+-- UPDATE certificate_user SET cert_type = '专业技能证书' WHERE cert_type IN ('职业技能等级证书');
+-- UPDATE certificate_user SET cert_type = '专项职业技能证书' WHERE cert_type IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
+-- UPDATE certificate_user SET cert_type = '人才数据入库证书' WHERE cert_type IN ('岗位专业证书', '岗位/专业证书');
+-- UPDATE student SET cert_type = '专业技能证书' WHERE cert_type IN ('职业技能等级证书');
+-- UPDATE student SET cert_type = '专项职业技能证书' WHERE cert_type IN ('职业技能等级证书(含成绩)', '职业技能等级证书含成绩');
+-- UPDATE student SET cert_type = '人才数据入库证书' WHERE cert_type IN ('岗位专业证书', '岗位/专业证书');
 
 -- ============================================================
 -- 8. 清理存储过程(必须放在所有 CALL 之后)
@@ -741,3 +744,54 @@ CREATE TABLE IF NOT EXISTS `certificate_export_column` (
   UNIQUE KEY `uk_template_field` (`template_id`, `field_key`),
   KEY `idx_template_id` (`template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书导出列配置';
+
+-- ============================================================
+-- homepage_section 增加 publish_time 字段(信息公开/政策法规的发布时间)
+-- ============================================================
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'homepage_section' AND COLUMN_NAME = 'publish_time');
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE homepage_section ADD COLUMN publish_time DATETIME DEFAULT NULL COMMENT ''发布时间(null=用创建时间)'' AFTER sort',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- 文章相关表加索引(提升查询性能)
+-- ============================================================
+-- news 表索引
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'news' AND INDEX_NAME = 'idx_status_publish');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE news ADD INDEX idx_status_publish (status, publish_time)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'news' AND INDEX_NAME = 'idx_type_status');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE news ADD INDEX idx_type_status (type, status)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- announcement 表索引
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'announcement' AND INDEX_NAME = 'idx_status_publish');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE announcement ADD INDEX idx_status_publish (status, publish_time)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- homepage_section 表索引
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'homepage_section' AND INDEX_NAME = 'idx_type_status');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE homepage_section ADD INDEX idx_type_status (type, status)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'homepage_section' AND INDEX_NAME = 'idx_status_publish');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE homepage_section ADD INDEX idx_status_publish (status, publish_time)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

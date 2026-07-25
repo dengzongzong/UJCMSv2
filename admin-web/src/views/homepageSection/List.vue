@@ -38,6 +38,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="sort" label="排序" width="70" align="center" />
+        <el-table-column label="发布时间" width="160" align="center">
+          <template slot-scope="{ row }">{{ row.publishTime || row.createTime }}</template>
+        </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="160" align="center" />
         <el-table-column label="操作" width="150" align="center" fixed="right">
           <template slot-scope="{ row }">
@@ -68,7 +71,7 @@
           <el-input v-model="editDialog.form.title" placeholder="请输入标题" />
         </el-form-item>
         <el-row :gutter="16">
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="类型" prop="type">
               <el-select v-model="editDialog.form.type" style="width: 100%">
                 <el-option label="政策法规" :value="1" />
@@ -76,7 +79,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="状态" prop="status">
               <el-select v-model="editDialog.form.status" style="width: 100%">
                 <el-option label="显示" :value="1" />
@@ -84,9 +87,14 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="排序" prop="sort">
               <el-input-number v-model="editDialog.form.sort" :min="0" :max="9999" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="发布时间">
+              <el-date-picker v-model="editDialog.form.publishTime" type="datetime" placeholder="选择发布时间" value-format="yyyy-MM-dd HH:mm:ss" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -120,7 +128,7 @@ export default {
         visible: false,
         isEdit: false,
         submitting: false,
-        form: { title: '', content: '', type: 1, status: 1, sort: 0 },
+        form: { title: '', content: '', type: 1, status: 1, sort: 0, publishTime: null },
         rules: {
           title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
           type: [{ required: true, message: '请选择类型', trigger: 'change' }],
@@ -168,7 +176,7 @@ export default {
     },
     handleAdd() {
       this.editDialog.isEdit = false
-      this.editDialog.form = { title: '', content: '', type: 1, status: 1, sort: 0 }
+      this.editDialog.form = { title: '', content: '', type: 1, status: 1, sort: 0, publishTime: null }
       this.editDialog.visible = true
       this.$nextTick(() => {
         this.$refs.editForm && this.$refs.editForm.clearValidate()

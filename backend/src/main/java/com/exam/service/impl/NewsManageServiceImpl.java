@@ -8,6 +8,8 @@ import com.exam.common.PageResult;
 import com.exam.entity.News;
 import com.exam.mapper.NewsMapper;
 import com.exam.service.NewsManageService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -38,6 +40,7 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = {"newsList", "newsListByType"}, allEntries = true)
     public void add(News news) {
         if (!StringUtils.hasText(news.getTitle())) {
             throw new BusinessException("标题不能为空");
@@ -53,6 +56,7 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = {"newsList", "newsListByType"}, allEntries = true)
     public void update(News news) {
         if (news.getId() == null) {
             throw new BusinessException("ID不能为空");
@@ -66,6 +70,7 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = {"newsList", "newsListByType"}, allEntries = true)
     public void delete(Long id) {
         if (this.getById(id) == null) {
             throw new BusinessException("新闻不存在");
@@ -75,6 +80,7 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = {"newsList", "newsListByType"}, allEntries = true)
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
@@ -83,8 +89,11 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
     }
 
     @Override
+    @Cacheable(value = "newsList", unless = "#result == null || #result.isEmpty()")
     public List<News> listEnabled() {
         List<News> list = this.list(new LambdaQueryWrapper<News>()
+                .select(News::getId, News::getTitle, News::getCoverUrl, News::getType,
+                        News::getSort, News::getIsTop, News::getPublishTime, News::getCreateTime)
                 .eq(News::getStatus, 1)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
                 .orderByDesc(News::getIsTop)
@@ -94,8 +103,11 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
     }
 
     @Override
+    @Cacheable(value = "newsListByType", key = "#type", unless = "#result == null || #result.isEmpty()")
     public List<News> listEnabledByType(Integer type) {
         List<News> list = this.list(new LambdaQueryWrapper<News>()
+                .select(News::getId, News::getTitle, News::getCoverUrl, News::getType,
+                        News::getSort, News::getIsTop, News::getPublishTime, News::getCreateTime)
                 .eq(News::getStatus, 1)
                 .eq(type != null, News::getType, type)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
