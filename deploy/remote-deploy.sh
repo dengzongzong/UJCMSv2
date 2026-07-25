@@ -185,6 +185,13 @@ if [ -f "fix_publish_time_v2.sql" ]; then
     echo "  文章发布时间分散修复完成"
 fi
 
+# 6.6 修复 student 表 id_card 空字符串导致唯一约束冲突(幂等)
+if [ -f "fix_id_card_empty.sql" ]; then
+    echo "  修复身份证空字符串冲突..."
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_id_card_empty.sql 2>&1 | grep -v "Using a password"
+    echo "  身份证空字符串修复完成"
+fi
+
 # 7. 配置 Nginx (HTTPS 模式,带域名和SSL证书)
 echo "[7/8] 配置 Nginx (HTTPS)..."
 # 先备份当前配置

@@ -142,9 +142,11 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (!StringUtils.hasText(student.getPhone())) {
             student.setPhone(null);
         }
-        // 身份证号校验:校验异常不拦截,正常保存(前端会用浅红色背景标注异常身份证)
+        // 身份证号为选填字段:为空时存 null(避免 uk_id_card 唯一约束在多个空串上冲突)
         if (StringUtils.hasText(student.getIdCard())) {
             student.setIdCard(student.getIdCard().trim());
+        } else {
+            student.setIdCard(null);
         }
         // 检查手机号或身份证号是否已存在(仅在手机号非空时校验手机号唯一性)
         LambdaQueryWrapper<Student> existWrapper = new LambdaQueryWrapper<>();
@@ -263,9 +265,9 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (StringUtils.hasText(student.getNickname())) {
             exist.setNickname(student.getNickname());
         }
-        // 身份证号(允许空字符串清空 / 非空更新)
+        // 身份证号(允许空字符串清空 / 非空更新;空串转 null 避免 uk_id_card 唯一约束冲突)
         if (student.getIdCard() != null) {
-            exist.setIdCard(student.getIdCard());
+            exist.setIdCard(StringUtils.hasText(student.getIdCard()) ? student.getIdCard().trim() : null);
         }
         // 证书类型(允许设置为空)
         if (student.getCertType() != null) {
