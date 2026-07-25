@@ -694,6 +694,7 @@ INSERT INTO `certificate_field` (`field_key`, `field_name`, `field_type`, `requi
 ('gender',       '性别',                1, 0,  3, 1, '男,女'),
 ('profession',   '职业名称',            1, 1,  4, 1, NULL),
 ('skillLevel',   '技能等级',            4, 0,  5, 1, '五级/初级,四级/中级,三级/高级,二级/技师,一级/高级技师'),
+('issueDate',    '颁发日期',            3, 0, 60, 1, NULL),
 ('issueYear',    '颁发日期(年)',        1, 0, 61, 1, NULL),
 ('issueMonth',   '颁发日期(月)',        1, 0, 62, 1, NULL),
 ('issueDay',     '颁发日期(日)',        1, 0, 63, 1, NULL),
