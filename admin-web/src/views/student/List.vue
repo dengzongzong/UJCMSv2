@@ -681,7 +681,7 @@ export default {
   },
   methods: {
     fetchProfessions() {
-      professions()
+      return professions()
         .then((res) => {
           this.professionOptions = res.data || []
         })
@@ -814,12 +814,18 @@ export default {
             for (const name of newNames) {
               try {
                 const res = await addProfession({ name: String(name), sort: 0, status: 1 })
-                // addProfession 返回成功后,重新拉取专业列表获取新ID
-                await this.fetchProfessions()
-                const created = this.professionOptions.find(p => p.name === String(name))
-                if (created) {
+                // 后端返回创建的专业对象(含自增ID)
+                if (res && res.data && res.data.id) {
                   const idx = data.professionIds.indexOf(name)
-                  if (idx >= 0) data.professionIds[idx] = created.id
+                  if (idx >= 0) data.professionIds[idx] = res.data.id
+                } else {
+                  // 兜底:重新拉取专业列表获取新ID
+                  await this.fetchProfessions()
+                  const created = this.professionOptions.find(p => p.name === String(name))
+                  if (created) {
+                    const idx = data.professionIds.indexOf(name)
+                    if (idx >= 0) data.professionIds[idx] = created.id
+                  }
                 }
               } catch (e) {
                 // 专业可能已存在(并发),尝试从列表中找
@@ -831,6 +837,8 @@ export default {
                 }
               }
             }
+            // 安全过滤:移除仍未解析为数字ID的专业名,避免后端反序列化失败
+            data.professionIds = data.professionIds.filter(v => typeof v === 'number')
           }
           if (!data.professionIds || data.professionIds.length === 0) {
             delete data.professionIds
@@ -893,12 +901,17 @@ export default {
             const newNames = payload.professionIds.filter(v => !existingIds.includes(v))
             for (const name of newNames) {
               try {
-                await addProfession({ name: String(name), sort: 0, status: 1 })
-                await this.fetchProfessions()
-                const created = this.professionOptions.find(p => p.name === String(name))
-                if (created) {
+                const res = await addProfession({ name: String(name), sort: 0, status: 1 })
+                if (res && res.data && res.data.id) {
                   const idx = payload.professionIds.indexOf(name)
-                  if (idx >= 0) payload.professionIds[idx] = created.id
+                  if (idx >= 0) payload.professionIds[idx] = res.data.id
+                } else {
+                  await this.fetchProfessions()
+                  const created = this.professionOptions.find(p => p.name === String(name))
+                  if (created) {
+                    const idx = payload.professionIds.indexOf(name)
+                    if (idx >= 0) payload.professionIds[idx] = created.id
+                  }
                 }
               } catch (e) {
                 await this.fetchProfessions()
@@ -909,6 +922,8 @@ export default {
                 }
               }
             }
+            // 安全过滤:移除仍未解析为数字ID的专业名
+            payload.professionIds = payload.professionIds.filter(v => typeof v === 'number')
           }
           if (!payload.professionIds || payload.professionIds.length === 0) {
             delete payload.professionIds

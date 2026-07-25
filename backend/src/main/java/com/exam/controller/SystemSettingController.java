@@ -48,16 +48,26 @@ public class SystemSettingController {
      * 新增专业
      */
     @PostMapping("/profession")
-    public Result<Void> addProfession(@RequestBody Profession profession) {
+    public Result<Profession> addProfession(@RequestBody Profession profession) {
         String name = StringUtils.hasText(profession.getName()) ? profession.getName().trim() : "";
+        if (name.isEmpty()) {
+            throw new BusinessException("专业名称不能为空");
+        }
         long count = professionService.count(new LambdaQueryWrapper<Profession>()
                 .eq(Profession::getName, name));
         if (count > 0) {
             throw new BusinessException("专业名称「" + name + "」已存在，不允许重复创建");
         }
         profession.setName(name);
+        // 确保必填字段有默认值，避免数据库约束异常
+        if (profession.getSort() == null) {
+            profession.setSort(0);
+        }
+        if (profession.getStatus() == null) {
+            profession.setStatus(1);
+        }
         professionService.save(profession);
-        return Result.success();
+        return Result.success(profession);
     }
 
     /**
