@@ -51,6 +51,9 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
         if (news.getSort() == null) {
             news.setSort(0);
         }
+        if (news.getPublishTime() == null) {
+            news.setPublishTime(LocalDateTime.now());
+        }
         this.save(news);
     }
 
@@ -92,13 +95,14 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
     @Cacheable(value = "newsList", unless = "#result == null || #result.isEmpty()")
     public List<News> listEnabled() {
         List<News> list = this.list(new LambdaQueryWrapper<News>()
-                .select(News::getId, News::getTitle, News::getCoverUrl, News::getType,
+                .select(News::getId, News::getTitle, News::getContent, News::getCoverUrl, News::getType,
                         News::getSort, News::getIsTop, News::getPublishTime, News::getCreateTime)
                 .eq(News::getStatus, 1)
                 .and(w -> w.isNull(News::getPublishTime).or().le(News::getPublishTime, LocalDateTime.now()))
                 .orderByDesc(News::getIsTop)
                 .orderByDesc(News::getPublishTime)
                 .orderByDesc(News::getCreateTime));
+        list.forEach(this::fillPublishTime);
         return dedupByTitle(list);
     }
 
@@ -106,7 +110,7 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
     @Cacheable(value = "newsListByType", key = "#type != null ? #type : 'all'", unless = "#result == null || #result.isEmpty()")
     public List<News> listEnabledByType(Integer type) {
         List<News> list = this.list(new LambdaQueryWrapper<News>()
-                .select(News::getId, News::getTitle, News::getCoverUrl, News::getType,
+                .select(News::getId, News::getTitle, News::getContent, News::getCoverUrl, News::getType,
                         News::getSort, News::getIsTop, News::getPublishTime, News::getCreateTime)
                 .eq(News::getStatus, 1)
                 .eq(type != null, News::getType, type)
@@ -114,7 +118,15 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
                 .orderByDesc(News::getIsTop)
                 .orderByDesc(News::getPublishTime)
                 .orderByDesc(News::getCreateTime));
+        list.forEach(this::fillPublishTime);
         return dedupByTitle(list);
+    }
+
+    /** publish_time 为空时用 create_time 兜底,避免前端日期显示为批量导入时间 */
+    private void fillPublishTime(News n) {
+        if (n.getPublishTime() == null && n.getCreateTime() != null) {
+            n.setPublishTime(n.getCreateTime());
+        }
     }
 
     private List<News> dedupByTitle(List<News> list) {

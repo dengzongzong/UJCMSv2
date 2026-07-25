@@ -483,6 +483,10 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     public boolean add(CertificateDTO dto) {
         Certificate c = new Certificate();
         copyDtoToEntity(dto, c);
+        // 身份证号必填校验(数据库 id_card NOT NULL,前端/导入路径均已校验,此处兜底)
+        if (!StringUtils.hasText(c.getIdCard())) {
+            throw new BusinessException("身份证号不能为空");
+        }
         // 身份证号校验:校验异常不拦截,正常保存(前端会用浅红色背景标注异常身份证)
         if (StringUtils.hasText(c.getIdCard())) {
             c.setIdCard(c.getIdCard().trim());
@@ -1068,7 +1072,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             if (!typeNames.isEmpty()) {
                 certTypeHint = "证书类型（选填，可选值：" + String.join("/", typeNames) + "）";
             }
-        } catch (Exception e) { /* ignore */ }
+        } catch (Exception e) { log.warn("证书导入模板获取证书类型失败: {}", e.getMessage()); }
         head.add(Arrays.asList(certTypeHint));
         // 示例行
         List<List<Object>> sample = new ArrayList<>();
@@ -1805,7 +1809,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             if (!typeNames.isEmpty()) {
                 typeHint = "证书类型（必填，可选值：" + String.join("/", typeNames) + "）";
             }
-        } catch (Exception e) { /* ignore */ }
+        } catch (Exception e) { log.warn("学生导入模板获取证书类型失败: {}", e.getMessage()); }
         head.add(Arrays.asList(typeHint));
         // 示例行
         List<List<Object>> sample = new ArrayList<>();

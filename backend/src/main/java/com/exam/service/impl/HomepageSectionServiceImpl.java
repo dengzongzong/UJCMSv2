@@ -53,6 +53,9 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
         if (section.getSort() == null) {
             section.setSort(0);
         }
+        if (section.getPublishTime() == null) {
+            section.setPublishTime(java.time.LocalDateTime.now());
+        }
         this.save(section);
     }
 
@@ -93,8 +96,8 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
     @Cacheable(value = "homepageSections", key = "#type != null ? #type : 'all'", unless = "#result == null || #result.isEmpty()")
     public List<HomepageSection> listEnabled(Integer type) {
         LambdaQueryWrapper<HomepageSection> wrapper = new LambdaQueryWrapper<HomepageSection>()
-                .select(HomepageSection::getId, HomepageSection::getTitle, HomepageSection::getType,
-                        HomepageSection::getSort, HomepageSection::getPublishTime,
+                .select(HomepageSection::getId, HomepageSection::getTitle, HomepageSection::getContent,
+                        HomepageSection::getType, HomepageSection::getSort, HomepageSection::getPublishTime,
                         HomepageSection::getCreateTime, HomepageSection::getCoverUrl)
                 .eq(HomepageSection::getStatus, 1);
         if (type != null) {
@@ -104,8 +107,16 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
                .orderByDesc(HomepageSection::getPublishTime)
                .orderByDesc(HomepageSection::getCreateTime);
         List<HomepageSection> list = this.list(wrapper);
+        list.forEach(this::fillPublishTime);
         return list.stream().collect(Collectors.toMap(
                 HomepageSection::getTitle, h -> h, (h1, h2) -> h1
         )).values().stream().collect(Collectors.toList());
+    }
+
+    /** publish_time 为空时用 create_time 兜底,避免前端日期显示为批量导入时间 */
+    private void fillPublishTime(HomepageSection h) {
+        if (h.getPublishTime() == null && h.getCreateTime() != null) {
+            h.setPublishTime(h.getCreateTime());
+        }
     }
 }

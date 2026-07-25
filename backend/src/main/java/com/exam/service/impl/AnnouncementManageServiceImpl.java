@@ -50,6 +50,9 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
         if (announcement.getSort() == null) {
             announcement.setSort(0);
         }
+        if (announcement.getPublishTime() == null) {
+            announcement.setPublishTime(LocalDateTime.now());
+        }
         this.save(announcement);
     }
 
@@ -91,7 +94,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
     @Cacheable(value = "announcements", unless = "#result == null || #result.isEmpty()")
     public List<Announcement> listEnabled() {
         List<Announcement> list = this.list(new LambdaQueryWrapper<Announcement>()
-                .select(Announcement::getId, Announcement::getTitle,
+                .select(Announcement::getId, Announcement::getTitle, Announcement::getContent,
                         Announcement::getSort, Announcement::getIsTop,
                         Announcement::getPublishTime, Announcement::getCreateTime)
                 .eq(Announcement::getStatus, 1)
@@ -99,8 +102,16 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
                 .orderByDesc(Announcement::getIsTop)
                 .orderByDesc(Announcement::getPublishTime)
                 .orderByDesc(Announcement::getCreateTime));
+        list.forEach(this::fillPublishTime);
         return list.stream().collect(Collectors.toMap(
                 Announcement::getTitle, a -> a, (a1, a2) -> a1
         )).values().stream().collect(Collectors.toList());
+    }
+
+    /** publish_time 为空时用 create_time 兜底,避免前端日期显示为批量导入时间 */
+    private void fillPublishTime(Announcement a) {
+        if (a.getPublishTime() == null && a.getCreateTime() != null) {
+            a.setPublishTime(a.getCreateTime());
+        }
     }
 }
