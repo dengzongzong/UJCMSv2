@@ -123,9 +123,31 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
     private void loadStudentProfessions(Student student) {
         if (student == null || student.getId() == null) return;
         List<StudentProfession> sps = studentProfessionMapper.selectByStudentId(student.getId());
-        List<Long> professionIds = sps.stream().map(StudentProfession::getProfessionId).collect(Collectors.toList());
-        List<String> professionNames = sps.stream().map(StudentProfession::getProfessionName).collect(Collectors.toList());
+        if (sps.isEmpty()) return;
+
+        List<Long> professionIds = sps.stream()
+                .map(StudentProfession::getProfessionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
         student.setProfessionIds(professionIds);
+
+        // professionName 标注了 @TableField(exist=false),MyBatis-Plus 的 @Select 查询
+        // 可能不会自动将 JOIN 出的 profession_name 列映射到该字段。
+        // 兜底:优先用 JOIN 查出的名称,为 null 时按 professionId 查 profession 表补全。
+        Map<Long, String> professionNameMap = null;
+        List<String> professionNames = new ArrayList<>();
+        for (StudentProfession sp : sps) {
+            String name = sp.getProfessionName();
+            if (name == null && sp.getProfessionId() != null) {
+                if (professionNameMap == null) {
+                    professionNameMap = loadProfessionNameMap();
+                }
+                name = professionNameMap.get(sp.getProfessionId());
+            }
+            if (name != null) {
+                professionNames.add(name);
+            }
+        }
         student.setProfessionNames(professionNames);
         if (!professionNames.isEmpty()) {
             student.setProfessionName(String.join(",", professionNames));
