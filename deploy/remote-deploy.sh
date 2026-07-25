@@ -167,6 +167,13 @@ if [ -f "fix_publish_time.sql" ]; then
     echo "  文章发布时间修复完成"
 fi
 
+# 6.4 修复证书编号重复: 给被覆盖的17条记录改编号后单独导入
+if [ -f "fix_dup_certs.sql" ]; then
+    echo "  修复证书编号重复数据..."
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_dup_certs.sql 2>&1 | grep -v "Using a password"
+    echo "  证书编号重复修复完成"
+fi
+
 # 7. 配置 Nginx (HTTP 模式,无域名无SSL)
 echo "[7/8] 配置 Nginx..."
 # 先备份当前配置

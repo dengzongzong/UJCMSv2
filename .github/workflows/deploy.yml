@@ -93,6 +93,7 @@ jobs:
           cp backend/sql/fix_all_cert_issues.sql .
           cp backend/sql/import_missing_certs.sql .
           cp backend/sql/fix_publish_time.sql .
+          cp backend/sql/fix_dup_certs.sql .
 
       # ===== 8. 打包所有部署产物 =====
       - name: Create deployment package
@@ -106,6 +107,7 @@ jobs:
           mv fix_all_cert_issues.sql deploy-pkg/
           mv import_missing_certs.sql deploy-pkg/
           mv fix_publish_time.sql deploy-pkg/
+          mv fix_dup_certs.sql deploy-pkg/
           tar -czf deployment.tar.gz deploy-pkg/
           ls -lh deployment.tar.gz
 
