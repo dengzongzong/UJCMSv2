@@ -164,6 +164,13 @@ public interface CertificateService extends IService<Certificate> {
                             List<Long> ids);
 
     /**
+     * 按证书列表导出(Excel,按证书绑定的模板分组导出)
+     * 与 exportCertificates 类似,但直接传入证书列表,供证书用户导出复用。
+     * 未绑定模板的证书自动过滤;多个模板时导出ZIP。
+     */
+    void exportCertificateList(HttpServletResponse response, List<Certificate> certs);
+
+    /**
      * 从学生管理同步数据到证书表(certificate)。
      * 按身份证号+专业维度检查,已存在的不重复创建。
      * @return 新创建的记录数

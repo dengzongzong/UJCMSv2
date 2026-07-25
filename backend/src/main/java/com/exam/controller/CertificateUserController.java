@@ -1,8 +1,5 @@
 package com.exam.controller;
 
-import com.alibaba.excel.EasyExcel;
-import com.alibaba.excel.context.AnalysisContext;
-import com.alibaba.excel.event.AnalysisEventListener;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.exam.common.BusinessException;
@@ -13,20 +10,12 @@ import com.exam.entity.CertificateUser;
 import com.exam.mapper.CertificateMapper;
 import com.exam.mapper.CertificateUserMapper;
 import com.exam.service.CertificateUserSyncService;
-import com.exam.vo.CertificateUserExportVO;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URLEncoder;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -139,13 +128,16 @@ public class CertificateUserController {
     }
 
     /**
-     * 导出证书用户数据(使用指定模板文件填充数据)
+     * 导出证书用户数据
+     * 按证书绑定的模板分组导出,使用各模板配置的导出列(含颁发日期/年/月/日等)。
+     * 未绑定模板的证书自动过滤;多个模板时导出ZIP。
      */
     @GetMapping("/export")
     public void export(@RequestParam(required = false) String keyword,
                        @RequestParam(required = false) String idCard,
                        @RequestParam(required = false) String certType,
                        HttpServletResponse response) throws IOException {
+        // 1. 查询证书用户(按筛选条件)
         LambdaQueryWrapper<CertificateUser> wrapper = new LambdaQueryWrapper<CertificateUser>()
                 .orderByDesc(CertificateUser::getSyncTime);
         if (StringUtils.hasText(keyword)) {
@@ -163,123 +155,21 @@ public class CertificateUserController {
         }
         List<CertificateUser> users = certificateUserMapper.selectList(wrapper);
 
-        Map<String, Certificate> certMap = new HashMap<>();
-        if (!users.isEmpty()) {
-            List<String> idCards = users.stream()
-                    .map(CertificateUser::getIdCard)
-                    .filter(StringUtils::hasText)
-                    .collect(Collectors.toList());
-            if (!idCards.isEmpty()) {
-                List<Certificate> certs = certificateMapper.selectList(
-                        new LambdaQueryWrapper<Certificate>()
-                                .in(Certificate::getIdCard, idCards)
-                                .orderByDesc(Certificate::getCreateTime));
-                for (Certificate cert : certs) {
-                    if (!certMap.containsKey(cert.getIdCard())) {
-                        certMap.put(cert.getIdCard(), cert);
-                    }
-                }
-            }
+        // 2. 收集身份证号,查询关联的证书记录
+        List<String> idCards = users.stream()
+                .map(CertificateUser::getIdCard)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
+
+        List<Certificate> certs = new ArrayList<>();
+        if (!idCards.isEmpty()) {
+            certs = certificateMapper.selectList(
+                    new LambdaQueryWrapper<Certificate>()
+                            .in(Certificate::getIdCard, idCards)
+                            .orderByDesc(Certificate::getCreateTime));
         }
 
-        List<CertificateUserExportVO> exportList = new ArrayList<>();
-        int serialNumber = 1;
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
-
-        for (CertificateUser user : users) {
-            CertificateUserExportVO vo = new CertificateUserExportVO();
-            vo.setSerialNumber(serialNumber++);
-            vo.setName(user.getName());
-            vo.setGender(user.getGender() != null ? (user.getGender() == 1 ? "男" : "女") : "");
-            vo.setIdCard(user.getIdCard());
-            vo.setProfessionName(user.getProfessionName());
-
-            Certificate cert = certMap.get(user.getIdCard());
-            if (cert != null) {
-                vo.setSkillLevel(cert.getSkillLevel());
-                vo.setCertNo(cert.getCertNo());
-                vo.setIssueDate(cert.getIssueDate() != null ? cert.getIssueDate().format(dateFormatter) : "");
-                vo.setAgency(cert.getAgency());
-                vo.setAgencyFee(cert.getAgencyFee() != null ? cert.getAgencyFee().toString() : "");
-                vo.setQrUrl1(cert.getQrUrl1());
-                vo.setQrUrl2(cert.getQrUrl2());
-                vo.setQrUrl3(cert.getQrUrl3());
-                vo.setExamQrUrl(cert.getExamQrUrl());
-            }
-
-            exportList.add(vo);
-        }
-
-        String fileName = URLEncoder.encode("证书用户数据下载", "UTF-8").replaceAll("\\+", "%20");
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setCharacterEncoding("utf-8");
-        response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
-
-        InputStream templateStream = null;
-        OutputStream out = response.getOutputStream();
-        try {
-            templateStream = new ClassPathResource("templates/证书用户数据下载.xlsx").getInputStream();
-            Workbook workbook = new XSSFWorkbook(templateStream);
-            Sheet sheet = workbook.getSheetAt(0);
-
-            int dataRowStart = 1;
-            for (int i = 0; i < exportList.size(); i++) {
-                CertificateUserExportVO vo = exportList.get(i);
-                Row row = sheet.getRow(dataRowStart + i);
-                if (row == null) {
-                    row = sheet.createRow(dataRowStart + i);
-                }
-
-                setCellValue(row, 0, vo.getSerialNumber());
-                setCellValue(row, 1, vo.getName());
-                setCellValue(row, 2, vo.getGender());
-                setCellValue(row, 3, vo.getIdCard());
-                setCellValue(row, 4, vo.getProfessionName());
-                setCellValue(row, 5, vo.getSkillLevel());
-                setCellValue(row, 6, vo.getCertNo());
-                setCellValue(row, 7, vo.getIssueDate());
-                setCellValue(row, 8, vo.getAgency());
-                setCellValue(row, 9, vo.getAgencyFee());
-                setCellValue(row, 10, vo.getTrainingProfession());
-                setCellValue(row, 11, vo.getTrainingHours());
-                setCellValue(row, 12, vo.getTrainingDate());
-                setCellValue(row, 13, vo.getTheoryScore());
-                setCellValue(row, 14, vo.getPracticalScore());
-                setCellValue(row, 15, vo.getComprehensiveAssessment());
-                setCellValue(row, 16, vo.getQrUrl1());
-                setCellValue(row, 17, vo.getQrUrl2());
-                setCellValue(row, 18, vo.getQrUrl3());
-                setCellValue(row, 19, vo.getExamQrUrl());
-            }
-
-            workbook.write(out);
-            workbook.close();
-        } catch (Exception e) {
-            EasyExcel.write(out, CertificateUserExportVO.class)
-                    .sheet("证书用户数据")
-                    .doWrite(exportList);
-        } finally {
-            if (templateStream != null) {
-                try {
-                    templateStream.close();
-                } catch (IOException ignored) {
-                }
-            }
-            out.flush();
-        }
-    }
-
-    private void setCellValue(Row row, int column, Object value) {
-        Cell cell = row.getCell(column);
-        if (cell == null) {
-            cell = row.createCell(column);
-        }
-        if (value == null) {
-            cell.setBlank();
-        } else if (value instanceof Number) {
-            cell.setCellValue(((Number) value).doubleValue());
-        } else {
-            cell.setCellValue(value.toString());
-        }
+        // 3. 委托给证书导出服务:按模板分组、使用模板配置的导出列
+        certificateService.exportCertificateList(response, certs);
     }
 }

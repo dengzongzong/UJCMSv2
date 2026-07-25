@@ -1134,8 +1134,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             }
             certs = this.list(w);
         }
+        exportCertificateList(response, certs);
+    }
 
-        // 2. 过滤掉未绑定模板的证书
+    @Override
+    public void exportCertificateList(HttpServletResponse response, List<Certificate> certs) {
+        // 过滤掉未绑定模板的证书
         List<Certificate> boundCerts = certs.stream()
                 .filter(c -> c.getTemplateId() != null)
                 .collect(java.util.stream.Collectors.toList());
@@ -1155,11 +1159,11 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             return;
         }
 
-        // 3. 按templateId分组
+        // 按templateId分组
         Map<Long, List<Certificate>> grouped = boundCerts.stream()
                 .collect(java.util.stream.Collectors.groupingBy(Certificate::getTemplateId));
 
-        // 4. 查询模板名称(用于文件命名)
+        // 查询模板名称(用于文件命名)
         List<Long> templateIds = new ArrayList<>(grouped.keySet());
         List<CertificateTemplate> templates = templateMapper.selectBatchIds(templateIds);
         Map<Long, String> templateNameMap = new java.util.HashMap<>();
@@ -1167,11 +1171,10 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             templateNameMap.put(t.getId(), t.getName());
         }
 
-        // 5. 为每个模板组生成Excel
+        // 为每个模板组生成Excel
         CertificateUrlConfig urlConfig = getUrlConfigForExport();
         DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
 
-        // 存储每个模板的Excel字节数据和文件名
         List<ExcelFileEntry> excelFiles = new ArrayList<>();
 
         for (Map.Entry<Long, List<Certificate>> entry : grouped.entrySet()) {
@@ -1216,7 +1219,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             }
         }
 
-        // 6. 输出: 单个文件直接返回Excel,多个文件打包ZIP
+        // 输出: 单个文件直接返回Excel,多个文件打包ZIP
         try {
             if (excelFiles.size() == 1) {
                 ExcelFileEntry entry = excelFiles.get(0);
@@ -1228,7 +1231,6 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 response.getOutputStream().write(entry.data);
                 response.getOutputStream().flush();
             } else {
-                // 多个文件 -> ZIP
                 String zipFileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
                         .replaceAll("\\+", "%20");
                 response.setContentType("application/zip");
@@ -1320,6 +1322,9 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             case "skillLevel": return safeStr(c.getSkillLevel());
             case "certNo": return safeStr(c.getCertNo());
             case "issueDate": return c.getIssueDate() != null ? c.getIssueDate().format(dateFmt) : "";
+            case "issueYear": return c.getIssueDate() != null ? String.valueOf(c.getIssueDate().getYear()) : "";
+            case "issueMonth": return c.getIssueDate() != null ? String.valueOf(c.getIssueDate().getMonthValue()) : "";
+            case "issueDay": return c.getIssueDate() != null ? String.valueOf(c.getIssueDate().getDayOfMonth()) : "";
             case "agency": return safeStr(c.getAgency());
             case "agencyFee": return c.getAgencyFee() != null ? c.getAgencyFee().toPlainString() : "";
             case "trainingMajor": return safeStr(extra.get("trainingMajor"));
