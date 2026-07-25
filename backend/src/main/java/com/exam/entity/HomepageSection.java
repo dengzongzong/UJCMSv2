@@ -16,6 +16,7 @@ public class HomepageSection {
     private Long id;
     private String title;
     private String content;       // 富文本内容
+    private String coverUrl;      // 封面图
     private Integer type;         // 1-政策法规 2-信息公开
     private Integer status;       // 0-隐藏 1-显示
     private Integer sort;         // 排序(升序)
