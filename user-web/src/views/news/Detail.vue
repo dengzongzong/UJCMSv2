@@ -44,7 +44,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { getNewsList, getEventsList, getAnnouncementList, getHomepageSections } from '@/api/home'
+import { getNewsList, getEventsList, getAnnouncementList, getHomepageSections, getNewsDetail, getAnnouncementDetail, getHomepageSectionDetail } from '@/api/home'
 import { resolveImg, processRichContent } from '@/utils/apiBase'
 
 export default {
@@ -120,24 +120,20 @@ export default {
           this.news = null
         }
       }
-      // 再请求接口拿最新数据
+      // 用单条详情接口获取(含content),不再拉取整个列表
       try {
-        let apiCall
+        let res
         if (this.detailType === 'announcement') {
-          apiCall = getAnnouncementList()
-        } else if (this.detailType === 'events') {
-          apiCall = getEventsList()
+          res = await getAnnouncementDetail(this.newsId)
         } else if (this.detailType === 'policy') {
-          apiCall = getHomepageSections(1)
+          res = await getHomepageSectionDetail(this.newsId)
         } else {
-          apiCall = getNewsList()
+          // news 和 events 都用 news 详情接口
+          res = await getNewsDetail(this.newsId)
         }
-        const res = await apiCall
-        const data = res.data || res
-        const list = Array.isArray(data) ? data : (data.list || data.records || [])
-        const found = list.find((item) => String(item.id) === String(this.newsId))
-        if (found) {
-          this.news = found
+        const detail = res.data || res
+        if (detail && detail.id) {
+          this.news = detail
         }
       } catch (error) {
         // 接口失败时保留缓存数据

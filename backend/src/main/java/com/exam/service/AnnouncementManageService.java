@@ -40,4 +40,9 @@ public interface AnnouncementManageService extends IService<Announcement> {
      * 获取已显示的公告列表（status=1），按sort升序
      */
     List<Announcement> listEnabled();
+
+    /**
+     * 获取单条公告详情(含content,仅返回status=1)
+     */
+    Announcement getPublicDetail(Long id);
 }

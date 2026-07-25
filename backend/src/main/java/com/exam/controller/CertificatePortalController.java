@@ -98,10 +98,9 @@ public class CertificatePortalController {
         if (student == null || !StringUtils.hasText(student.getIdCard())) {
             return Result.success(new ArrayList<>());
         }
-        // 用 idCard 查证书(必须有 certNo 和 templateId)
+        // 用 idCard 查证书(必须有 certNo,不强制要求 templateId,允许查到未绑定模板的证书)
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                 .eq(Certificate::getIdCard, student.getIdCard())
-                .isNotNull(Certificate::getTemplateId)
                 .isNotNull(Certificate::getCertNo)
                 .orderByDesc(Certificate::getIssueDate)
                 .orderByDesc(Certificate::getId);
@@ -278,7 +277,6 @@ public class CertificatePortalController {
             List<Certificate> certs = certificateMapper.selectList(
                     new LambdaQueryWrapper<Certificate>()
                             .eq(Certificate::getIdCard, student.getIdCard())
-                            .isNotNull(Certificate::getTemplateId)
                             .isNotNull(Certificate::getCertNo));
             for (Certificate c : certs) {
                 if (c.getProfession() != null) {
@@ -407,9 +405,10 @@ public class CertificatePortalController {
                 .orderByDesc(Certificate::getIssueDate)
                 .orderByDesc(Certificate::getId);
 
-        w.isNotNull(Certificate::getTemplateId);
         // 证书编号在"绑定模板"时才生成,未绑定模板的证书没有证书编号,查询不到
         w.isNotNull(Certificate::getCertNo);
+        // 注意: 不再强制要求 templateId 非空,允许用户查到未绑定模板的证书(只是无法下载)
+        // 下载接口会单独校验 templateId 并给出友好提示
 
         if (hasCertNo) {
             // 仅凭证书编号查询(精确匹配)
@@ -711,6 +710,7 @@ public class CertificatePortalController {
         m.put("issueDate", c.getIssueDate() == null ? null : c.getIssueDate().toString());
         m.put("issueDateStr", c.getIssueDate() == null ? null : c.getIssueDate().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
         m.put("agency", c.getAgency());
+        m.put("hasTemplate", c.getTemplateId() != null);
         // photoUrl 不在此设置,由调用方按 certificateId 查询后单独 put
         m.put("theoryScore", c.getTheoryScore());
         m.put("practicalScore", c.getPracticalScore());

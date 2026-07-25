@@ -770,7 +770,14 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                 // 证书的学员编号由 certificateService.add() 按"编号配置"规则独立生成(每张证书唯一)。
                 if (student != null) {
                     certDto.setName(student.getName());
-                    certDto.setIdCard(student.getIdCard());
+                    // 仅在学生表 idCard 非空时才覆盖（避免 DB 中 NULL 的 idCard 覆盖 Excel 行已校验的 idCard）
+                    if (StringUtils.hasText(student.getIdCard())) {
+                        certDto.setIdCard(student.getIdCard());
+                    } else if (StringUtils.hasText(idCard)) {
+                        // 学生表 idCard 为空而 Excel 行有值：回填学生表
+                        student.setIdCard(idCard);
+                        this.updateById(student);
+                    }
                 }
                 certificateService.add(certDto);
                 // add 内部去重:姓名+身份证+专业+级别相同则跳过,不影响学生创建结果

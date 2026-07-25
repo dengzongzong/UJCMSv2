@@ -83,6 +83,34 @@ export function getHomepageSections(type) {
 }
 
 /**
+ * 获取单条新闻详情(含content)
+ */
+export function getNewsDetail(id) {
+  return request({ url: `/public/news/${id}`, method: 'get' })
+}
+
+/**
+ * 获取单条公告详情(含content)
+ */
+export function getAnnouncementDetail(id) {
+  return request({ url: `/public/announcements/${id}`, method: 'get' })
+}
+
+/**
+ * 获取单条首页板块详情(含content)
+ */
+export function getHomepageSectionDetail(id) {
+  return request({ url: `/public/homepage-sections/${id}`, method: 'get' })
+}
+
+/**
+ * 首页聚合接口 - 一次请求返回新闻/活动/公告/板块数据
+ */
+export function getHomepageAggregated() {
+  return request({ url: '/public/homepage', method: 'get' })
+}
+
+/**
  * 通用搜索 - 搜索新闻、公告、课程、考试、政策法规
  */
 export function searchAll(keyword) {

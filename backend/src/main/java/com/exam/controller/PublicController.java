@@ -30,6 +30,7 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -120,6 +121,43 @@ public class PublicController {
     public Result<List<HomepageSection>> listHomepageSections(
             @RequestParam(required = false) Integer type) {
         return Result.success(homepageSectionService.listEnabled(type));
+    }
+
+    /**
+     * 获取单条新闻详情(含content)
+     */
+    @GetMapping("/news/{id}")
+    public Result<News> getNewsDetail(@PathVariable Long id) {
+        return Result.success(newsManageService.getPublicDetail(id));
+    }
+
+    /**
+     * 获取单条公告详情(含content)
+     */
+    @GetMapping("/announcements/{id}")
+    public Result<Announcement> getAnnouncementDetail(@PathVariable Long id) {
+        return Result.success(announcementManageService.getPublicDetail(id));
+    }
+
+    /**
+     * 获取单条首页板块详情(含content)
+     */
+    @GetMapping("/homepage-sections/{id}")
+    public Result<HomepageSection> getHomepageSectionDetail(@PathVariable Long id) {
+        return Result.success(homepageSectionService.getPublicDetail(id));
+    }
+
+    /**
+     * 首页聚合接口 - 一次请求返回首页全部数据,减少HTTP并发
+     */
+    @GetMapping("/homepage")
+    public Result<Map<String, Object>> homepage() {
+        Map<String, Object> result = new HashMap<>();
+        try { result.put("news", newsManageService.listEnabled()); } catch (Exception e) { result.put("news", new ArrayList<>()); }
+        try { result.put("events", newsManageService.listEnabledByType(2)); } catch (Exception e) { result.put("events", new ArrayList<>()); }
+        try { result.put("announcements", announcementManageService.listEnabled()); } catch (Exception e) { result.put("announcements", new ArrayList<>()); }
+        try { result.put("homepageSections", homepageSectionService.listEnabled(null)); } catch (Exception e) { result.put("homepageSections", new ArrayList<>()); }
+        return Result.success(result);
     }
 
     /**

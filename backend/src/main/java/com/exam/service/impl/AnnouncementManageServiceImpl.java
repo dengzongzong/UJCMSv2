@@ -39,7 +39,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "announcements", allEntries = true)
+    @CacheEvict(value = {"announcements", "announcementDetail"}, allEntries = true)
     public void add(Announcement announcement) {
         if (!StringUtils.hasText(announcement.getTitle())) {
             throw new BusinessException("标题不能为空");
@@ -58,7 +58,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "announcements", allEntries = true)
+    @CacheEvict(value = {"announcements", "announcementDetail"}, allEntries = true)
     public void update(Announcement announcement) {
         if (announcement.getId() == null) {
             throw new BusinessException("ID不能为空");
@@ -72,7 +72,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "announcements", allEntries = true)
+    @CacheEvict(value = {"announcements", "announcementDetail"}, allEntries = true)
     public void delete(Long id) {
         if (this.getById(id) == null) {
             throw new BusinessException("公告不存在");
@@ -82,7 +82,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "announcements", allEntries = true)
+    @CacheEvict(value = {"announcements", "announcementDetail"}, allEntries = true)
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
@@ -94,7 +94,7 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
     @Cacheable(value = "announcements", unless = "#result == null || #result.isEmpty()")
     public List<Announcement> listEnabled() {
         List<Announcement> list = this.list(new LambdaQueryWrapper<Announcement>()
-                .select(Announcement::getId, Announcement::getTitle, Announcement::getContent,
+                .select(Announcement::getId, Announcement::getTitle,
                         Announcement::getSort, Announcement::getIsTop,
                         Announcement::getPublishTime, Announcement::getCreateTime)
                 .eq(Announcement::getStatus, 1)
@@ -113,5 +113,16 @@ public class AnnouncementManageServiceImpl extends ServiceImpl<AnnouncementMappe
         if (a.getPublishTime() == null && a.getCreateTime() != null) {
             a.setPublishTime(a.getCreateTime());
         }
+    }
+
+    @Override
+    @Cacheable(value = "announcementDetail", key = "#id", unless = "#result == null")
+    public Announcement getPublicDetail(Long id) {
+        Announcement a = this.getById(id);
+        if (a != null && a.getStatus() != null && a.getStatus() == 1) {
+            fillPublishTime(a);
+            return a;
+        }
+        return null;
     }
 }

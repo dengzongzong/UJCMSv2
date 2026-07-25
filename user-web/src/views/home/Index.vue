@@ -333,7 +333,7 @@ import Header from '@/components/Header.vue'
 import CooperationDialog from '@/components/CooperationDialog.vue'
 import DeclarationDialog from '@/components/DeclarationDialog.vue'
 import ComplaintDialog from '@/components/ComplaintDialog.vue'
-import { getBanners, getBannerImages, getAnnouncements, getNewsList, getEventsList, getFriendlyLinks, getCourseThreeImages, getPublicCourseList, getHomepageSections } from '@/api/home'
+import { getBanners, getBannerImages, getAnnouncements, getNewsList, getEventsList, getFriendlyLinks, getCourseThreeImages, getPublicCourseList, getHomepageSections, getHomepageAggregated, getHomepageSectionDetail } from '@/api/home'
 import { resolveImg, processRichContent } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
 
@@ -394,12 +394,9 @@ export default {
     this.fetchBanners()
     this.fetchBannerImages()
     this.fetchCourses()
-    this.fetchAnnouncements()
-    this.fetchNews()
-    this.fetchEvents()
+    this.fetchHomepageAggregated()
     this.fetchFriendlyLinks()
     this.fetchVideoImages()
-    this.fetchHomepageSections()
   },
   methods: {
     resolveImg,
@@ -413,7 +410,35 @@ export default {
       const yyyy = d.getFullYear()
       const mm = String(d.getMonth() + 1).padStart(2, '0')
       const dd = String(d.getDate()).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd}`
+      const hh = String(d.getHours()).padStart(2, '0')
+      const mi = String(d.getMinutes()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
+    },
+    async fetchHomepageAggregated() {
+      try {
+        const res = await getHomepageAggregated()
+        const data = res.data || res || {}
+        // 新闻动态
+        const newsData = data.news || []
+        this.newsList = Array.isArray(newsData) ? newsData : (newsData.list || newsData.records || [])
+        // 重大活动
+        const eventsData = data.events || []
+        this.eventsList = Array.isArray(eventsData) ? eventsData : (eventsData.list || eventsData.records || [])
+        // 通知公告
+        const annoData = data.announcements || []
+        this.announcements = Array.isArray(annoData) ? annoData : (annoData.list || annoData.records || [])
+        // 政策法规 + 信息公开
+        const sectionData = data.homepageSections || []
+        const sectionList = Array.isArray(sectionData) ? sectionData : (sectionData.list || [])
+        this.policySections = sectionList.filter(item => item.type === 1)
+        this.disclosureSections = sectionList.filter(item => item.type === 2)
+      } catch (error) {
+        // 聚合接口失败时回退到独立接口
+        this.fetchAnnouncements()
+        this.fetchNews()
+        this.fetchEvents()
+        this.fetchHomepageSections()
+      }
     },
     async fetchHomepageSections() {
       try {
@@ -577,15 +602,32 @@ export default {
       sessionStorage.setItem('news_detail_data', JSON.stringify(item))
       this.$router.push(`/news/detail/${item.id}?type=announcement`).catch(() => {})
     },
-    onSectionClick(item, sectionTitle) {
-      // 弹窗展示富文本内容
-      const html = item.content || '<p style="text-align:center;color:#999;padding:40px 0;">暂无内容</p>'
-      Dialog.alert({
+    async onSectionClick(item, sectionTitle) {
+      // 先弹窗显示标题,异步获取content后更新
+      const dialogInst = Dialog.alert({
         title: item.title || sectionTitle,
-        message: html,
+        message: '<div style="text-align:center;padding:40px 0;color:#999;">加载中...</div>',
         confirmButtonText: '关闭',
         className: 'section-detail-dialog'
       }).catch(() => {})
+      try {
+        const res = await getHomepageSectionDetail(item.id)
+        const detail = (res.data || res) || {}
+        const html = detail.content || '<p style="text-align:center;color:#999;padding:40px 0;">暂无内容</p>'
+        Dialog.alert({
+          title: item.title || sectionTitle,
+          message: html,
+          confirmButtonText: '关闭',
+          className: 'section-detail-dialog'
+        }).catch(() => {})
+      } catch (error) {
+        Dialog.alert({
+          title: item.title || sectionTitle,
+          message: '<p style="text-align:center;color:#999;padding:40px 0;">内容加载失败</p>',
+          confirmButtonText: '关闭',
+          className: 'section-detail-dialog'
+        }).catch(() => {})
+      }
     },
     loadMoreNews() {
       this.$router.push('/news/list').catch(() => {})

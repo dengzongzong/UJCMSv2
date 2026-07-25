@@ -40,4 +40,9 @@ public interface HomepageSectionService extends IService<HomepageSection> {
      * 获取已显示的板块列表(按type筛选)
      */
     List<HomepageSection> listEnabled(Integer type);
+
+    /**
+     * 获取单条板块详情(含content,仅返回status=1)
+     */
+    HomepageSection getPublicDetail(Long id);
 }

@@ -39,7 +39,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "homepageSections", allEntries = true)
+    @CacheEvict(value = {"homepageSections", "homepageSectionDetail"}, allEntries = true)
     public void add(HomepageSection section) {
         if (!StringUtils.hasText(section.getTitle())) {
             throw new BusinessException("标题不能为空");
@@ -61,7 +61,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "homepageSections", allEntries = true)
+    @CacheEvict(value = {"homepageSections", "homepageSectionDetail"}, allEntries = true)
     public void update(HomepageSection section) {
         if (section.getId() == null) {
             throw new BusinessException("ID不能为空");
@@ -74,7 +74,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "homepageSections", allEntries = true)
+    @CacheEvict(value = {"homepageSections", "homepageSectionDetail"}, allEntries = true)
     public void delete(Long id) {
         if (this.getById(id) == null) {
             throw new BusinessException("记录不存在");
@@ -84,7 +84,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = "homepageSections", allEntries = true)
+    @CacheEvict(value = {"homepageSections", "homepageSectionDetail"}, allEntries = true)
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
@@ -96,7 +96,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
     @Cacheable(value = "homepageSections", key = "#type != null ? #type : 'all'", unless = "#result == null || #result.isEmpty()")
     public List<HomepageSection> listEnabled(Integer type) {
         LambdaQueryWrapper<HomepageSection> wrapper = new LambdaQueryWrapper<HomepageSection>()
-                .select(HomepageSection::getId, HomepageSection::getTitle, HomepageSection::getContent,
+                .select(HomepageSection::getId, HomepageSection::getTitle,
                         HomepageSection::getType, HomepageSection::getSort, HomepageSection::getPublishTime,
                         HomepageSection::getCreateTime, HomepageSection::getCoverUrl)
                 .eq(HomepageSection::getStatus, 1);
@@ -118,5 +118,16 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
         if (h.getPublishTime() == null && h.getCreateTime() != null) {
             h.setPublishTime(h.getCreateTime());
         }
+    }
+
+    @Override
+    @Cacheable(value = "homepageSectionDetail", key = "#id", unless = "#result == null")
+    public HomepageSection getPublicDetail(Long id) {
+        HomepageSection h = this.getById(id);
+        if (h != null && h.getStatus() != null && h.getStatus() == 1) {
+            fillPublishTime(h);
+            return h;
+        }
+        return null;
     }
 }

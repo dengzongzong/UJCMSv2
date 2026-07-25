@@ -45,4 +45,9 @@ public interface NewsManageService extends IService<News> {
      * 按类型获取已显示的新闻列表
      */
     List<News> listEnabledByType(Integer type);
+
+    /**
+     * 获取单条新闻详情(含content,仅返回status=1)
+     */
+    News getPublicDetail(Long id);
 }

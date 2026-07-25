@@ -174,6 +174,13 @@ if [ -f "fix_dup_certs.sql" ]; then
     echo "  证书编号重复修复完成"
 fi
 
+# 6.5 修复信息公开/新闻/公告时间全部相同的问题(按id偏移分钟数,幂等)
+if [ -f "fix_publish_time_v2.sql" ]; then
+    echo "  修复文章发布时间(分散相同时间)..."
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_publish_time_v2.sql 2>&1 | grep -v "Using a password"
+    echo "  文章发布时间分散修复完成"
+fi
+
 # 7. 配置 Nginx (HTTP 模式,无域名无SSL)
 echo "[7/8] 配置 Nginx..."
 # 先备份当前配置
