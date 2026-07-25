@@ -90,7 +90,7 @@ public class HomepageSectionServiceImpl extends ServiceImpl<HomepageSectionMappe
     }
 
     @Override
-    @Cacheable(value = "homepageSections", key = "#type", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(value = "homepageSections", key = "#type != null ? #type : 'all'", unless = "#result == null || #result.isEmpty()")
     public List<HomepageSection> listEnabled(Integer type) {
         LambdaQueryWrapper<HomepageSection> wrapper = new LambdaQueryWrapper<HomepageSection>()
                 .select(HomepageSection::getId, HomepageSection::getTitle, HomepageSection::getType,

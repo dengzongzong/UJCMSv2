@@ -195,7 +195,9 @@ CREATE TABLE IF NOT EXISTS `certificate_type` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书类型';
 
 -- 种子数据: 默认证书类型(使用 INSERT IGNORE,不删除用户已有的类型)
+-- 五种证书类型: 专业技能证书 / 专项职业证书 / 职业能力证书 / 能力等级证书 / 人才数据库
 INSERT IGNORE INTO `certificate_type` (`name`, `code`, `sort`, `status`) VALUES
+('专业技能证书', '5', 5, 1),
 ('专项职业证书', '1', 1, 1),
 ('人才数据库', '2', 2, 1),
 ('职业能力证书', '3', 3, 1),
@@ -212,17 +214,20 @@ CALL safe_add_column('certificate_user', 'id_card', 'VARCHAR(20) DEFAULT NULL CO
 CALL safe_add_column('certificate_user', 'name', 'VARCHAR(100) DEFAULT NULL COMMENT ''姓名''');
 
 -- ============================================================
--- 7.1 证书类型去重 + 唯一索引(保留用户自定义类型)
+-- 7.1 证书类型唯一索引(保留用户自定义类型,不删除任何类型)
 -- ============================================================
--- 去重: 同名类型只保留id最小的一条(为加唯一索引做准备,不会删除用户自定义的不同名称类型)
-DELETE t1 FROM certificate_type t1
-INNER JOIN certificate_type t2
-WHERE t1.name = t2.name AND t1.id > t2.id;
+-- 注意: 不再做同名去重DELETE(用户要求: 每次升级不允许删除证书类型)
+-- 如果历史数据存在同名重复,加唯一索引会失败,但不影响其他语句(--force模式继续执行)
+-- 后续 INSERT IGNORE 在有唯一索引时自动去重; 无唯一索引时也不会报错
 
--- 添加唯一索引防止再次重复(如果不存在)
+-- 添加唯一索引防止再次重复(如果不存在且无重复数据)
+SET @has_dup = (SELECT COUNT(*) FROM (
+  SELECT name FROM certificate_type GROUP BY name HAVING COUNT(*) > 1
+) t);
 SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate_type' AND INDEX_NAME = 'uk_name');
-SET @sql = IF(@idx_exists = 0,
+-- 只有在无重复数据且索引不存在时才添加(避免因重复数据导致报错)
+SET @sql = IF(@idx_exists = 0 AND @has_dup = 0,
   'ALTER TABLE certificate_type ADD UNIQUE INDEX uk_name (name)',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
@@ -249,7 +254,9 @@ WHERE s.cert_type IS NULL
 
 -- 证书类型: 幂等补齐默认类型(不清空表,保留用户手动新增的类型)
 -- 使用 INSERT IGNORE,已存在的类型不会重复插入,也不会删除用户自定义类型
+-- 五种证书类型: 专业技能证书 / 专项职业证书 / 职业能力证书 / 能力等级证书 / 人才数据库
 INSERT IGNORE INTO certificate_type (name, code, sort, status) VALUES
+('专业技能证书', '5', 5, 1),
 ('专项职业证书', '1', 1, 1),
 ('人才数据库', '2', 2, 1),
 ('职业能力证书', '3', 3, 1),
@@ -652,13 +659,26 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- 给 certificate_template_field 添加 (template_id, field_key) 唯一索引(幂等)
+-- 用于支持 INSERT ON DUPLICATE KEY UPDATE,避免DELETE操作
+SET @field_idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate_template_field' AND INDEX_NAME = 'uk_tpl_field');
+SET @field_has_dup = (SELECT COUNT(*) FROM (
+  SELECT template_id, field_key FROM certificate_template_field GROUP BY template_id, field_key HAVING COUNT(*) > 1
+) t);
+SET @field_sql = IF(@field_idx_exists = 0 AND @field_has_dup = 0,
+  'ALTER TABLE certificate_template_field ADD UNIQUE INDEX uk_tpl_field (template_id, field_key)',
+  'SELECT 1');
+PREPARE stmt FROM @field_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- 1. 专项职业证书 (zs.png, 2989x2162)
 INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
 VALUES ('专项职业证书', '/uploads/static/证书模板图/zs.png', 2989, 2162, 1, '专业技能证书模板(横向)')
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), is_default = 1, remark = VALUES(remark);
 
 SET @tpl_1 = (SELECT id FROM certificate_template WHERE name = '专项职业证书');
-DELETE FROM certificate_template_field WHERE template_id = @tpl_1;
+-- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE(允许新增/更新,不删除用户手动添加的字段)
 INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_1, 'name', 2050, 580, 36, '#000000', 2, 1, 300, 1),
 (@tpl_1, 'gender', 2050, 680, 36, '#000000', 1, 1, 300, 2),
@@ -668,7 +688,8 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_1, 'certNo', 2050, 1080, 36, '#000000', 1, 1, 400, 6),
 (@tpl_1, 'issueYear', 2050, 1180, 36, '#000000', 1, 1, 100, 7),
 (@tpl_1, 'issueMonth', 2200, 1180, 36, '#000000', 1, 1, 80, 8),
-(@tpl_1, 'issueDay', 2320, 1180, 36, '#000000', 1, 1, 80, 9);
+(@tpl_1, 'issueDay', 2320, 1180, 36, '#000000', 1, 1, 80, 9)
+ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
 
 -- 2. 能力等级证书 (zs1.jpg, 1170x816)
 INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
@@ -676,7 +697,7 @@ VALUES ('能力等级证书', '/uploads/static/证书模板图/zs1.jpg', 1170, 8
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), remark = VALUES(remark);
 
 SET @tpl_2 = (SELECT id FROM certificate_template WHERE name = '能力等级证书');
-DELETE FROM certificate_template_field WHERE template_id = @tpl_2;
+-- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE
 INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_2, 'name', 60, 200, 22, '#000000', 1, 1, 200, 1),
 (@tpl_2, 'gender', 60, 240, 22, '#000000', 1, 1, 200, 2),
@@ -689,7 +710,8 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_2, 'comprehensiveEvaluation', 650, 360, 22, '#000000', 1, 1, 200, 9),
 (@tpl_2, 'issueYear', 650, 400, 22, '#000000', 1, 1, 100, 10),
 (@tpl_2, 'issueMonth', 780, 400, 22, '#000000', 1, 1, 80, 11),
-(@tpl_2, 'issueDay', 880, 400, 22, '#000000', 1, 1, 80, 12);
+(@tpl_2, 'issueDay', 880, 400, 22, '#000000', 1, 1, 80, 12)
+ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
 
 -- 3. 人才数据库 (zs3.jpg, 1075x1522, 竖版)
 INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
@@ -697,7 +719,7 @@ VALUES ('人才数据库', '/uploads/static/证书模板图/zs3.jpg', 1075, 1522
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), remark = VALUES(remark);
 
 SET @tpl_3 = (SELECT id FROM certificate_template WHERE name = '人才数据库');
-DELETE FROM certificate_template_field WHERE template_id = @tpl_3;
+-- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE
 INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_3, 'name', 280, 580, 30, '#000000', 1, 1, 300, 1),
 (@tpl_3, 'gender', 280, 640, 30, '#000000', 1, 1, 300, 2),
@@ -706,7 +728,8 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_3, 'profession', 280, 820, 30, '#000000', 1, 1, 350, 5),
 (@tpl_3, 'issueYear', 280, 880, 30, '#000000', 1, 1, 100, 6),
 (@tpl_3, 'issueMonth', 420, 880, 30, '#000000', 1, 1, 80, 7),
-(@tpl_3, 'issueDay', 540, 880, 30, '#000000', 1, 1, 80, 8);
+(@tpl_3, 'issueDay', 540, 880, 30, '#000000', 1, 1, 80, 8)
+ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
 
 -- 4. 职业能力证书 (bg.jpg, 1920x1599)
 INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
@@ -714,7 +737,7 @@ VALUES ('职业能力证书', '/uploads/static/证书模板图/bg.jpg', 1920, 15
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), is_default = VALUES(is_default), remark = VALUES(remark);
 
 SET @tpl_4 = (SELECT id FROM certificate_template WHERE name = '职业能力证书');
-DELETE FROM certificate_template_field WHERE template_id = @tpl_4;
+-- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE
 INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_4, 'name', 960, 700, 32, '#000000', 2, 2, 300, 0),
 (@tpl_4, 'gender', 960, 780, 28, '#000000', 1, 2, 200, 1),
@@ -724,7 +747,8 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_4, 'certNo', 960, 1100, 24, '#333333', 1, 2, 400, 5),
 (@tpl_4, 'issueYear', 800, 1200, 24, '#000000', 1, 1, 100, 6),
 (@tpl_4, 'issueMonth', 950, 1200, 24, '#000000', 1, 1, 80, 7),
-(@tpl_4, 'issueDay', 1080, 1200, 24, '#000000', 1, 1, 80, 8);
+(@tpl_4, 'issueDay', 1080, 1200, 24, '#000000', 1, 1, 80, 8)
+ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
 
 -- 验证
 SELECT '证书模板导入结果' AS info;

@@ -14,7 +14,9 @@ WHERE (cert_type IS NULL OR cert_type = '')
   AND JSON_EXTRACT(extra_json, '$.cert_type') IS NOT NULL;
 
 -- ====== 2. 确保证书类型表有正确的默认类型(INSERT IGNORE,不删除已有类型) ======
+-- 五种证书类型: 专业技能证书 / 专项职业证书 / 职业能力证书 / 能力等级证书 / 人才数据库
 INSERT IGNORE INTO certificate_type (name, code, sort, status) VALUES
+('专业技能证书', '5', 5, 1),
 ('专项职业证书', '1', 1, 1),
 ('人才数据库', '2', 2, 1),
 ('职业能力证书', '3', 3, 1),
@@ -24,13 +26,9 @@ INSERT IGNORE INTO certificate_type (name, code, sort, status) VALUES
 -- 注意: 不再无条件改写证书的 cert_type 字段(之前的 UPDATE certificate SET cert_type = '专项职业证书' WHERE cert_type = '专业技能证书' 等已移除)
 -- 这些操作会导致用户自定义类型与证书的关联被破坏
 
--- ====== 3. 清理/修正证书模板(仅删除名为"11"且无证书绑定的无效模板) ======
-DELETE FROM certificate_template_field WHERE template_id IN (
-    SELECT id FROM certificate_template WHERE name = '11'
-      AND id NOT IN (SELECT DISTINCT template_id FROM certificate WHERE template_id IS NOT NULL)
-);
-DELETE FROM certificate_template WHERE name = '11'
-  AND id NOT IN (SELECT DISTINCT template_id FROM certificate WHERE template_id IS NOT NULL);
+-- ====== 3. 证书模板(不删除任何模板,用户要求: 每次升级不允许删除证书模板) ======
+-- 之前会删除名为"11"且无证书绑定的无效模板,现已移除该DELETE操作
+-- 如需清理无效模板,请在管理后台手动操作
 
 -- ====== 4. 按证书类型自动绑定同名模板 ======
 -- 仅绑定 template_id 为空的证书,不会覆盖已有的模板绑定

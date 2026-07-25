@@ -103,7 +103,7 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
     }
 
     @Override
-    @Cacheable(value = "newsListByType", key = "#type", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(value = "newsListByType", key = "#type != null ? #type : 'all'", unless = "#result == null || #result.isEmpty()")
     public List<News> listEnabledByType(Integer type) {
         List<News> list = this.list(new LambdaQueryWrapper<News>()
                 .select(News::getId, News::getTitle, News::getCoverUrl, News::getType,
