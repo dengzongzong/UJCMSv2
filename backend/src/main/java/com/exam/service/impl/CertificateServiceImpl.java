@@ -124,7 +124,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .like(StringUtils.hasText(name), Certificate::getName, name)
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
                 .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
-                .orderByDesc(Certificate::getCreateTime);
+                .orderByDesc(Certificate::getCreateTime)
+                .orderByDesc(Certificate::getId);
         if (StringUtils.hasText(issueDateStart)) {
             w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
         }
@@ -365,7 +366,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
                 .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
                 .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
-                .orderByDesc(Certificate::getCreateTime);
+                .orderByDesc(Certificate::getCreateTime)
+                .orderByDesc(Certificate::getId);
         if (StringUtils.hasText(issueDateStart)) {
             w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
         }
@@ -389,7 +391,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
                 .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
                 .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
-                .orderByDesc(Certificate::getCreateTime);
+                .orderByDesc(Certificate::getCreateTime)
+                .orderByDesc(Certificate::getId);
         if (StringUtils.hasText(issueDateStart)) {
             w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
         }
@@ -415,7 +418,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
                 .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
                 .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
-                .orderByDesc(Certificate::getCreateTime);
+                .orderByDesc(Certificate::getCreateTime)
+                .orderByDesc(Certificate::getId);
         if (StringUtils.hasText(issueDateStart)) {
             w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
         }
@@ -891,7 +895,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
                 .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
                 .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
-                .orderByDesc(Certificate::getCreateTime);
+                .orderByDesc(Certificate::getCreateTime)
+                .orderByDesc(Certificate::getId);
         if (StringUtils.hasText(issueDateStart)) {
             w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
         }

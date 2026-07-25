@@ -86,7 +86,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<Student>()
                 .like(StringUtils.hasText(dto.getPhone()), Student::getPhone, dto.getPhone())
                 .eq(dto.getStatus() != null, Student::getStatus, dto.getStatus())
-                .orderByDesc(Student::getCreateTime);
+                .orderByDesc(Student::getCreateTime)
+                .orderByDesc(Student::getId);
         if (studentIdsByProfession != null) {
             wrapper.in(Student::getId, studentIdsByProfession);
         }
