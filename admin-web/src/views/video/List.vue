@@ -156,13 +156,15 @@
                 style="width: 200px; margin-right: 10px"
                 @keyup.enter.native="fetchVideoOpened"
               />
-              <el-input-number
+              <el-input
                 v-model="openStudentsDialog.openedQuery.exactCount"
-                :min="1"
-                :max="10000"
                 placeholder="显示最新N条"
+                clearable
                 style="width: 160px; margin-right: 10px"
-              />
+                @keyup.enter.native="fetchVideoOpened"
+              >
+                <el-button slot="append" icon="el-icon-search" @click="fetchVideoOpened" />
+              </el-input>
               <el-button type="primary" size="small" @click="fetchVideoOpened">搜索</el-button>
             </div>
             <el-table :data="openStudentsDialog.opened" border size="small" style="width: 100%">
@@ -204,13 +206,15 @@
                 style="width: 200px; margin-right: 10px"
                 @keyup.enter.native="fetchVideoUnopened"
               />
-              <el-input-number
+              <el-input
                 v-model="openStudentsDialog.addQuery.exactCount"
-                :min="1"
-                :max="10000"
                 placeholder="显示最新N条"
+                clearable
                 style="width: 160px; margin-right: 10px"
-              />
+                @keyup.enter.native="fetchVideoUnopened"
+              >
+                <el-button slot="append" icon="el-icon-search" @click="fetchVideoUnopened" />
+              </el-input>
               <el-button type="primary" size="small" @click="fetchVideoUnopened">搜索</el-button>
               <el-button
                 type="success"

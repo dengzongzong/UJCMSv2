@@ -38,14 +38,16 @@
               >
                 <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
               </el-input>
-              <el-input-number
+              <el-input
                 v-model="openedQuery.exactCount"
-                :min="1"
-                :max="10000"
                 placeholder="显示最新N条"
+                clearable
                 size="small"
                 style="width: 160px"
-              />
+                @keyup.enter.native="fetchOpened"
+              >
+                <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
+              </el-input>
             </div>
             <div>
               <el-button
@@ -125,14 +127,16 @@
             >
               <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
             </el-input>
-            <el-input-number
+            <el-input
               v-model="addQuery.exactCount"
-              :min="1"
-              :max="10000"
               placeholder="显示最新N条"
+              clearable
               size="small"
               style="width: 160px"
-            />
+              @keyup.enter.native="fetchUnopened"
+            >
+              <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
+            </el-input>
           </div>
           <el-table
             :data="unopened"

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -131,7 +132,7 @@ public class NewsManageServiceImpl extends ServiceImpl<NewsMapper, News> impleme
 
     private List<News> dedupByTitle(List<News> list) {
         return list.stream().collect(Collectors.toMap(
-                News::getTitle, n -> n, (n1, n2) -> n1
+                News::getTitle, n -> n, (n1, n2) -> n1, LinkedHashMap::new
         )).values().stream().collect(Collectors.toList());
     }
 

@@ -36,15 +36,16 @@
           >
             <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
           </el-input>
-          <el-input-number
+          <el-input
             v-model="openedQuery.exactCount"
-            :min="1"
-            :max="10000"
             placeholder="显示最新N条"
+            clearable
             size="small"
-            controls-position="right"
             style="width: 180px; margin-bottom: 10px; margin-left: 10px"
-          />
+            @keyup.enter.native="fetchOpened"
+          >
+            <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
+          </el-input>
           <el-table :data="opened" border size="mini" max-height="360">
             <el-table-column type="index" label="序号" width="60" align="center" />
             <el-table-column prop="name" label="姓名" min-width="100" show-overflow-tooltip>
@@ -103,15 +104,16 @@
           >
             <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
           </el-input>
-          <el-input-number
+          <el-input
             v-model="addQuery.exactCount"
-            :min="1"
-            :max="10000"
             placeholder="显示最新N条"
+            clearable
             size="small"
-            controls-position="right"
             style="width: 180px; margin-bottom: 10px; margin-left: 10px"
-          />
+            @keyup.enter.native="fetchUnopened"
+          >
+            <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
+          </el-input>
           <el-table
             :data="unopened"
             border
