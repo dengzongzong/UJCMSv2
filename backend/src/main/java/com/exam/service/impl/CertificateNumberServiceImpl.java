@@ -193,6 +193,27 @@ public class CertificateNumberServiceImpl implements CertificateNumberService {
         return list.isEmpty() ? null : list.get(0);
     }
 
+    @Override
+    public void regenerateNumbers(Certificate cert) {
+        CertificateNumberConfig config = getConfig();
+        // 证书编号:使用证书记录上的前缀/中段,回落到全局配置
+        String certPrefix = StringUtils.hasText(cert.getCertNoPrefix()) ? cert.getCertNoPrefix()
+                : (config != null ? config.getCertNoPrefix() : null);
+        String certMiddle = StringUtils.hasText(cert.getCertNoMiddle()) ? cert.getCertNoMiddle()
+                : (config != null ? config.getCertNoMiddle() : null);
+        cert.setCertNoPrefix(certPrefix);
+        cert.setCertNoMiddle(certMiddle);
+        cert.setCertNo(generateCertNo(certPrefix, certMiddle, cert.getIssueDate()));
+        // 学员编号:使用证书记录上的前缀/中段,回落到全局配置
+        String stuPrefix = StringUtils.hasText(cert.getStudentNoPrefix()) ? cert.getStudentNoPrefix()
+                : (config != null ? config.getStudentNoPrefix() : null);
+        String stuMiddle = StringUtils.hasText(cert.getStudentNoMiddle()) ? cert.getStudentNoMiddle()
+                : (config != null ? config.getStudentNoMiddle() : null);
+        cert.setStudentNoPrefix(stuPrefix);
+        cert.setStudentNoMiddle(stuMiddle);
+        cert.setStudentNo(generateStudentNo(stuPrefix, stuMiddle, cert.getIssueDate()));
+    }
+
     /**
      * 从身份证号提取性别(第17位奇数=男 偶数=女)
      */

@@ -3,6 +3,7 @@ package com.exam.service.impl;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.listener.ReadListener;
+import com.alibaba.excel.support.ExcelTypeEnum;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -818,6 +819,28 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 // 自动绑定失败不阻断主流程
             }
         }
+        // ====== 颁发日期变更时,联动重新生成证书编号和学员编号 ======
+        // 编号规则中包含 yyyyMMdd 日期段,日期变化后编号需同步更新
+        if (dto.getIssueDate() != null && exist.getIssueDate() != null
+                && !dto.getIssueDate().equals(exist.getIssueDate())) {
+            try {
+                Certificate latest = this.getById(dto.getId());
+                if (latest != null) {
+                    latest.setIssueDate(dto.getIssueDate());
+                    numberService.regenerateNumbers(latest);
+                    this.update(new LambdaUpdateWrapper<Certificate>()
+                            .eq(Certificate::getId, dto.getId())
+                            .set(Certificate::getCertNo, latest.getCertNo())
+                            .set(Certificate::getCertNoPrefix, latest.getCertNoPrefix())
+                            .set(Certificate::getCertNoMiddle, latest.getCertNoMiddle())
+                            .set(Certificate::getStudentNo, latest.getStudentNo())
+                            .set(Certificate::getStudentNoPrefix, latest.getStudentNoPrefix())
+                            .set(Certificate::getStudentNoMiddle, latest.getStudentNoMiddle()));
+                }
+            } catch (Exception e) {
+                log.warn("颁发日期变更后重新生成编号失败: certId={}, error={}", dto.getId(), e.getMessage());
+            }
+        }
     }
 
     @Override
@@ -892,8 +915,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         CertificateImportResult importResult = importRows(validRows);
         result.setSuccessCount(importResult.getSuccessCount());
         result.setFailCount(importResult.getFailCount() + failed.size());
+        result.setSkipCount(importResult.getSkipCount());
         if (importResult.getFailedRows() != null) {
             result.getFailedRows().addAll(importResult.getFailedRows());
+        }
+        if (importResult.getSkippedRows() != null) {
+            result.setSkippedRows(importResult.getSkippedRows());
         }
         return result;
     }
@@ -996,16 +1023,16 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 if (!hasInitialPractical) {
                     try {
                         double theory = Double.parseDouble(scoreStr);
-                        // 实操成绩在理论成绩 ±10 范围内,但不能低于60,也不能高于100
+                        // 实操成绩在理论成绩 ±10 范围内,但不能低于60,也不能高于85
                         int min = Math.max(60, (int) Math.floor(theory - 10));
-                        int max = Math.min(100, (int) Math.ceil(theory + 10));
+                        int max = Math.min(85, (int) Math.ceil(theory + 10));
                         if (max <= min) max = min + 1;
                         int practicalScore = random.nextInt(min, max + 1);
                         extra.put("practicalScore", String.valueOf(practicalScore));
                     } catch (NumberFormatException e) {
-                        // 理论成绩非数字时,实操成绩基于身份证号hash生成稳定值(60-100)
+                        // 理论成绩非数字时,实操成绩基于身份证号hash生成稳定值(60-85)
                         int hash = Math.abs(idCard.hashCode());
-                        int practicalScore = 60 + (hash % 40);
+                        int practicalScore = 60 + (hash % 26);
                         extra.put("practicalScore", String.valueOf(practicalScore));
                     }
                 }
@@ -1148,11 +1175,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     public CertificateImportResult importRows(List<CertificateDTO> rows) {
         CertificateImportResult r = new CertificateImportResult();
         if (rows == null || rows.isEmpty()) {
-            r.setSuccessCount(0); r.setFailCount(0);
+            r.setSuccessCount(0); r.setFailCount(0); r.setSkipCount(0);
             return r;
         }
-        int ok = 0, fail = 0;
+        int ok = 0, fail = 0, skip = 0;
         List<CertificateImportRow> failed = new ArrayList<>();
+        List<CertificateImportRow> skipped = new ArrayList<>();
         for (CertificateDTO dto : rows) {
             try {
                 boolean created = add(dto);
@@ -1161,8 +1189,16 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     certificateUserSyncService.syncFromCertificateData(
                             dto.getName(), dto.getIdCard(), dto.getGender(), dto.getProfession());
                     ok++;
+                } else {
+                    // add 返回 false = 去重跳过,记录为"未成功"
+                    skip++;
+                    CertificateImportRow row = new CertificateImportRow();
+                    row.setRowIndex(0);
+                    row.setName(dto.getName());
+                    row.setIdCard(dto.getIdCard());
+                    row.setError("数据已存在(姓名+身份证+专业+级别重复,已跳过)");
+                    skipped.add(row);
                 }
-                // add 返回 false = 去重跳过,不计入成功也不计入失败
             } catch (Exception e) {
                 fail++;
                 CertificateImportRow row = new CertificateImportRow();
@@ -1175,7 +1211,9 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         }
         r.setSuccessCount(ok);
         r.setFailCount(fail);
+        r.setSkipCount(skip);
         r.setFailedRows(failed);
+        r.setSkippedRows(skipped);
         return r;
     }
 
@@ -1298,12 +1336,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
 
         if (boundCerts.isEmpty()) {
             try {
-                response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                response.setContentType("application/vnd.ms-excel");
                 response.setCharacterEncoding("utf-8");
                 String fileName = URLEncoder.encode("证书数据", StandardCharsets.UTF_8.name()).replaceAll("\\+", "%20");
-                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xls");
                 try (OutputStream os = response.getOutputStream()) {
-                    EasyExcel.write(os).head(new ArrayList<List<String>>()).sheet("证书数据").doWrite(new ArrayList<>());
+                    EasyExcel.write(os).excelType(ExcelTypeEnum.XLS).head(new ArrayList<List<String>>()).sheet("证书数据").doWrite(new ArrayList<>());
                 }
             } catch (Exception e) {
                 throw new BusinessException("导出失败: " + e.getMessage());
@@ -1363,9 +1401,9 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
 
             // 写入内存
             try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
-                EasyExcel.write(baos).head(head).sheet("证书数据").doWrite(dataList);
+                EasyExcel.write(baos).excelType(ExcelTypeEnum.XLS).head(head).sheet("证书数据").doWrite(dataList);
                 String safeName = tplName.replaceAll("[\\\\/:*?\"<>|]", "_");
-                excelFiles.add(new ExcelFileEntry(safeName + ".xlsx", baos.toByteArray()));
+                excelFiles.add(new ExcelFileEntry(safeName + ".xls", baos.toByteArray()));
             } catch (Exception e) {
                 throw new BusinessException("生成Excel失败: " + e.getMessage());
             }
@@ -1377,9 +1415,9 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 ExcelFileEntry entry = excelFiles.get(0);
                 String fileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
                         .replaceAll("\\+", "%20");
-                response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                response.setContentType("application/vnd.ms-excel");
                 response.setCharacterEncoding("utf-8");
-                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xls");
                 response.getOutputStream().write(entry.data);
                 response.getOutputStream().flush();
             } else {

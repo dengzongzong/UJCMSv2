@@ -575,7 +575,15 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
         Map<String, String> map = new HashMap<>();
         map.put("name", safe(cert.getName()));
         map.put("idcard", safe(cert.getIdCard()));
-        map.put("gender", cert.getGender() == null ? "" : (cert.getGender() == 1 ? "男" : "女"));
+        // 性别:优先用数据库列的值;为空时从身份证号自动推断
+        Integer gender = cert.getGender();
+        if (gender == null && StringUtils.hasText(cert.getIdCard())) {
+            gender = CertificateNumberServiceImpl.extractGenderFromIdCard(cert.getIdCard());
+        }
+        String genderStr = gender == null ? "" : (gender == 1 ? "男" : "女");
+        map.put("gender", genderStr);
+        map.put("sex", genderStr);
+        map.put("xb", genderStr);
         map.put("profession", safe(cert.getProfession()));
         map.put("skilllevel", safe(cert.getSkillLevel()));
         if (cert.getIssueDate() != null) {

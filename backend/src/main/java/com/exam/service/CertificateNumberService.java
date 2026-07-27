@@ -60,4 +60,10 @@ public interface CertificateNumberService {
      * 绑定证书模板时调用:证书编号在绑定模板时才生成。
      */
     void fillCertNoIfEmpty(Certificate certificate, Long templateId);
+
+    /**
+     * 强制重新生成证书编号和学员编号(使用证书记录上的前缀/中段,日期取自颁发日期)。
+     * 颁发日期变更时调用:编号中的日期段需要跟随颁发日期联动变化。
+     */
+    void regenerateNumbers(Certificate certificate);
 }

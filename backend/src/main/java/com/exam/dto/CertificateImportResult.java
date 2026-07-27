@@ -15,8 +15,12 @@ public class CertificateImportResult {
     private Integer successCount;
     /** 失败条数 */
     private Integer failCount;
+    /** 跳过条数(重复数据等) */
+    private Integer skipCount;
     /** 失败行明细(回传给前端) */
     private List<CertificateImportRow> failedRows;
+    /** 跳过行明细(重复数据,回传给前端) */
+    private List<CertificateImportRow> skippedRows;
     /** dry-run 模式下,待入库的行(校验通过) */
     private List<CertificateImportRow> pendingRows;
     /** 是否为 dry-run(只解析未入库) */

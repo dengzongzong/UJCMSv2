@@ -191,12 +191,27 @@
       </div>
       <div v-else>
         <el-alert
-          :title="'导入完成:成功 ' + importResult.successCount + ' 条,失败 ' + importResult.failCount + ' 条'"
-          :type="importResult.failCount > 0 ? 'warning' : 'success'"
+          :title="'导入完成:成功 ' + (importResult.successCount || 0) + ' 条,未成功 ' + ((importResult.failCount || 0) + (importResult.skipCount || 0)) + ' 条(失败 ' + (importResult.failCount || 0) + ',重复跳过 ' + (importResult.skipCount || 0) + ')'"
+          :type="(importResult.failCount > 0 || importResult.skipCount > 0) ? 'warning' : 'success'"
           show-icon
           :closable="false"
           style="margin-bottom:12px"
         />
+        <el-table
+          v-if="importResult.skippedRows && importResult.skippedRows.length"
+          :data="importResult.skippedRows"
+          border
+          size="mini"
+          max-height="160"
+          style="margin-bottom:12px"
+        >
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column prop="name" label="姓名" width="100" />
+          <el-table-column prop="idCard" label="证件号码" min-width="180" />
+          <el-table-column label="原因" min-width="240" show-overflow-tooltip>
+            <template slot-scope="{ row }">{{ row.error || row.reason || '数据已存在(重复跳过)' }}</template>
+          </el-table-column>
+        </el-table>
         <el-table
           v-if="((importResult.failedRows || importResult.failList) || []).length"
           :data="importResult.failedRows || importResult.failList"
@@ -211,7 +226,7 @@
             <template slot-scope="{ row }">{{ row.reason || row.error || '-' }}</template>
           </el-table-column>
         </el-table>
-        <div v-else class="empty-tip">无失败行</div>
+        <div v-if="!((importResult.failedRows || importResult.failList) || []).length && !(importResult.skippedRows && importResult.skippedRows.length)" class="empty-tip">无失败行</div>
       </div>
       <div slot="footer">
         <el-button @click="importDialog = false">{{ importResult ? '关闭' : '取消' }}</el-button>
@@ -1147,17 +1162,37 @@ export default {
         this.importResult = data
         const ok = data.successCount || 0
         const fail = data.failCount || 0
+        const skip = data.skipCount || 0
         const failedRows = data.failedRows || data.failList || []
-        if (fail > 0 && ok === 0) {
+        const skippedRows = data.skippedRows || []
+        if (fail > 0 && ok === 0 && skip === 0) {
           this.$alert(
             '全部 ' + fail + ' 条数据未通过校验,请查看下方"失败明细"修正 Excel 后重传。',
             '校验未通过',
             { type: 'error' }
           )
+        } else if (skip > 0 && ok === 0 && fail === 0) {
+          this.$alert(
+            '全部 ' + skip + ' 条数据已存在(重复),已自动跳过。无新增数据。',
+            '导入完成(全部重复)',
+            { type: 'warning' }
+          )
+        } else if (fail > 0 && skip > 0) {
+          this.$alert(
+            '成功 ' + ok + ' 条,失败 ' + fail + ' 条,重复跳过 ' + skip + ' 条\n请查看下方明细。',
+            '导入完成(有失败和重复)',
+            { type: 'warning' }
+          )
         } else if (fail > 0) {
           this.$alert(
             '成功 ' + ok + ' 条,失败 ' + fail + ' 条\n请查看下方"失败明细"修正后重新上传。',
             '导入完成(有失败)',
+            { type: 'warning' }
+          )
+        } else if (skip > 0) {
+          this.$alert(
+            '成功 ' + ok + ' 条,重复跳过 ' + skip + ' 条(数据已存在)。',
+            '导入完成(有重复)',
             { type: 'warning' }
           )
         } else if (ok > 0) {
