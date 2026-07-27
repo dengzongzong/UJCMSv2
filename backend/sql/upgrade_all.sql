@@ -820,3 +820,77 @@ SET @sql = IF(@idx_exists = 0,
   'ALTER TABLE homepage_section ADD INDEX idx_status_publish (status, publish_time)',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- 数据迁移: announcement + homepage_section -> news 表
+-- 将系统公告、政策法规、信息公开合并到 news 表统一管理
+-- type=7 通知公告, type=8 政策法规, type=9 信息公开
+-- 幂等: 通过标题+类型去重,已迁移过的不会重复插入
+-- ============================================================
+
+-- 1. 迁移 announcement -> news (type=7 通知公告)
+INSERT INTO `news` (`title`, `content`, `cover_url`, `type`, `status`, `sort`, `is_top`, `publish_time`, `create_time`, `update_time`)
+SELECT
+  a.`title`,
+  a.`content`,
+  NULL AS cover_url,
+  7 AS type,
+  COALESCE(a.`status`, 1) AS status,
+  COALESCE(a.`sort`, 0) AS sort,
+  COALESCE(a.`is_top`, 0) AS is_top,
+  COALESCE(a.`publish_time`, a.`create_time`) AS publish_time,
+  a.`create_time`,
+  a.`update_time`
+FROM `announcement` a
+WHERE NOT EXISTS (
+  SELECT 1 FROM `news` n
+  WHERE n.`title` = a.`title` AND n.`type` = 7
+);
+
+-- 2. 迁移 homepage_section type=1 -> news (type=8 政策法规)
+INSERT INTO `news` (`title`, `content`, `cover_url`, `type`, `status`, `sort`, `is_top`, `publish_time`, `create_time`, `update_time`)
+SELECT
+  h.`title`,
+  h.`content`,
+  h.`cover_url`,
+  8 AS type,
+  COALESCE(h.`status`, 1) AS status,
+  COALESCE(h.`sort`, 0) AS sort,
+  0 AS is_top,
+  COALESCE(h.`publish_time`, h.`create_time`) AS publish_time,
+  h.`create_time`,
+  h.`update_time`
+FROM `homepage_section` h
+WHERE h.`type` = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM `news` n
+    WHERE n.`title` = h.`title` AND n.`type` = 8
+  );
+
+-- 3. 迁移 homepage_section type=2 -> news (type=9 信息公开)
+INSERT INTO `news` (`title`, `content`, `cover_url`, `type`, `status`, `sort`, `is_top`, `publish_time`, `create_time`, `update_time`)
+SELECT
+  h.`title`,
+  h.`content`,
+  h.`cover_url`,
+  9 AS type,
+  COALESCE(h.`status`, 1) AS status,
+  COALESCE(h.`sort`, 0) AS sort,
+  0 AS is_top,
+  COALESCE(h.`publish_time`, h.`create_time`) AS publish_time,
+  h.`create_time`,
+  h.`update_time`
+FROM `homepage_section` h
+WHERE h.`type` = 2
+  AND NOT EXISTS (
+    SELECT 1 FROM `news` n
+    WHERE n.`title` = h.`title` AND n.`type` = 9
+  );
+
+-- 迁移结果验证
+SELECT '=== 数据迁移结果 ===' AS info;
+SELECT 'news type=7 (通知公告)' AS category, COUNT(*) AS count FROM `news` WHERE `type` = 7
+UNION ALL
+SELECT 'news type=8 (政策法规)' AS category, COUNT(*) AS count FROM `news` WHERE `type` = 8
+UNION ALL
+SELECT 'news type=9 (信息公开)' AS category, COUNT(*) AS count FROM `news` WHERE `type` = 9;
