@@ -54,7 +54,7 @@ public interface CourseManageService extends IService<Course> {
      * unopened == null 或 0：查询已开通该课程的学生
      * unopened == 1：查询未开通该课程的学生
      */
-    PageResult<Student> studentsPage(Long courseId, Integer page, Integer size, String phone, Integer unopened, String idCard, Integer exactCount);
+    PageResult<Student> studentsPage(Long courseId, Integer page, Integer size, String phone, Integer unopened, String idCard, Integer exactCount, String profession);
 
     /**
      * 为课程新增开通学生

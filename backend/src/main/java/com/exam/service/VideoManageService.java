@@ -51,7 +51,7 @@ public interface VideoManageService extends IService<Video> {
      * unopened == null 或 0：查询已开通该视频的学生
      * unopened == 1：查询未开通该视频的学生
      */
-    PageResult<Student> studentsPage(Long videoId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened);
+    PageResult<Student> studentsPage(Long videoId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened, String profession);
 
     /**
      * 批量开通视频给学生

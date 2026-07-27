@@ -53,7 +53,7 @@ public interface ExamManageService extends IService<Exam> {
      * unopened == 1：查询未开通该考试的学生
      * exactCount != null 且 > 0：重置为第1页，每页条数=exactCount，用于显示最新N条
      */
-    PageResult<Student> studentsPage(Long examId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened, Integer unexamined);
+    PageResult<Student> studentsPage(Long examId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened, Integer unexamined, String profession);
 
     /**
      * 为考试新增开通学生

@@ -165,12 +165,18 @@
               >
                 <el-button slot="append" icon="el-icon-search" @click="fetchVideoOpened" />
               </el-input>
+              <el-input
+                v-model="openStudentsDialog.openedQuery.profession"
+                placeholder="搜索专业"
+                clearable
+                style="width: 200px; margin-right: 10px"
+                @keyup.enter.native="fetchVideoOpened"
+              />
               <el-button type="primary" size="small" @click="fetchVideoOpened">搜索</el-button>
             </div>
             <el-table :data="openStudentsDialog.opened" border size="small" style="width: 100%">
               <el-table-column type="index" label="序号" width="50" align="center" />
               <el-table-column prop="name" label="姓名" width="100" />
-              <el-table-column prop="studentNo" label="学号" width="120" />
               <el-table-column prop="phone" label="手机号" width="130" />
               <el-table-column prop="professionName" label="专业" width="120" />
               <el-table-column label="操作" width="80" align="center">
@@ -215,6 +221,13 @@
               >
                 <el-button slot="append" icon="el-icon-search" @click="fetchVideoUnopened" />
               </el-input>
+              <el-input
+                v-model="openStudentsDialog.addQuery.profession"
+                placeholder="搜索专业"
+                clearable
+                style="width: 200px; margin-right: 10px"
+                @keyup.enter.native="fetchVideoUnopened"
+              />
               <el-button type="primary" size="small" @click="fetchVideoUnopened">搜索</el-button>
               <el-button
                 type="success"
@@ -236,7 +249,6 @@
               <el-table-column type="selection" width="45" align="center" />
               <el-table-column type="index" label="序号" width="50" align="center" />
               <el-table-column prop="name" label="姓名" width="100" />
-              <el-table-column prop="studentNo" label="学号" width="120" />
               <el-table-column prop="phone" label="手机号" width="130" />
               <el-table-column prop="professionName" label="专业" width="120" />
             </el-table>
@@ -291,10 +303,10 @@ export default {
         activeTab: 'opened',
         opened: [],
         openedTotal: 0,
-        openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
+        openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' },
         unopened: [],
         addTotal: 0,
-        addQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
+        addQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' },
         selected: []
       }
     }
@@ -425,8 +437,8 @@ export default {
       this.openStudentsDialog.videoName = row.name
       this.openStudentsDialog.visible = true
       this.openStudentsDialog.activeTab = 'opened'
-      this.openStudentsDialog.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
-      this.openStudentsDialog.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
+      this.openStudentsDialog.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
+      this.openStudentsDialog.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
       this.openStudentsDialog.selected = []
       this.fetchVideoOpened()
     },
@@ -442,7 +454,8 @@ export default {
         size: this.openStudentsDialog.openedQuery.size,
         phone: this.openStudentsDialog.openedQuery.phone,
         idCard: this.openStudentsDialog.openedQuery.idCard,
-        exactCount: this.openStudentsDialog.openedQuery.exactCount
+        exactCount: this.openStudentsDialog.openedQuery.exactCount,
+        profession: this.openStudentsDialog.openedQuery.profession
       }
       getVideoStudents(this.openStudentsDialog.videoId, params)
         .then((res) => {
@@ -466,6 +479,7 @@ export default {
         phone: this.openStudentsDialog.addQuery.phone,
         idCard: this.openStudentsDialog.addQuery.idCard,
         exactCount: this.openStudentsDialog.addQuery.exactCount,
+        profession: this.openStudentsDialog.addQuery.profession,
         unopened: 1
       }
       getVideoStudents(this.openStudentsDialog.videoId, params)

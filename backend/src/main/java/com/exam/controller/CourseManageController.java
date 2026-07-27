@@ -96,8 +96,9 @@ public class CourseManageController {
                                                 @RequestParam(required = false) String phone,
                                                 @RequestParam(required = false) Integer unopened,
                                                 @RequestParam(required = false) String idCard,
-                                                @RequestParam(required = false) Integer exactCount) {
-        PageResult<Student> result = courseManageService.studentsPage(id, page, size, phone, unopened, idCard, exactCount);
+                                                @RequestParam(required = false) Integer exactCount,
+                                                @RequestParam(required = false) String profession) {
+        PageResult<Student> result = courseManageService.studentsPage(id, page, size, phone, unopened, idCard, exactCount, profession);
         return Result.success(result);
     }
 

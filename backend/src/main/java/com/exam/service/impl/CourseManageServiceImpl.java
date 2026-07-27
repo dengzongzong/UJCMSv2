@@ -42,6 +42,8 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
     private VideoCategoryMapper videoCategoryMapper;
     @Autowired
     private VideoStudyRecordMapper videoStudyRecordMapper;
+    @Autowired
+    private StudentProfessionMapper studentProfessionMapper;
 
     @Override
     public PageResult<AdminCourseVO> page(Integer page, Integer size, String name,
@@ -373,7 +375,7 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
     }
 
     @Override
-    public PageResult<Student> studentsPage(Long courseId, Integer page, Integer size, String phone, Integer unopened, String idCard, Integer exactCount) {
+    public PageResult<Student> studentsPage(Long courseId, Integer page, Integer size, String phone, Integer unopened, String idCard, Integer exactCount, String profession) {
         // 显示最新N条：固定第1页，size = exactCount
         if (exactCount != null && exactCount > 0) {
             page = 1;
@@ -384,9 +386,30 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
                 new LambdaQueryWrapper<StudentCourse>().eq(StudentCourse::getCourseId, courseId));
         Set<Long> openedIds = studentCourses.stream().map(StudentCourse::getStudentId).collect(Collectors.toSet());
 
+        // 按专业筛选: 先查 student_profession 关联表获取匹配的 studentId
+        Set<Long> professionFilteredIds = null;
+        if (StringUtils.hasText(profession)) {
+            // profession 可能是专业名称或ID,先查 profession 表
+            List<Profession> matchedProfessions = professionMapper.selectList(
+                    new LambdaQueryWrapper<Profession>().like(Profession::getName, profession));
+            if (matchedProfessions.isEmpty()) {
+                return new PageResult<>(new Page<>(page, size));
+            }
+            Set<Long> profIds = matchedProfessions.stream().map(Profession::getId).collect(Collectors.toSet());
+            List<StudentProfession> sps = studentProfessionMapper.selectList(
+                    new LambdaQueryWrapper<StudentProfession>().in(StudentProfession::getProfessionId, profIds));
+            professionFilteredIds = sps.stream().map(StudentProfession::getStudentId).collect(Collectors.toSet());
+            if (professionFilteredIds.isEmpty()) {
+                return new PageResult<>(new Page<>(page, size));
+            }
+        }
+
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(phone), Student::getPhone, phone);
         wrapper.like(StringUtils.hasText(idCard), Student::getIdCard, idCard);
+        if (professionFilteredIds != null) {
+            wrapper.in(Student::getId, professionFilteredIds);
+        }
         if (unopened != null && unopened == 1) {
             // 未开通：id NOT IN openedIds
             if (!openedIds.isEmpty()) {
@@ -403,6 +426,8 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
         Page<Student> p = new Page<>(page, size);
         Page<Student> result = studentMapper.selectPage(p, wrapper);
         result.getRecords().forEach(s -> s.setPassword(null));
+        // 填充专业名称
+        fillProfessionNames(result.getRecords());
         return new PageResult<>(result);
     }
 
@@ -435,5 +460,35 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
         studentCourseMapper.delete(new LambdaQueryWrapper<StudentCourse>()
                 .eq(StudentCourse::getCourseId, courseId)
                 .eq(StudentCourse::getStudentId, studentId));
+    }
+
+    /** 批量填充学生的专业名称(通过 student_profession 关联表) */
+    private void fillProfessionNames(List<Student> students) {
+        if (students == null || students.isEmpty()) return;
+        Set<Long> studentIds = students.stream().map(Student::getId).collect(Collectors.toSet());
+        List<StudentProfession> sps = studentProfessionMapper.selectList(
+                new LambdaQueryWrapper<StudentProfession>().in(StudentProfession::getStudentId, studentIds));
+        if (sps.isEmpty()) return;
+        Set<Long> profIds = sps.stream().map(StudentProfession::getProfessionId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> profNameMap = new HashMap<>();
+        if (!profIds.isEmpty()) {
+            List<Profession> professions = professionMapper.selectBatchIds(profIds);
+            for (Profession p : professions) {
+                profNameMap.put(p.getId(), p.getName());
+            }
+        }
+        Map<Long, List<String>> studentProfNames = new HashMap<>();
+        for (StudentProfession sp : sps) {
+            String pname = profNameMap.get(sp.getProfessionId());
+            if (pname != null) {
+                studentProfNames.computeIfAbsent(sp.getStudentId(), k -> new ArrayList<>()).add(pname);
+            }
+        }
+        for (Student s : students) {
+            List<String> names = studentProfNames.get(s.getId());
+            if (names != null && !names.isEmpty()) {
+                s.setProfessionName(String.join(",", names));
+            }
+        }
     }
 }

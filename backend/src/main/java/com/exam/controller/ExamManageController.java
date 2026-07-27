@@ -98,8 +98,9 @@ public class ExamManageController {
                                                 @RequestParam(required = false) String idCard,
                                                 @RequestParam(required = false) Integer exactCount,
                                                 @RequestParam(required = false) Integer unopened,
-                                                @RequestParam(required = false) Integer unexamined) {
-        PageResult<Student> result = examManageService.studentsPage(id, page, size, phone, idCard, exactCount, unopened, unexamined);
+                                                @RequestParam(required = false) Integer unexamined,
+                                                @RequestParam(required = false) String profession) {
+        PageResult<Student> result = examManageService.studentsPage(id, page, size, phone, idCard, exactCount, unopened, unexamined, profession);
         return Result.success(result);
     }
 

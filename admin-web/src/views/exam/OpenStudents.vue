@@ -48,6 +48,16 @@
               >
                 <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
               </el-input>
+              <el-input
+                v-model="openedQuery.profession"
+                placeholder="搜索专业"
+                clearable
+                size="small"
+                style="width: 200px"
+                @keyup.enter.native="fetchOpened"
+              >
+                <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
+              </el-input>
             </div>
             <div>
               <el-button
@@ -73,8 +83,8 @@
             <el-table-column prop="name" label="姓名" min-width="100" show-overflow-tooltip>
               <template slot-scope="{ row }">{{ row.name || row.realName || '-' }}</template>
             </el-table-column>
-            <el-table-column prop="studentNo" label="学号" min-width="120" show-overflow-tooltip>
-              <template slot-scope="{ row }">{{ row.studentNo || row.studentNumber || '-' }}</template>
+            <el-table-column prop="professionName" label="专业" min-width="120" show-overflow-tooltip>
+              <template slot-scope="{ row }">{{ row.professionName || '-' }}</template>
             </el-table-column>
             <el-table-column prop="phone" label="手机号" min-width="140" />
             <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip>
@@ -137,6 +147,16 @@
             >
               <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
             </el-input>
+            <el-input
+              v-model="addQuery.profession"
+              placeholder="搜索专业"
+              clearable
+              size="small"
+              style="width: 200px"
+              @keyup.enter.native="fetchUnopened"
+            >
+              <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
+            </el-input>
           </div>
           <el-table
             :data="unopened"
@@ -150,8 +170,8 @@
             <el-table-column prop="name" label="姓名" min-width="100" show-overflow-tooltip>
               <template slot-scope="{ row }">{{ row.name || row.realName || '-' }}</template>
             </el-table-column>
-            <el-table-column prop="studentNo" label="学号" min-width="120" show-overflow-tooltip>
-              <template slot-scope="{ row }">{{ row.studentNo || row.studentNumber || '-' }}</template>
+            <el-table-column prop="professionName" label="专业" min-width="120" show-overflow-tooltip>
+              <template slot-scope="{ row }">{{ row.professionName || '-' }}</template>
             </el-table-column>
             <el-table-column prop="phone" label="手机号" min-width="140" />
             <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip>
@@ -204,11 +224,11 @@ export default {
       activeTab: 'opened',
       opened: [],
       openedTotal: 0,
-      openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
+      openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' },
       unexaminedFilter: false,
       unopened: [],
       unopenedTotal: 0,
-      addQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
+      addQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' },
       selected: [],
       openedSelected: []
     }
@@ -228,8 +248,8 @@ export default {
       handler(val) {
         if (val && this.examId) {
           this.activeTab = 'opened'
-          this.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
-          this.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
+          this.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
+          this.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
           this.selected = []
           this.openedSelected = []
           this.fetchOpened()
@@ -253,6 +273,7 @@ export default {
         phone: this.openedQuery.phone,
         idCard: this.openedQuery.idCard,
         exactCount: this.openedQuery.exactCount,
+        profession: this.openedQuery.profession,
         unexamined: this.unexaminedFilter ? 1 : undefined
       }
       getExamStudents(this.examId, params)
@@ -282,6 +303,7 @@ export default {
         phone: this.addQuery.phone,
         idCard: this.addQuery.idCard,
         exactCount: this.addQuery.exactCount,
+        profession: this.addQuery.profession,
         unopened: 1
       }
       getExamStudents(this.examId, params)
