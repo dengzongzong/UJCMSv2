@@ -141,7 +141,7 @@ logging:
 EOF
 echo "  配置文件已生成: $DEPLOY_DIR/application-prod.yml"
 
-# 6. 执行 SQL 升级 (幂等,可重复执行)
+# 6. 执行 SQL 升级 (仅DDL: 补字段/建表,幂等可重复执行)
 echo "[6/8] 执行 SQL 升级..."
 if [ -f "upgrade_all.sql" ]; then
     mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < upgrade_all.sql 2>&1 | grep -v "Using a password"
@@ -150,61 +150,16 @@ else
     echo "  警告: upgrade_all.sql 不存在,跳过"
 fi
 
-# 6.1 执行证书修复SQL (幂等,安全,不删除用户自定义类型)
-if [ -f "fix_all_cert_issues.sql" ]; then
-    echo "  执行证书修复SQL..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_all_cert_issues.sql 2>&1 | grep -v "Using a password"
-    echo "  证书修复SQL完成"
-fi
-
-# 6.2 导入缺失的证书数据 (仅首次部署需要,已注释掉避免每次升级覆盖用户修改的数据)
-# if [ -f "import_missing_certs.sql" ]; then
-#     echo "  导入缺失证书数据..."
-#     mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < import_missing_certs.sql 2>&1 | grep -v "Using a password"
-#     echo "  证书数据导入完成"
-# fi
-
-# 6.3 修复文章 publish_time 为空的数据 (幂等,用 create_time 填充)
-if [ -f "fix_publish_time.sql" ]; then
-    echo "  修复文章发布时间..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_publish_time.sql 2>&1 | grep -v "Using a password"
-    echo "  文章发布时间修复完成"
-fi
-
-# 6.4 修复证书编号重复 (一次性修复,已完成,不再每次执行)
-# if [ -f "fix_dup_certs.sql" ]; then
-#     echo "  修复证书编号重复数据..."
-#     mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_dup_certs.sql 2>&1 | grep -v "Using a password"
-#     echo "  证书编号重复修复完成"
-# fi
-
-# 6.5 修复信息公开/新闻/公告时间全部相同的问题(按id偏移分钟数,幂等)
-if [ -f "fix_publish_time_v2.sql" ]; then
-    echo "  修复文章发布时间(分散相同时间)..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_publish_time_v2.sql 2>&1 | grep -v "Using a password"
-    echo "  文章发布时间分散修复完成"
-fi
-
-# 6.6 修复 student 表 id_card 空字符串导致唯一约束冲突(幂等)
-if [ -f "fix_id_card_empty.sql" ]; then
-    echo "  修复身份证空字符串冲突..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_id_card_empty.sql 2>&1 | grep -v "Using a password"
-    echo "  身份证空字符串修复完成"
-fi
-
-# 6.7 回填职业能力/能力等级证书成绩(幂等UPDATE,每次执行都设为正确值)
-if [ -f "fix_zy_scores.sql" ]; then
-    echo "  回填职业能力证书成绩..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_zy_scores.sql 2>&1 | grep -v "Using a password"
-    echo "  职业能力证书成绩回填完成"
-fi
-
-# 6.8 修复证书颁发日期(幂等UPDATE,用Excel正确日期列替换错误的出生日期)
-if [ -f "fix_issue_date_v2.sql" ]; then
-    echo "  修复证书颁发日期..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_issue_date_v2.sql 2>&1 | grep -v "Using a password"
-    echo "  证书颁发日期修复完成"
-fi
+# 以下一次性数据修复SQL已全部执行完毕,不再每次升级重复执行
+# 如需重新执行,请在服务器上手动 mysql < xxx.sql
+# - fix_all_cert_issues.sql       (证书类型/模板绑定修复)
+# - fix_publish_time.sql          (文章发布时间填充)
+# - fix_publish_time_v2.sql       (文章发布时间分散)
+# - fix_id_card_empty.sql         (身份证空字符串修复)
+# - fix_zy_scores.sql             (职业能力证书成绩回填)
+# - fix_issue_date_v2.sql         (证书颁发日期修复)
+# - import_missing_certs.sql      (缺失证书导入)
+# - fix_dup_certs.sql             (证书编号重复修复)
 
 # 7. 配置 Nginx (HTTPS 模式,带域名和SSL证书)
 echo "[7/8] 配置 Nginx (HTTPS)..."
