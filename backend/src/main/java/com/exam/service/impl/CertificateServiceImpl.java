@@ -181,7 +181,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 templateNameMap.put(t.getId(), t.getName());
             }
         }
-        // 查询照片(严格按 certificateId 匹配,不回退到 idCard)
+        // 查询照片: 先按 certificateId 匹配,未命中则回退到 idCard 匹配
         Set<Long> certIds = records.stream()
                 .map(Certificate::getId)
                 .collect(Collectors.toSet());
@@ -196,6 +196,23 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 }
             }
         }
+        // 回退: 按 idCard 查照片,为 certificateId 未命中的证书补充照片
+        Set<String> idCardsNeedingFallback = records.stream()
+                .filter(c -> !photoUrlByCertId.containsKey(c.getId()))
+                .map(Certificate::getIdCard)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toSet());
+        Map<String, String> photoUrlByIdCard = new HashMap<>();
+        if (!idCardsNeedingFallback.isEmpty()) {
+            List<CertificatePhoto> photosByIdCard = photoMapper.selectList(
+                    new LambdaQueryWrapper<CertificatePhoto>()
+                            .in(CertificatePhoto::getIdCard, idCardsNeedingFallback)
+                            .orderByDesc(CertificatePhoto::getUploadTime));
+            for (CertificatePhoto photo : photosByIdCard) {
+                // 取最新的一张(已按 upload_time DESC 排序)
+                photoUrlByIdCard.putIfAbsent(photo.getIdCard(), photo.getUrl());
+            }
+        }
         // 转 Map
         List<Map<String, Object>> out = new ArrayList<>(records.size());
         for (Certificate c : records) {
@@ -203,8 +220,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             m.remove("extraJson");
             Long tplId = c.getTemplateId();
             m.put("templateName", tplId != null ? templateNameMap.get(tplId) : null);
-            // 照片URL: 严格按 certificateId 取,不回退到 idCard
-            m.put("photoUrl", photoUrlByCertId.get(c.getId()));
+            // 照片URL: 优先按 certificateId 取,未命中则回退到 idCard
+            String photoUrl = photoUrlByCertId.get(c.getId());
+            if (photoUrl == null && c.getIdCard() != null) {
+                photoUrl = photoUrlByIdCard.get(c.getIdCard());
+            }
+            m.put("photoUrl", photoUrl);
             parseExtraJson(c.getExtraJson(), m);
             out.add(m);
         }
@@ -257,7 +278,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 templateNameMap.put(t.getId(), t.getName());
             }
         }
-        // 查询照片(严格按 certificateId 匹配,不回退到 idCard)
+        // 查询照片: 先按 certificateId 匹配,未命中则回退到 idCard 匹配
         Set<Long> certIds2 = records.stream()
                 .map(Certificate::getId)
                 .collect(Collectors.toSet());
@@ -270,6 +291,22 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 if (photo.getCertificateId() != null) {
                     photoUrlByCertId2.put(photo.getCertificateId(), photo.getUrl());
                 }
+            }
+        }
+        // 回退: 按 idCard 查照片
+        Set<String> idCardsNeedingFallback2 = records.stream()
+                .filter(c -> !photoUrlByCertId2.containsKey(c.getId()))
+                .map(Certificate::getIdCard)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toSet());
+        Map<String, String> photoUrlByIdCard2 = new HashMap<>();
+        if (!idCardsNeedingFallback2.isEmpty()) {
+            List<CertificatePhoto> photosByIdCard = photoMapper.selectList(
+                    new LambdaQueryWrapper<CertificatePhoto>()
+                            .in(CertificatePhoto::getIdCard, idCardsNeedingFallback2)
+                            .orderByDesc(CertificatePhoto::getUploadTime));
+            for (CertificatePhoto photo : photosByIdCard) {
+                photoUrlByIdCard2.putIfAbsent(photo.getIdCard(), photo.getUrl());
             }
         }
         Set<Long> professionIds = new HashSet<>();
@@ -293,7 +330,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             Map<String, Object> m = beanToMap(c);
             m.remove("extraJson");
             m.put("templateName", c.getTemplateId() != null ? templateNameMap.get(c.getTemplateId()) : null);
-            m.put("photoUrl", photoUrlByCertId2.get(c.getId()));
+            // 照片URL: 优先按 certificateId 取,未命中则回退到 idCard
+            String photoUrl2 = photoUrlByCertId2.get(c.getId());
+            if (photoUrl2 == null && c.getIdCard() != null) {
+                photoUrl2 = photoUrlByIdCard2.get(c.getIdCard());
+            }
+            m.put("photoUrl", photoUrl2);
             if (c.getProfession() != null) {
                 try {
                     Long profId = Long.parseLong(c.getProfession());
@@ -921,15 +963,25 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                         extra.put("practicalScore", String.valueOf(practicalScore));
                     }
                 }
-                // 同时回写到 certificate 主表的 theoryScore 字段(始终覆盖,用户要求考试后刷新)
+                // 同时回写到 certificate 主表字段(始终覆盖理论成绩;实操和综合测评同步更新)
                 Certificate update = new Certificate();
                 update.setId(cert.getId());
                 update.setTheoryScore(scoreStr);
+                // 同步更新主表的实操成绩和综合测评(之前只更新了extra_json,主表列未更新,导致前端不显示)
+                Object psObj = extra.get("practicalScore");
+                if (psObj != null && StringUtils.hasText(String.valueOf(psObj))) {
+                    update.setPracticalScore(String.valueOf(psObj));
+                }
+                Object ceObj = extra.get("comprehensiveEvaluation");
+                if (ceObj != null && StringUtils.hasText(String.valueOf(ceObj))) {
+                    update.setComprehensiveEvaluation(String.valueOf(ceObj));
+                }
                 update.setExtraJson(MAPPER.writeValueAsString(extra));
                 update.setUpdateTime(LocalDateTime.now());
                 this.updateById(update);
             } catch (Exception e) {
-                // 单条更新失败不影响其余
+                log.error("syncTheoryScore 单条证书更新失败: certId={}, idCard={}, error={}",
+                        cert.getId(), cert.getIdCard(), e.getMessage(), e);
             }
         }
     }

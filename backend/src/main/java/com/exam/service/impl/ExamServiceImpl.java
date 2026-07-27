@@ -772,7 +772,10 @@ public class ExamServiceImpl extends ServiceImpl<ExamMapper, Exam> implements Ex
             String scoreStr = examScore.setScale(0, RoundingMode.HALF_UP).toPlainString();
             certificateService.syncTheoryScore(student.getIdCard(), examProfession, scoreStr);
         } catch (Exception e) {
-            // 回写失败不影响考试提交主流程
+            // 回写失败不影响考试提交主流程,但记录日志便于排查
+            log.error("syncTheoryScoreToCertificate 回写失败: studentId={}, examId={}, professionId={}, score={}, error={}",
+                    studentId, exam != null ? exam.getId() : null,
+                    exam != null ? exam.getProfessionId() : null, examScore, e.getMessage(), e);
         }
     }
 
