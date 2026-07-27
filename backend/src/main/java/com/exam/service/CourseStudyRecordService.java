@@ -11,10 +11,12 @@ public interface CourseStudyRecordService extends IService<VideoStudyRecord> {
 
     /**
      * 分页查询学习记录
+     * @param exactCount 精确显示条数(仅显示最新N条),为 null 或 <=0 时不生效
      */
     PageResult<Map<String, Object>> page(Integer page, Integer size, String courseName,
                                          String studyTimeStart, String studyTimeEnd,
-                                         Integer courseStatus, String phone);
+                                         Integer courseStatus, String phone,
+                                         Integer exactCount);
 
     /**
      * 学习记录详情

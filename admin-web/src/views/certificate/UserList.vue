@@ -32,6 +32,27 @@
           <el-option v-for="item in certTypeOptions" :key="item.id" :label="item.name" :value="item.name" />
         </el-select>
       </el-form-item>
+      <el-form-item label="导入时间">
+        <el-date-picker
+          v-model="query.dateRange"
+          type="datetimerange"
+          range-separator="至"
+          start-placeholder="导入开始时间"
+          end-placeholder="导入结束时间"
+          value-format="yyyy-MM-dd HH:mm:ss"
+          style="width: 380px"
+        />
+      </el-form-item>
+      <el-form-item label="显示条数">
+        <el-input-number
+          v-model="query.exactCount"
+          :min="1"
+          :max="10000"
+          placeholder="最新N条"
+          controls-position="right"
+          style="width: 140px"
+        />
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="el-icon-search" @click="onSearch">查询</el-button>
         <el-button icon="el-icon-refresh" @click="onReset">重置</el-button>
@@ -156,7 +177,7 @@ export default {
       list: [],
       total: 0,
       certTypeOptions: [],
-      query: { page: 1, size: 10, keyword: '', idCard: '', certType: '' },
+      query: { page: 1, size: 10, keyword: '', idCard: '', certType: '', dateRange: [], exactCount: undefined },
       dialog: {
         visible: false,
         isEdit: false,
@@ -228,12 +249,26 @@ export default {
       this.loadList()
     },
     onReset() {
-      this.query = { page: 1, size: 10, keyword: '', idCard: '', certType: '' }
+      this.query = { page: 1, size: 10, keyword: '', idCard: '', certType: '', dateRange: [], exactCount: undefined }
       this.loadList()
     },
     loadList() {
       this.loading = true
-      certificateUserPage(this.query)
+      const params = {
+        page: this.query.page,
+        size: this.query.size,
+        keyword: this.query.keyword,
+        idCard: this.query.idCard,
+        certType: this.query.certType
+      }
+      if (this.query.dateRange && this.query.dateRange.length === 2) {
+        params.importTimeStart = this.query.dateRange[0]
+        params.importTimeEnd = this.query.dateRange[1]
+      }
+      if (this.query.exactCount && this.query.exactCount > 0) {
+        params.exactCount = this.query.exactCount
+      }
+      certificateUserPage(params)
         .then((res) => {
           const data = (res && res.data) || {}
           this.list = data.records || data.list || data.rows || []

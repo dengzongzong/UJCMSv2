@@ -87,10 +87,16 @@ public class CertificateController {
                                                 @RequestParam(required = false) String idCard,
                                                 @RequestParam(required = false) String agency,
                                                 @RequestParam(required = false) String profession,
-                                                @RequestParam(required = false) String issueDateStart,
-                                                @RequestParam(required = false) String issueDateEnd,
+                                                @RequestParam(required = false) String importTimeStart,
+                                                @RequestParam(required = false) String importTimeEnd,
                                                 @RequestParam(required = false) Integer unboundTemplate,
-                                                @RequestParam(required = false) String certType) {
+                                                @RequestParam(required = false) String certType,
+                                                @RequestParam(required = false) Integer exactCount) {
+        // 精确显示条数: 仅返回最新N条(覆盖分页参数)
+        if (exactCount != null && exactCount > 0) {
+            page = 1;
+            size = exactCount;
+        }
         // 未绑定模板筛选:用大页查询后在内存中过滤 templateId 为空的
         // (certType 已下推到 SQL, 不再在内存中过滤)
         if (unboundTemplate != null && unboundTemplate == 1) {
@@ -98,9 +104,9 @@ public class CertificateController {
             int maxSize = 10000;
             PageResult<Map<String, Object>> all;
             if (profession == null || profession.isEmpty()) {
-                all = certificateService.pageWithTemplateName(1, maxSize, name, idCard, agency, issueDateStart, issueDateEnd, certType);
+                all = certificateService.pageWithTemplateName(1, maxSize, name, idCard, agency, importTimeStart, importTimeEnd, certType);
             } else {
-                all = certificateService.pageWithTemplateNameAndProfession(1, maxSize, name, idCard, agency, profession, issueDateStart, issueDateEnd, certType);
+                all = certificateService.pageWithTemplateNameAndProfession(1, maxSize, name, idCard, agency, profession, importTimeStart, importTimeEnd, certType);
             }
             List<Map<String, Object>> filtered = new java.util.ArrayList<>();
             for (Map<String, Object> row : all.getRecords()) {
@@ -121,9 +127,9 @@ public class CertificateController {
         }
         // 正常分页: certType 过滤已下推到 SQL(WHERE cert_type = ?), 不再查 1 万条再内存过滤
         if (profession == null || profession.isEmpty()) {
-            return Result.success(certificateService.pageWithTemplateName(page, size, name, idCard, agency, issueDateStart, issueDateEnd, certType));
+            return Result.success(certificateService.pageWithTemplateName(page, size, name, idCard, agency, importTimeStart, importTimeEnd, certType));
         }
-        return Result.success(certificateService.pageWithTemplateNameAndProfession(page, size, name, idCard, agency, profession, issueDateStart, issueDateEnd, certType));
+        return Result.success(certificateService.pageWithTemplateNameAndProfession(page, size, name, idCard, agency, profession, importTimeStart, importTimeEnd, certType));
     }
 
     @GetMapping("/{id}")

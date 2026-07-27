@@ -38,7 +38,8 @@ public class CourseStudyRecordServiceImpl extends ServiceImpl<VideoStudyRecordMa
     @Override
     public PageResult<Map<String, Object>> page(Integer page, Integer size, String courseName,
                                                 String studyTimeStart, String studyTimeEnd,
-                                                Integer courseStatus, String phone) {
+                                                Integer courseStatus, String phone,
+                                                Integer exactCount) {
         // 根据课程名称/状态筛选课程ID
         Set<Long> courseIds = null;
         if (StringUtils.hasText(courseName) || courseStatus != null) {
@@ -75,7 +76,8 @@ public class CourseStudyRecordServiceImpl extends ServiceImpl<VideoStudyRecordMa
         LambdaQueryWrapper<VideoStudyRecord> wrapper = new LambdaQueryWrapper<VideoStudyRecord>()
                 .in(courseIds != null, VideoStudyRecord::getCourseId, courseIds)
                 .in(studentIds != null, VideoStudyRecord::getStudentId, studentIds)
-                .orderByDesc(VideoStudyRecord::getCreateTime);
+                .orderByDesc(VideoStudyRecord::getCreateTime)
+                .orderByDesc(VideoStudyRecord::getId);
         if (StringUtils.hasText(studyTimeStart)) {
             wrapper.ge(VideoStudyRecord::getCreateTime, LocalDate.parse(studyTimeStart).atStartOfDay());
         }

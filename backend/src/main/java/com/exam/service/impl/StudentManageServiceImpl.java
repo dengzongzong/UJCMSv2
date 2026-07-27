@@ -72,6 +72,11 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
     public PageResult<Student> page(StudentSearchDTO dto) {
         int page = dto.getPage() == null ? 1 : dto.getPage();
         int size = dto.getSize() == null ? 10 : dto.getSize();
+        // 精确显示条数: 仅返回最新N条(覆盖分页参数)
+        if (dto.getExactCount() != null && dto.getExactCount() > 0) {
+            page = 1;
+            size = dto.getExactCount();
+        }
         // 如果按 professionId 筛选，先查关联表获取 studentId 列表
         List<Long> studentIdsByProfession = null;
         if (dto.getProfessionId() != null) {
@@ -103,13 +108,27 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (StringUtils.hasText(dto.getIdCard())) {
             wrapper.like(Student::getIdCard, dto.getIdCard());
         }
+        // 注册时间范围查询(支持小时级别: yyyy-MM-dd HH:mm:ss)
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         if (StringUtils.hasText(dto.getRegisterTimeStart())) {
-            LocalDateTime start = LocalDate.parse(dto.getRegisterTimeStart()).atStartOfDay();
-            wrapper.ge(Student::getRegisterTime, start);
+            try {
+                LocalDateTime start = LocalDateTime.parse(dto.getRegisterTimeStart(), dtf);
+                wrapper.ge(Student::getRegisterTime, start);
+            } catch (Exception e) {
+                // 兼容纯日期格式 yyyy-MM-dd
+                LocalDateTime start = LocalDate.parse(dto.getRegisterTimeStart(), df).atStartOfDay();
+                wrapper.ge(Student::getRegisterTime, start);
+            }
         }
         if (StringUtils.hasText(dto.getRegisterTimeEnd())) {
-            LocalDateTime end = LocalDate.parse(dto.getRegisterTimeEnd()).atTime(23, 59, 59);
-            wrapper.le(Student::getRegisterTime, end);
+            try {
+                LocalDateTime end = LocalDateTime.parse(dto.getRegisterTimeEnd(), dtf);
+                wrapper.le(Student::getRegisterTime, end);
+            } catch (Exception e) {
+                LocalDateTime end = LocalDate.parse(dto.getRegisterTimeEnd(), df).atTime(23, 59, 59);
+                wrapper.le(Student::getRegisterTime, end);
+            }
         }
         Page<Student> p = new Page<>(page, size);
         Page<Student> result = this.page(p, wrapper);
@@ -662,6 +681,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         }
 
         int successCount = 0;
+        int duplicateCount = 0;
         List<Map<String, Object>> failList = new ArrayList<>();
         // 用于跟踪同一批导入中新创建的学生（key: idCard）
         Map<String, Student> createdInBatch = new HashMap<>();
@@ -670,10 +690,19 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             String name = row.getName();
             String idCard = row.getIdCard();
             String professionName = row.getProfession();
+            String skillLevel = row.getSkillLevel();
 
             if (!StringUtils.hasText(idCard)) {
                 failList.add(fail(name, idCard, "证件号码为空"));
                 continue;
+            }
+
+            // ====== 数据查重: 姓名+身份证号+专业+级别 四项完全相同则跳过 ======
+            if (certificateService.existsByNameIdCardProfessionLevel(name, idCard,
+                    StringUtils.hasText(professionName) ? professionName.trim() : null,
+                    StringUtils.hasText(skillLevel) ? skillLevel.trim() : null)) {
+                duplicateCount++;
+                continue; // 四项完全相同,不允许导入
             }
 
             // 身份证号合法性校验:校验异常不拦截,正常导入(前端会用浅红色背景标注异常身份证)
@@ -821,6 +850,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
 
         Map<String, Object> result = new HashMap<>();
         result.put("successCount", successCount);
+        result.put("duplicateCount", duplicateCount);
         result.put("failCount", failList.size());
         result.put("failList", failList);
         return result;

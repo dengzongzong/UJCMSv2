@@ -44,9 +44,18 @@ public class CertificateUserController {
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String idCard,
-            @RequestParam(required = false) String certType) {
+            @RequestParam(required = false) String certType,
+            @RequestParam(required = false) String importTimeStart,
+            @RequestParam(required = false) String importTimeEnd,
+            @RequestParam(required = false) Integer exactCount) {
+        // 精确显示条数: 仅返回最新N条
+        if (exactCount != null && exactCount > 0) {
+            page = 1;
+            size = exactCount;
+        }
         LambdaQueryWrapper<CertificateUser> wrapper = new LambdaQueryWrapper<CertificateUser>()
-                .orderByDesc(CertificateUser::getSyncTime);
+                .orderByDesc(CertificateUser::getSyncTime)
+                .orderByDesc(CertificateUser::getId);
         if (StringUtils.hasText(keyword)) {
             String kw = keyword;
             wrapper.and(w -> w.like(CertificateUser::getName, kw)
@@ -59,6 +68,23 @@ public class CertificateUserController {
         }
         if (StringUtils.hasText(certType)) {
             wrapper.eq(CertificateUser::getCertType, certType);
+        }
+        // 导入时间范围查询(支持小时级别)
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        java.time.format.DateTimeFormatter df = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        if (StringUtils.hasText(importTimeStart)) {
+            try {
+                wrapper.ge(CertificateUser::getSyncTime, java.time.LocalDateTime.parse(importTimeStart, dtf));
+            } catch (Exception e) {
+                wrapper.ge(CertificateUser::getSyncTime, java.time.LocalDate.parse(importTimeStart, df).atStartOfDay());
+            }
+        }
+        if (StringUtils.hasText(importTimeEnd)) {
+            try {
+                wrapper.le(CertificateUser::getSyncTime, java.time.LocalDateTime.parse(importTimeEnd, dtf));
+            } catch (Exception e) {
+                wrapper.le(CertificateUser::getSyncTime, java.time.LocalDate.parse(importTimeEnd, df).atTime(23, 59, 59));
+            }
         }
         Page<CertificateUser> p = new Page<>(page, size);
         Page<CertificateUser> result = certificateUserMapper.selectPage(p, wrapper);
@@ -137,9 +163,10 @@ public class CertificateUserController {
                        @RequestParam(required = false) String idCard,
                        @RequestParam(required = false) String certType,
                        HttpServletResponse response) throws IOException {
-        // 1. 查询证书用户(按筛选条件)
+        // 1. 查询证书用户(按筛选条件,按导入时间倒序+id倒序确保最新数据在最前)
         LambdaQueryWrapper<CertificateUser> wrapper = new LambdaQueryWrapper<CertificateUser>()
-                .orderByDesc(CertificateUser::getSyncTime);
+                .orderByDesc(CertificateUser::getSyncTime)
+                .orderByDesc(CertificateUser::getId);
         if (StringUtils.hasText(keyword)) {
             String kw = keyword;
             wrapper.and(w -> w.like(CertificateUser::getName, kw)
@@ -166,7 +193,8 @@ public class CertificateUserController {
             certs = certificateMapper.selectList(
                     new LambdaQueryWrapper<Certificate>()
                             .in(Certificate::getIdCard, idCards)
-                            .orderByDesc(Certificate::getCreateTime));
+                            .orderByDesc(Certificate::getCreateTime)
+                            .orderByDesc(Certificate::getId));
         }
 
         // 3. 委托给证书导出服务:按模板分组、使用模板配置的导出列

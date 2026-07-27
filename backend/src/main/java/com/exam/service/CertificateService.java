@@ -76,6 +76,12 @@ public interface CertificateService extends IService<Certificate> {
     boolean add(CertificateDTO dto);
 
     /**
+     * 检查是否存在 姓名+身份证号+专业+级别 完全相同的证书记录
+     * 用于导入时数据查重:四项完全相同返回 true(不允许导入)
+     */
+    boolean existsByNameIdCardProfessionLevel(String name, String idCard, String profession, String skillLevel);
+
+    /**
      * 编辑证书
      */
     void update(CertificateDTO dto);

@@ -38,6 +38,15 @@
           <el-option label="已上架" :value="1" />
           <el-option label="未上架" :value="0" />
         </el-select>
+        <el-input-number
+          v-model="query.exactCount"
+          :min="1"
+          :max="10000"
+          placeholder="显示最新N条"
+          controls-position="right"
+          class="filter-item"
+          style="width: 160px"
+        />
         <el-button type="primary" icon="el-icon-search" class="filter-item" @click="handleSearch">
           搜索
         </el-button>
@@ -152,7 +161,8 @@ export default {
         courseName: '',
         phone: '',
         courseStatus: undefined,
-        dateRange: []
+        dateRange: [],
+        exactCount: undefined
       },
       detailDialog: {
         visible: false,
@@ -190,6 +200,9 @@ export default {
         params.startDate = this.query.dateRange[0]
         params.endDate = this.query.dateRange[1]
       }
+      if (this.query.exactCount && this.query.exactCount > 0) {
+        params.exactCount = this.query.exactCount
+      }
       courseRecordPage(params)
         .then((res) => {
           const data = res.data || {}
@@ -215,7 +228,8 @@ export default {
         courseName: '',
         phone: '',
         courseStatus: undefined,
-        dateRange: []
+        dateRange: [],
+        exactCount: undefined
       }
       this.fetchList()
     },

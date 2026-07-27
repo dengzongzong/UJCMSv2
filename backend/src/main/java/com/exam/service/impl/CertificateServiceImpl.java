@@ -306,7 +306,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             }
             // 颁发日期中文格式
             if (c.getIssueDate() != null) {
-                m.put("issueDateStr", c.getIssueDate().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
+                m.put("issueDateStr", c.getIssueDate().format(DateTimeFormatter.ofPattern("yyyy年M月d日")));
             }
             parseExtraJson(c.getExtraJson(), m);
             out.add(m);
@@ -385,7 +385,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     private PageResult<Certificate> pageBase(Integer page, Integer size,
                                               String name, String idCard, String agency,
                                               String certType,
-                                              String issueDateStart, String issueDateEnd) {
+                                              String importTimeStart, String importTimeEnd) {
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                 .like(StringUtils.hasText(name), Certificate::getName, name)
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
@@ -393,11 +393,22 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getCreateTime)
                 .orderByDesc(Certificate::getId);
-        if (StringUtils.hasText(issueDateStart)) {
-            w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
+        // 导入时间范围查询(支持小时级别: yyyy-MM-dd HH:mm:ss)
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        if (StringUtils.hasText(importTimeStart)) {
+            try {
+                w.ge(Certificate::getUploadTime, LocalDateTime.parse(importTimeStart, dtf));
+            } catch (Exception e) {
+                w.ge(Certificate::getUploadTime, LocalDate.parse(importTimeStart, df).atStartOfDay());
+            }
         }
-        if (StringUtils.hasText(issueDateEnd)) {
-            w.le(Certificate::getIssueDate, parseDate(issueDateEnd));
+        if (StringUtils.hasText(importTimeEnd)) {
+            try {
+                w.le(Certificate::getUploadTime, LocalDateTime.parse(importTimeEnd, dtf));
+            } catch (Exception e) {
+                w.le(Certificate::getUploadTime, LocalDate.parse(importTimeEnd, df).atTime(23, 59, 59));
+            }
         }
         Page<Certificate> p = new Page<>(page, size);
         return new PageResult<>(this.page(p, w));
@@ -411,7 +422,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                                                                    String name, String idCard,
                                                                    String agency, String profession,
                                                                    String certType,
-                                                                   String issueDateStart, String issueDateEnd) {
+                                                                   String importTimeStart, String importTimeEnd) {
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                 .like(StringUtils.hasText(name), Certificate::getName, name)
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
@@ -420,11 +431,22 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getCreateTime)
                 .orderByDesc(Certificate::getId);
-        if (StringUtils.hasText(issueDateStart)) {
-            w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
+        // 导入时间范围查询(支持小时级别)
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        if (StringUtils.hasText(importTimeStart)) {
+            try {
+                w.ge(Certificate::getUploadTime, LocalDateTime.parse(importTimeStart, dtf));
+            } catch (Exception e) {
+                w.ge(Certificate::getUploadTime, LocalDate.parse(importTimeStart, df).atStartOfDay());
+            }
         }
-        if (StringUtils.hasText(issueDateEnd)) {
-            w.le(Certificate::getIssueDate, parseDate(issueDateEnd));
+        if (StringUtils.hasText(importTimeEnd)) {
+            try {
+                w.le(Certificate::getUploadTime, LocalDateTime.parse(importTimeEnd, dtf));
+            } catch (Exception e) {
+                w.le(Certificate::getUploadTime, LocalDate.parse(importTimeEnd, df).atTime(23, 59, 59));
+            }
         }
         Page<Certificate> p = new Page<>(page, size);
         return new PageResult<>(this.page(p, w));
@@ -481,6 +503,32 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         vo.setFields(fieldMapper.selectList(
                 new LambdaQueryWrapper<CertificateField>().orderByAsc(CertificateField::getSort)));
         return vo;
+    }
+
+    /**
+     * 检查是否存在 姓名+身份证号+专业+级别 完全相同的证书记录
+     * 用于导入时数据查重:四项完全相同返回 true(不允许导入)
+     */
+    @Override
+    public boolean existsByNameIdCardProfessionLevel(String name, String idCard, String profession, String skillLevel) {
+        LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
+                .eq(Certificate::getName, name != null ? name : "");
+        if (StringUtils.hasText(idCard)) {
+            w.eq(Certificate::getIdCard, idCard.trim());
+        } else {
+            w.and(ww -> ww.isNull(Certificate::getIdCard).or().eq(Certificate::getIdCard, ""));
+        }
+        if (StringUtils.hasText(profession)) {
+            w.eq(Certificate::getProfession, profession.trim());
+        } else {
+            w.and(ww -> ww.isNull(Certificate::getProfession).or().eq(Certificate::getProfession, ""));
+        }
+        if (StringUtils.hasText(skillLevel)) {
+            w.eq(Certificate::getSkillLevel, skillLevel.trim());
+        } else {
+            w.and(ww -> ww.isNull(Certificate::getSkillLevel).or().eq(Certificate::getSkillLevel, ""));
+        }
+        return this.count(w) > 0;
     }
 
     @Override
@@ -1130,7 +1178,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
                     .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
                     .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
-                    .orderByDesc(Certificate::getCreateTime);
+                    .orderByDesc(Certificate::getCreateTime)
+                    .orderByDesc(Certificate::getId);
             if (StringUtils.hasText(issueDateStart)) {
                 w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
             }
@@ -1178,7 +1227,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
 
         // 为每个模板组生成Excel
         CertificateUrlConfig urlConfig = getUrlConfigForExport();
-        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy年M月d日");
 
         List<ExcelFileEntry> excelFiles = new ArrayList<>();
 
@@ -1976,13 +2025,13 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      */
     private int createIfNotExists(Student student, String idCard, String profession,
                                   Map<Long, String> professionNameMap, String certType) {
-        // 查是否已有 姓名+身份证号+专业+级别 的证书记录
+        // 查是否已有 姓名+身份证号+专业+级别 的证书记录(精确匹配,避免 like 误匹配)
+        String trimmedProfession = StringUtils.hasText(profession) ? profession.trim() : null;
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                 .eq(Certificate::getName, student.getName() != null ? student.getName() : "");
         w.eq(Certificate::getIdCard, idCard);
-        if (StringUtils.hasText(profession)) {
-            w.and(ww -> ww.eq(Certificate::getProfession, profession)
-                          .or().like(Certificate::getProfession, profession));
+        if (StringUtils.hasText(trimmedProfession)) {
+            w.eq(Certificate::getProfession, trimmedProfession);
         } else {
             w.and(ww -> ww.isNull(Certificate::getProfession).or().eq(Certificate::getProfession, ""));
         }
@@ -1994,7 +2043,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         c.setName(student.getName());
         c.setIdCard(idCard);
         c.setGender(CertificateNumberServiceImpl.extractGenderFromIdCard(idCard));
-        c.setProfession(profession);
+        c.setProfession(trimmedProfession);
         c.setSkillLevel("高级");
         c.setIssueDate(LocalDate.now());
         c.setCertNo(null); // 证书编号在绑定模板时生成
@@ -2008,7 +2057,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         numberService.fillStudentNoIfEmpty(c);
         // extra_json: 成绩为空(前端显示横杠)
         Map<String, Object> extra = new HashMap<>();
-        extra.put("trainingMajor", profession != null ? profession : "");
+        extra.put("trainingMajor", trimmedProfession != null ? trimmedProfession : "");
         extra.put("examTime", LocalDate.now().toString());
         // 不设置 theoryScore/practicalScore/comprehensiveEvaluation(空值=横杠)
         try {

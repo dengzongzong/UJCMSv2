@@ -14,14 +14,24 @@
       <el-form-item label="专业">
         <el-input v-model="query.profession" clearable placeholder="专业/职业名称" />
       </el-form-item>
-      <el-form-item label="颁发日期">
+      <el-form-item label="导入时间">
         <el-date-picker
           v-model="dateRange"
-          type="daterange"
+          type="datetimerange"
           range-separator="至"
-          start-placeholder="开始"
-          end-placeholder="结束"
-          value-format="yyyy-MM-dd"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          value-format="yyyy-MM-dd HH:mm:ss"
+        />
+      </el-form-item>
+      <el-form-item label="条数">
+        <el-input-number
+          v-model="query.exactCount"
+          :min="1"
+          :max="10000"
+          placeholder="显示最新N条"
+          controls-position="right"
+          style="width: 140px"
         />
       </el-form-item>
       <el-form-item>
@@ -439,7 +449,7 @@ export default {
   data() {
     return {
       loading: false,
-      query: { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' },
+      query: { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', importTimeStart: '', importTimeEnd: '', exactCount: undefined },
       dateRange: null,
       list: [],
       total: 0,
@@ -527,12 +537,12 @@ export default {
   },
   watch: {
     '$route.params.idx'() {
-      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' }
+      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', importTimeStart: '', importTimeEnd: '', exactCount: undefined }
       this.dateRange = null
       this.loadList()
     },
     '$route.meta.certType'() {
-      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' }
+      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', importTimeStart: '', importTimeEnd: '', exactCount: undefined }
       this.dateRange = null
       this.loadList()
     }
@@ -588,8 +598,8 @@ export default {
         var parts = s.split('-')
         if (parts.length === 3) {
           var y = parts[0]
-          var m = parts[1].padStart(2, '0')
-          var d2 = parts[2].padStart(2, '0')
+          var m = parseInt(parts[1], 10)
+          var d2 = parseInt(parts[2], 10)
           return y + '年' + m + '月' + d2 + '日'
         }
         return rawDate
@@ -625,7 +635,7 @@ export default {
       this.loadList()
     },
     onReset() {
-      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', issueDateStart: '', issueDateEnd: '' }
+      this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', importTimeStart: '', importTimeEnd: '', exactCount: undefined }
       this.dateRange = null
       this.loadList()
     },
@@ -658,11 +668,11 @@ export default {
     },
     async loadList() {
       if (this.dateRange && this.dateRange.length === 2) {
-        this.query.issueDateStart = this.dateRange[0]
-        this.query.issueDateEnd = this.dateRange[1]
+        this.query.importTimeStart = this.dateRange[0]
+        this.query.importTimeEnd = this.dateRange[1]
       } else {
-        this.query.issueDateStart = ''
-        this.query.issueDateEnd = ''
+        this.query.importTimeStart = ''
+        this.query.importTimeEnd = ''
       }
       // 未绑定模板筛选
       if (this.unboundTemplateFilter) {
@@ -745,8 +755,8 @@ export default {
           idCard: this.query.idCard,
           agency: this.query.agency,
           profession: this.query.profession,
-          issueDateStart: this.query.issueDateStart,
-          issueDateEnd: this.query.issueDateEnd
+          importTimeStart: this.query.importTimeStart,
+          importTimeEnd: this.query.importTimeEnd
         }
         if (this.currentCertType) {
           params.certType = this.currentCertType
@@ -819,8 +829,8 @@ export default {
           idCard: this.query.idCard,
           agency: this.query.agency,
           profession: this.query.profession,
-          issueDateStart: this.query.issueDateStart,
-          issueDateEnd: this.query.issueDateEnd
+          importTimeStart: this.query.importTimeStart,
+          importTimeEnd: this.query.importTimeEnd
         }
         const { blob, fileName } = await exportCertificates(params)
         triggerDownload(blob, fileName)

@@ -27,13 +27,13 @@
         />
         <el-date-picker
           v-model="query.dateRange"
-          type="daterange"
+          type="datetimerange"
           range-separator="至"
           start-placeholder="注册开始日期"
           end-placeholder="注册结束日期"
-          value-format="yyyy-MM-dd"
+          value-format="yyyy-MM-dd HH:mm:ss"
           class="filter-item"
-          style="width: 280px"
+          style="width: 380px"
         />
         <el-select
           v-model="query.status"
@@ -45,6 +45,15 @@
           <el-option label="正常" :value="1" />
           <el-option label="冻结" :value="0" />
         </el-select>
+        <el-input-number
+          v-model="query.exactCount"
+          :min="1"
+          :max="10000"
+          placeholder="显示最新N条"
+          controls-position="right"
+          class="filter-item"
+          style="width: 160px"
+        />
         <el-button type="primary" icon="el-icon-search" class="filter-item" @click="handleSearch">
           搜索
         </el-button>
@@ -413,7 +422,7 @@
       <!-- 导入结果 -->
       <div v-if="importDialog.result" class="import-result">
         <el-alert
-          :title="`导入完成:成功 ${importDialog.result.success || 0} 条,失败 ${importDialog.result.failCount || 0} 条`"
+          :title="`导入完成:成功 ${importDialog.result.success || 0} 条,重复 ${importDialog.result.duplicateCount || 0} 条(已跳过),失败 ${importDialog.result.failCount || 0} 条`"
           :type="importDialog.result.failList && importDialog.result.failList.length ? 'warning' : 'success'"
           :closable="false"
           show-icon
@@ -553,7 +562,8 @@ export default {
         professionId: undefined,
         keyword: '',
         status: undefined,
-        dateRange: []
+        dateRange: [],
+        exactCount: undefined
       },
       courseDialog: {
         visible: false,
@@ -737,8 +747,11 @@ export default {
         status: this.query.status
       }
       if (this.query.dateRange && this.query.dateRange.length === 2) {
-        params.startDate = this.query.dateRange[0]
-        params.endDate = this.query.dateRange[1]
+        params.registerTimeStart = this.query.dateRange[0]
+        params.registerTimeEnd = this.query.dateRange[1]
+      }
+      if (this.query.exactCount && this.query.exactCount > 0) {
+        params.exactCount = this.query.exactCount
       }
       studentPage(params)
         .then((res) => {
@@ -765,7 +778,8 @@ export default {
         professionId: undefined,
         keyword: '',
         status: undefined,
-        dateRange: []
+        dateRange: [],
+        exactCount: undefined
       }
       this.fetchList()
     },
@@ -1167,16 +1181,25 @@ export default {
         .then((res) => {
           const data = (res && res.data) || {}
           const failList = data.failList || data.failures || data.errors || data.failedRows || []
+          const dupCount = data.duplicateCount || 0
           this.importDialog.result = {
             // 优先使用后端返回的 successCount(新接口),兼容旧字段 success/count
             success: data.successCount != null ? data.successCount : (data.success != null ? data.success : (data.count || 0)),
             // 优先使用后端返回的 failCount,兜底用 failList 长度
             failCount: data.failCount != null ? data.failCount : failList.length,
-            failList: failList
+            failList: failList,
+            duplicateCount: dupCount
           }
           const ok = this.importDialog.result.success
           const fail = this.importDialog.result.failCount
-          if (fail > 0 && ok === 0) {
+          // 有重复数据时弹框提示
+          if (dupCount > 0 && fail > 0 && ok === 0) {
+            this.$alert('全部数据未通过: 重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已跳过),失败 ' + fail + ' 条。请查看下方"失败明细"。', '导入未通过', { type: 'error' })
+          } else if (dupCount > 0 && fail > 0) {
+            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(已自动跳过),失败 ' + fail + ' 条。请查看下方"失败明细"。', '导入完成(有重复和失败)', { type: 'warning' })
+          } else if (dupCount > 0 && fail === 0) {
+            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已自动跳过未重复导入)。', '导入完成(有重复)', { type: 'warning' })
+          } else if (fail > 0 && ok === 0) {
             this.$alert('全部 ' + fail + ' 条数据未通过校验,请查看下方"失败明细"修正后重传。', '校验未通过', { type: 'error' })
           } else if (fail > 0) {
             this.$alert('成功 ' + ok + ' 条,失败 ' + fail + ' 条,请查看下方"失败明细"。', '导入完成(有失败)', { type: 'warning' })

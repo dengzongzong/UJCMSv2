@@ -708,7 +708,7 @@ public class CertificatePortalController {
         m.put("profession", c.getProfession());
         m.put("skillLevel", c.getSkillLevel());
         m.put("issueDate", c.getIssueDate() == null ? null : c.getIssueDate().toString());
-        m.put("issueDateStr", c.getIssueDate() == null ? null : c.getIssueDate().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日")));
+        m.put("issueDateStr", c.getIssueDate() == null ? null : c.getIssueDate().format(DateTimeFormatter.ofPattern("yyyy年M月d日")));
         m.put("agency", c.getAgency());
         m.put("hasTemplate", c.getTemplateId() != null);
         // photoUrl 不在此设置,由调用方按 certificateId 查询后单独 put

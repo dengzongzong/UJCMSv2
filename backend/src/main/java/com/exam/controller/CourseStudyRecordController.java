@@ -31,10 +31,16 @@ public class CourseStudyRecordController {
                                                         @RequestParam(required = false) String studyTimeEnd,
                                                         @RequestParam(required = false) Integer courseStatus,
                                                         @RequestParam(required = false) String phone,
+                                                        @RequestParam(required = false) Integer exactCount,
                                                         HttpServletRequest request) {
+        // 精确显示条数: 仅返回最新N条(覆盖分页参数)
+        if (exactCount != null && exactCount > 0) {
+            page = 1;
+            size = exactCount;
+        }
         Long userId = (Long) request.getAttribute("userId");
         PageResult<Map<String, Object>> result = courseStudyRecordService.page(page, size, courseName,
-                studyTimeStart, studyTimeEnd, courseStatus, phone);
+                studyTimeStart, studyTimeEnd, courseStatus, phone, exactCount);
         return Result.success(result);
     }
 

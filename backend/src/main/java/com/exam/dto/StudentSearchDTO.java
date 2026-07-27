@@ -13,9 +13,9 @@ public class StudentSearchDTO {
     private String idCard;
     /** 关键词（搜索姓名/手机号/学号/身份证） */
     private String keyword;
-    /** 注册开始时间 yyyy-MM-dd */
+    /** 注册开始时间 yyyy-MM-dd HH:mm:ss */
     private String registerTimeStart;
-    /** 注册结束时间 yyyy-MM-dd */
+    /** 注册结束时间 yyyy-MM-dd HH:mm:ss */
     private String registerTimeEnd;
     /** 账号状态 0-冻结 1-正常 */
     private Integer status;
@@ -25,4 +25,6 @@ public class StudentSearchDTO {
     private Integer page;
     /** 每页大小 */
     private Integer size;
+    /** 精确显示条数(仅显示最新N条) */
+    private Integer exactCount;
 }

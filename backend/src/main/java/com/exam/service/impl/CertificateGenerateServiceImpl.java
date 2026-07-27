@@ -579,14 +579,16 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
         map.put("profession", safe(cert.getProfession()));
         map.put("skilllevel", safe(cert.getSkillLevel()));
         if (cert.getIssueDate() != null) {
-            map.put("issuedate", cert.getIssueDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-            // 颁发日期(完整中文格式): 2016年9月5日
-            map.put("issuedatefull", cert.getIssueDate().getYear() + "年"
-                    + cert.getIssueDate().getMonthValue() + "月"
-                    + cert.getIssueDate().getDayOfMonth() + "日");
+            // 颁发日期:统一输出中文格式 2026年9月13日 (不补零)
+            String fullCnDate = String.format("%d年%d月%d日",
+                    cert.getIssueDate().getYear(),
+                    cert.getIssueDate().getMonthValue(),
+                    cert.getIssueDate().getDayOfMonth());
+            map.put("issuedate", fullCnDate);
+            map.put("issuedatefull", fullCnDate);
             map.put("issueyear", String.valueOf(cert.getIssueDate().getYear()));
-            map.put("issuemonth", String.format("%02d", cert.getIssueDate().getMonthValue()));
-            map.put("issueday", String.format("%02d", cert.getIssueDate().getDayOfMonth()));
+            map.put("issuemonth", String.valueOf(cert.getIssueDate().getMonthValue()));
+            map.put("issueday", String.valueOf(cert.getIssueDate().getDayOfMonth()));
         }
         map.put("certno", safe(cert.getCertNo()));
         map.put("studentno", safe(cert.getStudentNo()));
