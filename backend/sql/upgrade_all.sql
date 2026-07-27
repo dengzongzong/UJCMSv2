@@ -679,8 +679,8 @@ VALUES ('专项职业证书', '/uploads/static/证书模板图/zs.png', 2989, 21
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), is_default = 1, remark = VALUES(remark);
 
 SET @tpl_1 = (SELECT id FROM certificate_template WHERE name = '专项职业证书');
--- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE(允许新增/更新,不删除用户手动添加的字段)
-INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+-- 使用INSERT IGNORE: 仅首次插入字段,不覆盖用户手动调整的坐标/样式
+INSERT IGNORE INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_1, 'name', 2050, 580, 36, '#000000', 2, 1, 300, 1),
 (@tpl_1, 'gender', 2050, 680, 36, '#000000', 1, 1, 300, 2),
 (@tpl_1, 'idCard', 2050, 780, 36, '#000000', 1, 1, 400, 3),
@@ -689,8 +689,7 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_1, 'certNo', 2050, 1080, 36, '#000000', 1, 1, 400, 6),
 (@tpl_1, 'issueYear', 2050, 1180, 36, '#000000', 1, 1, 100, 7),
 (@tpl_1, 'issueMonth', 2200, 1180, 36, '#000000', 1, 1, 80, 8),
-(@tpl_1, 'issueDay', 2320, 1180, 36, '#000000', 1, 1, 80, 9)
-ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
+(@tpl_1, 'issueDay', 2320, 1180, 36, '#000000', 1, 1, 80, 9);
 
 -- 2. 能力等级证书 (zs1.jpg, 1170x816)
 INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
@@ -698,8 +697,8 @@ VALUES ('能力等级证书', '/uploads/static/证书模板图/zs1.jpg', 1170, 8
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), remark = VALUES(remark);
 
 SET @tpl_2 = (SELECT id FROM certificate_template WHERE name = '能力等级证书');
--- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE
-INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+-- 使用INSERT IGNORE: 仅首次插入字段,不覆盖用户手动调整的坐标/样式
+INSERT IGNORE INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_2, 'name', 60, 200, 22, '#000000', 1, 1, 200, 1),
 (@tpl_2, 'gender', 60, 240, 22, '#000000', 1, 1, 200, 2),
 (@tpl_2, 'certNo', 60, 280, 22, '#000000', 1, 1, 250, 3),
@@ -711,8 +710,7 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_2, 'comprehensiveEvaluation', 650, 360, 22, '#000000', 1, 1, 200, 9),
 (@tpl_2, 'issueYear', 650, 400, 22, '#000000', 1, 1, 100, 10),
 (@tpl_2, 'issueMonth', 780, 400, 22, '#000000', 1, 1, 80, 11),
-(@tpl_2, 'issueDay', 880, 400, 22, '#000000', 1, 1, 80, 12)
-ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
+(@tpl_2, 'issueDay', 880, 400, 22, '#000000', 1, 1, 80, 12);
 
 -- 3. 人才数据库 (zs3.jpg, 1075x1522, 竖版)
 INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
@@ -720,8 +718,8 @@ VALUES ('人才数据库', '/uploads/static/证书模板图/zs3.jpg', 1075, 1522
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), remark = VALUES(remark);
 
 SET @tpl_3 = (SELECT id FROM certificate_template WHERE name = '人才数据库');
--- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE
-INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+-- 使用INSERT IGNORE: 仅首次插入字段,不覆盖用户手动调整的坐标/样式
+INSERT IGNORE INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_3, 'name', 280, 580, 30, '#000000', 1, 1, 300, 1),
 (@tpl_3, 'gender', 280, 640, 30, '#000000', 1, 1, 300, 2),
 (@tpl_3, 'idCard', 280, 700, 30, '#000000', 1, 1, 350, 3),
@@ -729,8 +727,7 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_3, 'profession', 280, 820, 30, '#000000', 1, 1, 350, 5),
 (@tpl_3, 'issueYear', 280, 880, 30, '#000000', 1, 1, 100, 6),
 (@tpl_3, 'issueMonth', 420, 880, 30, '#000000', 1, 1, 80, 7),
-(@tpl_3, 'issueDay', 540, 880, 30, '#000000', 1, 1, 80, 8)
-ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
+(@tpl_3, 'issueDay', 540, 880, 30, '#000000', 1, 1, 80, 8);
 
 -- 4. 职业能力证书 (bg.jpg, 1920x1599)
 INSERT INTO certificate_template (name, bg_image_url, bg_width, bg_height, is_default, remark)
@@ -738,8 +735,8 @@ VALUES ('职业能力证书', '/uploads/static/证书模板图/bg.jpg', 1920, 15
 ON DUPLICATE KEY UPDATE bg_image_url = VALUES(bg_image_url), bg_width = VALUES(bg_width), bg_height = VALUES(bg_height), is_default = VALUES(is_default), remark = VALUES(remark);
 
 SET @tpl_4 = (SELECT id FROM certificate_template WHERE name = '职业能力证书');
--- 不再DELETE,改用INSERT ON DUPLICATE KEY UPDATE
-INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
+-- 使用INSERT IGNORE: 仅首次插入字段,不覆盖用户手动调整的坐标/样式
+INSERT IGNORE INTO certificate_template_field (template_id, field_key, x, y, font_size, color, font_weight, align, width, sort) VALUES
 (@tpl_4, 'name', 960, 700, 32, '#000000', 2, 2, 300, 0),
 (@tpl_4, 'gender', 960, 780, 28, '#000000', 1, 2, 200, 1),
 (@tpl_4, 'idCard', 960, 860, 28, '#000000', 1, 2, 400, 2),
@@ -748,8 +745,7 @@ INSERT INTO certificate_template_field (template_id, field_key, x, y, font_size,
 (@tpl_4, 'certNo', 960, 1100, 24, '#333333', 1, 2, 400, 5),
 (@tpl_4, 'issueYear', 800, 1200, 24, '#000000', 1, 1, 100, 6),
 (@tpl_4, 'issueMonth', 950, 1200, 24, '#000000', 1, 1, 80, 7),
-(@tpl_4, 'issueDay', 1080, 1200, 24, '#000000', 1, 1, 80, 8)
-ON DUPLICATE KEY UPDATE x=VALUES(x), y=VALUES(y), font_size=VALUES(font_size), color=VALUES(color), font_weight=VALUES(font_weight), align=VALUES(align), width=VALUES(width), sort=VALUES(sort);
+(@tpl_4, 'issueDay', 1080, 1200, 24, '#000000', 1, 1, 80, 8);
 
 -- 验证
 SELECT '证书模板导入结果' AS info;

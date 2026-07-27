@@ -157,12 +157,12 @@ if [ -f "fix_all_cert_issues.sql" ]; then
     echo "  证书修复SQL完成"
 fi
 
-# 6.2 导入缺失的证书数据 (幂等,INSERT IGNORE)
-if [ -f "import_missing_certs.sql" ]; then
-    echo "  导入缺失证书数据..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < import_missing_certs.sql 2>&1 | grep -v "Using a password"
-    echo "  证书数据导入完成"
-fi
+# 6.2 导入缺失的证书数据 (仅首次部署需要,已注释掉避免每次升级覆盖用户修改的数据)
+# if [ -f "import_missing_certs.sql" ]; then
+#     echo "  导入缺失证书数据..."
+#     mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < import_missing_certs.sql 2>&1 | grep -v "Using a password"
+#     echo "  证书数据导入完成"
+# fi
 
 # 6.3 修复文章 publish_time 为空的数据 (幂等,用 create_time 填充)
 if [ -f "fix_publish_time.sql" ]; then
@@ -171,12 +171,12 @@ if [ -f "fix_publish_time.sql" ]; then
     echo "  文章发布时间修复完成"
 fi
 
-# 6.4 修复证书编号重复: 给被覆盖的17条记录改编号后单独导入
-if [ -f "fix_dup_certs.sql" ]; then
-    echo "  修复证书编号重复数据..."
-    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_dup_certs.sql 2>&1 | grep -v "Using a password"
-    echo "  证书编号重复修复完成"
-fi
+# 6.4 修复证书编号重复 (一次性修复,已完成,不再每次执行)
+# if [ -f "fix_dup_certs.sql" ]; then
+#     echo "  修复证书编号重复数据..."
+#     mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_dup_certs.sql 2>&1 | grep -v "Using a password"
+#     echo "  证书编号重复修复完成"
+# fi
 
 # 6.5 修复信息公开/新闻/公告时间全部相同的问题(按id偏移分钟数,幂等)
 if [ -f "fix_publish_time_v2.sql" ]; then

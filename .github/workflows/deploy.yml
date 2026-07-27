@@ -91,11 +91,12 @@ jobs:
           chmod +x remote-deploy.sh
           cp backend/sql/upgrade_all.sql .
           cp backend/sql/fix_all_cert_issues.sql .
-          cp backend/sql/import_missing_certs.sql .
           cp backend/sql/fix_publish_time.sql .
-          cp backend/sql/fix_dup_certs.sql .
           cp backend/sql/fix_publish_time_v2.sql .
           cp backend/sql/fix_id_card_empty.sql .
+          # 以下SQL仅首次部署需要,不再每次升级执行(避免覆盖用户手动修改的数据)
+          # cp backend/sql/import_missing_certs.sql .   # 已完成使命,重复执行会用旧数据覆盖修复后的数据
+          # cp backend/sql/fix_dup_certs.sql .           # 一次性修复,已完成
 
       # ===== 8. 打包所有部署产物 =====
       - name: Create deployment package
@@ -107,9 +108,7 @@ jobs:
           mv remote-deploy.sh deploy-pkg/
           mv upgrade_all.sql deploy-pkg/
           mv fix_all_cert_issues.sql deploy-pkg/
-          mv import_missing_certs.sql deploy-pkg/
           mv fix_publish_time.sql deploy-pkg/
-          mv fix_dup_certs.sql deploy-pkg/
           mv fix_publish_time_v2.sql deploy-pkg/
           mv fix_id_card_empty.sql deploy-pkg/
           tar -czf deployment.tar.gz deploy-pkg/
