@@ -46,16 +46,22 @@
           >
             <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
           </el-input>
-          <el-input
+          <el-select
             v-model="openedQuery.profession"
-            placeholder="搜索专业"
+            placeholder="选择专业"
             clearable
+            filterable
             size="small"
             style="width: 200px; margin-bottom: 10px; margin-left: 10px"
-            @keyup.enter.native="fetchOpened"
+            @change="fetchOpened"
           >
-            <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
-          </el-input>
+            <el-option
+              v-for="item in professionOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.name"
+            />
+          </el-select>
           <el-table :data="opened" border size="mini" max-height="360">
             <el-table-column type="index" label="序号" width="60" align="center" />
             <el-table-column prop="name" label="姓名" min-width="100" show-overflow-tooltip>
@@ -124,16 +130,22 @@
           >
             <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
           </el-input>
-          <el-input
+          <el-select
             v-model="addQuery.profession"
-            placeholder="搜索专业"
+            placeholder="选择专业"
             clearable
+            filterable
             size="small"
             style="width: 200px; margin-bottom: 10px; margin-left: 10px"
-            @keyup.enter.native="fetchUnopened"
+            @change="fetchUnopened"
           >
-            <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
-          </el-input>
+            <el-option
+              v-for="item in professionOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.name"
+            />
+          </el-select>
           <el-table
             :data="unopened"
             border
@@ -185,6 +197,7 @@
 
 <script>
 import { getCourseStudents, openCourseStudents, closeCourseStudent } from '@/api/course'
+import { professions } from '@/api/setting'
 
 export default {
   name: 'CourseOpenStudents',
@@ -198,6 +211,7 @@ export default {
       loading: false,
       submitting: false,
       activeTab: 'opened',
+      professionOptions: [],
       opened: [],
       openedTotal: 0,
       openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' },
@@ -237,7 +251,15 @@ export default {
       }
     }
   },
+  created() {
+    this.fetchProfessions()
+  },
   methods: {
+    fetchProfessions() {
+      professions().then(res => {
+        this.professionOptions = res.data || []
+      }).catch(() => {})
+    },
     fetchOpened() {
       this.loading = true
       const params = {

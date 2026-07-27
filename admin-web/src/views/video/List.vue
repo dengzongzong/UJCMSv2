@@ -165,13 +165,21 @@
               >
                 <el-button slot="append" icon="el-icon-search" @click="fetchVideoOpened" />
               </el-input>
-              <el-input
+              <el-select
                 v-model="openStudentsDialog.openedQuery.profession"
-                placeholder="搜索专业"
+                placeholder="选择专业"
                 clearable
+                filterable
                 style="width: 200px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoOpened"
-              />
+                @change="fetchVideoOpened"
+              >
+                <el-option
+                  v-for="item in professionOptions"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.name"
+                />
+              </el-select>
               <el-button type="primary" size="small" @click="fetchVideoOpened">搜索</el-button>
             </div>
             <el-table :data="openStudentsDialog.opened" border size="small" style="width: 100%">
@@ -221,13 +229,21 @@
               >
                 <el-button slot="append" icon="el-icon-search" @click="fetchVideoUnopened" />
               </el-input>
-              <el-input
+              <el-select
                 v-model="openStudentsDialog.addQuery.profession"
-                placeholder="搜索专业"
+                placeholder="选择专业"
                 clearable
+                filterable
                 style="width: 200px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoUnopened"
-              />
+                @change="fetchVideoUnopened"
+              >
+                <el-option
+                  v-for="item in professionOptions"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.name"
+                />
+              </el-select>
               <el-button type="primary" size="small" @click="fetchVideoUnopened">搜索</el-button>
               <el-button
                 type="success"

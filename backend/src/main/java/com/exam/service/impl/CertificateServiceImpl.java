@@ -656,6 +656,19 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 throw new BusinessException("自定义字段序列化失败");
             }
         }
+        // 成绩字段同步写入主表列(导入时 extra 中已有值,确保前端列表直接显示)
+        Object tsObj = extra.get("theoryScore");
+        if (tsObj != null && StringUtils.hasText(String.valueOf(tsObj))) {
+            c.setTheoryScore(String.valueOf(tsObj));
+        }
+        Object psObj = extra.get("practicalScore");
+        if (psObj != null && StringUtils.hasText(String.valueOf(psObj))) {
+            c.setPracticalScore(String.valueOf(psObj));
+        }
+        Object ceObj = extra.get("comprehensiveEvaluation");
+        if (ceObj != null && StringUtils.hasText(String.valueOf(ceObj))) {
+            c.setComprehensiveEvaluation(String.valueOf(ceObj));
+        }
         c.setCreateTime(LocalDateTime.now());
         c.setUpdateTime(LocalDateTime.now());
         // 导入时间(新增/导入时自动填写;以导入时间作为后续筛选/排序依据)
@@ -716,6 +729,20 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 c.setExtraJson(MAPPER.writeValueAsString(dto.getExtra()));
             } catch (JsonProcessingException e) {
                 throw new BusinessException("自定义字段序列化失败");
+            }
+            // 成绩字段同步写入主表列(编辑时 extra 中已有值,确保前端列表直接显示)
+            Map<String, Object> ex = dto.getExtra();
+            Object tsObj = ex.get("theoryScore");
+            if (tsObj != null && StringUtils.hasText(String.valueOf(tsObj))) {
+                c.setTheoryScore(String.valueOf(tsObj));
+            }
+            Object psObj = ex.get("practicalScore");
+            if (psObj != null && StringUtils.hasText(String.valueOf(psObj))) {
+                c.setPracticalScore(String.valueOf(psObj));
+            }
+            Object ceObj = ex.get("comprehensiveEvaluation");
+            if (ceObj != null && StringUtils.hasText(String.valueOf(ceObj))) {
+                c.setComprehensiveEvaluation(String.valueOf(ceObj));
             }
         }
         c.setUpdateTime(LocalDateTime.now());
@@ -1741,17 +1768,35 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         } else {
             extra.put("examTime", LocalDate.now().toString());
         }
-        // 理论成绩: 使用导入模板的原始值,空时不自动生成(前端显示横杠)
+        // 理论成绩: 使用导入模板的原始值
+        String theoryScoreVal = null;
         if (StringUtils.hasText(r.getTheoryScore())) {
-            extra.put("theoryScore", r.getTheoryScore().trim());
+            theoryScoreVal = r.getTheoryScore().trim();
+            extra.put("theoryScore", theoryScoreVal);
         }
-        // 实操成绩: 使用导入模板的原始值,空时不自动生成(前端显示横杠)
+        // 实操成绩: 使用导入模板的原始值;若为空但理论成绩有值,则按理论成绩±10自动生成(与考试后回写逻辑一致)
         if (StringUtils.hasText(r.getPracticalScore())) {
             extra.put("practicalScore", r.getPracticalScore());
+        } else if (theoryScoreVal != null) {
+            try {
+                double theory = Double.parseDouble(theoryScoreVal);
+                int min = Math.max(60, (int) Math.floor(theory - 10));
+                int max = Math.min(100, (int) Math.ceil(theory + 10));
+                if (max <= min) max = min + 1;
+                int ps = java.util.concurrent.ThreadLocalRandom.current().nextInt(min, max + 1);
+                extra.put("practicalScore", String.valueOf(ps));
+            } catch (NumberFormatException e) {
+                // 理论成绩非数字时,基于身份证号hash生成稳定值(60-100)
+                int hash = Math.abs(r.getIdCard().hashCode());
+                int ps = 60 + (hash % 40);
+                extra.put("practicalScore", String.valueOf(ps));
+            }
         }
-        // 综合测评: 使用导入模板的原始值,空时不自动生成(前端显示横杠)
+        // 综合测评: 使用导入模板的原始值;若为空但理论成绩有值,则默认"合格"(与考试后回写逻辑一致)
         if (StringUtils.hasText(r.getComprehensiveEvaluation())) {
             extra.put("comprehensiveEvaluation", r.getComprehensiveEvaluation());
+        } else if (theoryScoreVal != null) {
+            extra.put("comprehensiveEvaluation", "合格");
         }
         // 手机号码
         if (StringUtils.hasText(r.getPhone())) {
