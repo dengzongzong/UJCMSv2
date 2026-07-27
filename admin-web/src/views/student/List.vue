@@ -429,6 +429,23 @@
           style="margin-top: 12px"
         />
         <div
+          v-if="importDialog.result.duplicateList && importDialog.result.duplicateList.length"
+          style="margin-top: 8px"
+        >
+          <div style="margin-bottom: 4px; color: #e6a23c; font-size: 13px">
+            重复列表 ({{ importDialog.result.duplicateCount || importDialog.result.duplicateList.length }})
+          </div>
+          <el-table :data="importDialog.result.duplicateList" border size="mini" max-height="200">
+            <el-table-column prop="rowIndex" label="行号" width="70" align="center" />
+            <el-table-column prop="name" label="姓名" min-width="100" show-overflow-tooltip />
+            <el-table-column prop="idCard" label="身份证号" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="profession" label="专业" min-width="120" show-overflow-tooltip />
+            <el-table-column prop="skillLevel" label="级别" min-width="100" show-overflow-tooltip />
+            <el-table-column prop="phone" label="手机号" min-width="120" show-overflow-tooltip />
+            <el-table-column prop="certType" label="证书类型" min-width="120" show-overflow-tooltip />
+          </el-table>
+        </div>
+        <div
           v-if="importDialog.result.failList && importDialog.result.failList.length"
           style="margin-top: 8px"
         >
@@ -1182,23 +1199,25 @@ export default {
           const data = (res && res.data) || {}
           const failList = data.failList || data.failures || data.errors || data.failedRows || []
           const dupCount = data.duplicateCount || 0
+          const dupList = data.duplicateList || []
           this.importDialog.result = {
             // 优先使用后端返回的 successCount(新接口),兼容旧字段 success/count
             success: data.successCount != null ? data.successCount : (data.success != null ? data.success : (data.count || 0)),
             // 优先使用后端返回的 failCount,兜底用 failList 长度
             failCount: data.failCount != null ? data.failCount : failList.length,
             failList: failList,
-            duplicateCount: dupCount
+            duplicateCount: dupCount,
+            duplicateList: dupList
           }
           const ok = this.importDialog.result.success
           const fail = this.importDialog.result.failCount
           // 有重复数据时弹框提示
           if (dupCount > 0 && fail > 0 && ok === 0) {
-            this.$alert('全部数据未通过: 重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已跳过),失败 ' + fail + ' 条。请查看下方"失败明细"。', '导入未通过', { type: 'error' })
+            this.$alert('全部数据未通过: 重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已跳过),失败 ' + fail + ' 条。请查看下方"重复列表"和"失败明细"。', '导入未通过', { type: 'error' })
           } else if (dupCount > 0 && fail > 0) {
-            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(已自动跳过),失败 ' + fail + ' 条。请查看下方"失败明细"。', '导入完成(有重复和失败)', { type: 'warning' })
+            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(已自动跳过),失败 ' + fail + ' 条。请查看下方"重复列表"和"失败明细"。', '导入完成(有重复和失败)', { type: 'warning' })
           } else if (dupCount > 0 && fail === 0) {
-            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已自动跳过未重复导入)。', '导入完成(有重复)', { type: 'warning' })
+            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已自动跳过未重复导入)。请查看下方"重复列表"了解详情。', '导入完成(有重复)', { type: 'warning' })
           } else if (fail > 0 && ok === 0) {
             this.$alert('全部 ' + fail + ' 条数据未通过校验,请查看下方"失败明细"修正后重传。', '校验未通过', { type: 'error' })
           } else if (fail > 0) {

@@ -683,6 +683,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         int successCount = 0;
         int duplicateCount = 0;
         List<Map<String, Object>> failList = new ArrayList<>();
+        List<Map<String, Object>> duplicateList = new ArrayList<>();
         // 用于跟踪同一批导入中新创建的学生（key: idCard）
         Map<String, Student> createdInBatch = new HashMap<>();
 
@@ -702,6 +703,16 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                     StringUtils.hasText(professionName) ? professionName.trim() : null,
                     StringUtils.hasText(skillLevel) ? skillLevel.trim() : null)) {
                 duplicateCount++;
+                // 记录重复详细信息,方便用户定位
+                Map<String, Object> dup = new LinkedHashMap<>();
+                dup.put("rowIndex", row.getRowIndex() != null ? row.getRowIndex() : 0);
+                dup.put("name", name);
+                dup.put("idCard", idCard);
+                dup.put("profession", professionName);
+                dup.put("skillLevel", skillLevel);
+                dup.put("phone", row.getPhone());
+                dup.put("certType", row.getCertType());
+                duplicateList.add(dup);
                 continue; // 四项完全相同,不允许导入
             }
 
@@ -851,6 +862,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         Map<String, Object> result = new HashMap<>();
         result.put("successCount", successCount);
         result.put("duplicateCount", duplicateCount);
+        result.put("duplicateList", duplicateList);
         result.put("failCount", failList.size());
         result.put("failList", failList);
         return result;
