@@ -564,22 +564,22 @@ export default {
       var expectedCheck = checkCodes[sum % 11]
       return expectedCheck === idCard.charAt(17).toUpperCase()
     },
-    // 从身份证号提取出生日期(yyyy-MM-dd)
+    // 从身份证号提取出生日期(yyyy年M月d日,不补零)
     getBirthdayFromIdCard(idCard) {
       if (!idCard) return ''
       // 18位身份证: 第7-14位为出生日期
       if (idCard.length === 18) {
-        var year = idCard.substring(6, 10)
-        var month = idCard.substring(10, 12)
-        var day = idCard.substring(12, 14)
-        return year + '-' + month + '-' + day
+        var year = parseInt(idCard.substring(6, 10), 10)
+        var month = parseInt(idCard.substring(10, 12), 10)
+        var day = parseInt(idCard.substring(12, 14), 10)
+        return year + '年' + month + '月' + day + '日'
       }
       // 15位身份证: 第7-12位为出生日期(年份补19)
       if (idCard.length === 15) {
-        var y = '19' + idCard.substring(6, 8)
-        var m = idCard.substring(8, 10)
-        var d = idCard.substring(10, 12)
-        return y + '-' + m + '-' + d
+        var y = parseInt('19' + idCard.substring(6, 8), 10)
+        var m = parseInt(idCard.substring(8, 10), 10)
+        var d = parseInt(idCard.substring(10, 12), 10)
+        return y + '年' + m + '月' + d + '日'
       }
       return ''
     },

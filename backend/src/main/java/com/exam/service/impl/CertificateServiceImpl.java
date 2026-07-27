@@ -1460,7 +1460,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             case "birthday": {
                 String idCard = c.getIdCard();
                 if (idCard != null && idCard.length() >= 14) {
-                    return idCard.substring(6, 10) + "年" + idCard.substring(10, 12) + "月" + idCard.substring(12, 14) + "日";
+                    try {
+                        int bYear = Integer.parseInt(idCard.substring(6, 10));
+                        int bMonth = Integer.parseInt(idCard.substring(10, 12));
+                        int bDay = Integer.parseInt(idCard.substring(12, 14));
+                        return String.format("%d年%d月%d日", bYear, bMonth, bDay);
+                    } catch (NumberFormatException e) {
+                        return "";
+                    }
                 }
                 return "";
             }

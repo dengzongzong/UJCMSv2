@@ -590,6 +590,15 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
             map.put("issuemonth", String.valueOf(cert.getIssueDate().getMonthValue()));
             map.put("issueday", String.valueOf(cert.getIssueDate().getDayOfMonth()));
         }
+        // 出生日期: 从身份证号提取,输出中文格式(不补零,如 1990年1月5日)
+        if (StringUtils.hasText(cert.getIdCard()) && cert.getIdCard().length() >= 14) {
+            try {
+                int bYear = Integer.parseInt(cert.getIdCard().substring(6, 10));
+                int bMonth = Integer.parseInt(cert.getIdCard().substring(10, 12));
+                int bDay = Integer.parseInt(cert.getIdCard().substring(12, 14));
+                map.put("birthday", String.format("%d年%d月%d日", bYear, bMonth, bDay));
+            } catch (NumberFormatException ignored) { }
+        }
         map.put("certno", safe(cert.getCertNo()));
         map.put("studentno", safe(cert.getStudentNo()));
         map.put("agency", safe(cert.getAgency()));
@@ -623,8 +632,8 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
                 }
             }
         }
-        // 转换为小写键
-        extra.forEach((k, v) -> map.put(k.toLowerCase(), v == null ? "" : v.toString()));
+        // 转换为小写键 —— 使用 putIfAbsent 避免自定义字段覆盖系统字段(如 issuedate/name 等)
+        extra.forEach((k, v) -> map.putIfAbsent(k.toLowerCase(), v == null ? "" : v.toString()));
         // 补充证书用户属性(手机号/专业名称): 二维码 URL 规则可能引用这些属性
         if (StringUtils.hasText(cert.getIdCard())) {
             try {

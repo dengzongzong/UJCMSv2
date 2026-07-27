@@ -81,10 +81,16 @@ export default {
     getBirthdayFromIdCard(idCard) {
       if (!idCard) return '-'
       if (idCard.length === 18) {
-        return idCard.substring(6, 10) + '-' + idCard.substring(10, 12) + '-' + idCard.substring(12, 14)
+        var year = parseInt(idCard.substring(6, 10), 10)
+        var month = parseInt(idCard.substring(10, 12), 10)
+        var day = parseInt(idCard.substring(12, 14), 10)
+        return year + '年' + month + '月' + day + '日'
       }
       if (idCard.length === 15) {
-        return '19' + idCard.substring(6, 8) + '-' + idCard.substring(8, 10) + '-' + idCard.substring(10, 12)
+        var y = parseInt('19' + idCard.substring(6, 8), 10)
+        var m = parseInt(idCard.substring(8, 10), 10)
+        var d = parseInt(idCard.substring(10, 12), 10)
+        return y + '年' + m + '月' + d + '日'
       }
       return '-'
     },
