@@ -291,7 +291,12 @@ public class ExamManageServiceImpl extends ServiceImpl<ExamMapper, Exam> impleme
     }
 
     @Override
-    public PageResult<Student> studentsPage(Long examId, Integer page, Integer size, String phone, Integer unopened, Integer unexamined) {
+    public PageResult<Student> studentsPage(Long examId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened, Integer unexamined) {
+        // 显示最新N条: 重置为第1页,每页条数=exactCount
+        if (exactCount != null && exactCount > 0) {
+            page = 1;
+            size = exactCount;
+        }
         // 查询已开通的学生ID集合
         List<StudentExam> studentExams = studentExamMapper.selectList(
                 new LambdaQueryWrapper<StudentExam>().eq(StudentExam::getExamId, examId));
@@ -299,6 +304,7 @@ public class ExamManageServiceImpl extends ServiceImpl<ExamMapper, Exam> impleme
 
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(phone), Student::getPhone, phone);
+        wrapper.like(StringUtils.hasText(idCard), Student::getIdCard, idCard);
         if (unopened != null && unopened == 1) {
             // 未开通：id NOT IN openedIds
             if (!openedIds.isEmpty()) {
@@ -323,7 +329,7 @@ public class ExamManageServiceImpl extends ServiceImpl<ExamMapper, Exam> impleme
                 }
             }
         }
-        wrapper.orderByDesc(Student::getCreateTime);
+        wrapper.orderByDesc(Student::getCreateTime).orderByDesc(Student::getId);
         Page<Student> p = new Page<>(page, size);
         Page<Student> result = studentMapper.selectPage(p, wrapper);
         result.getRecords().forEach(s -> s.setPassword(null));

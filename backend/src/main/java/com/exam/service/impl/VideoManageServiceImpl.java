@@ -204,14 +204,20 @@ public class VideoManageServiceImpl extends ServiceImpl<VideoMapper, Video> impl
     }
 
     @Override
-    public PageResult<Student> studentsPage(Long videoId, Integer page, Integer size, String phone, Integer unopened) {
+    public PageResult<Student> studentsPage(Long videoId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened) {
         // 查询已开通该视频的学生ID集合
         List<StudentVideo> studentVideos = studentVideoMapper.selectList(
                 new LambdaQueryWrapper<StudentVideo>().eq(StudentVideo::getVideoId, videoId));
         Set<Long> openedIds = studentVideos.stream().map(StudentVideo::getStudentId).collect(Collectors.toSet());
 
+        // 显示条数逻辑：当传入 exactCount 时，固定返回最新 N 条
+        if (exactCount != null && exactCount > 0) {
+            page = 1;
+            size = exactCount;
+        }
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(phone), Student::getPhone, phone);
+        wrapper.like(StringUtils.hasText(idCard), Student::getIdCard, idCard);
         if (unopened != null && unopened == 1) {
             // 未开通：id NOT IN openedIds
             if (!openedIds.isEmpty()) {
@@ -224,7 +230,7 @@ public class VideoManageServiceImpl extends ServiceImpl<VideoMapper, Video> impl
             }
             wrapper.in(Student::getId, openedIds);
         }
-        wrapper.orderByDesc(Student::getRegisterTime);
+        wrapper.orderByDesc(Student::getCreateTime).orderByDesc(Student::getId);
         Page<Student> p = new Page<>(page, size);
         Page<Student> result = studentMapper.selectPage(p, wrapper);
         result.getRecords().forEach(s -> s.setPassword(null));

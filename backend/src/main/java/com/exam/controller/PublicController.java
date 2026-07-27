@@ -90,19 +90,19 @@ public class PublicController {
     }
 
     /**
-     * 获取已显示的系统公告列表
+     * 获取已显示的通知公告列表(从新闻表type=7读取,合并后统一管理)
      */
     @GetMapping("/announcements")
-    public Result<List<Announcement>> listAnnouncements() {
-        return Result.success(announcementManageService.listEnabled());
+    public Result<List<News>> listAnnouncements() {
+        return Result.success(newsManageService.listEnabledByType(7));
     }
 
     /**
-     * 获取已显示的新闻列表
+     * 获取已显示的新闻动态列表(type=1)
      */
     @GetMapping("/news")
     public Result<List<News>> listNews() {
-        return Result.success(newsManageService.listEnabled());
+        return Result.success(newsManageService.listEnabledByType(1));
     }
 
     /**
@@ -115,12 +115,21 @@ public class PublicController {
 
     /**
      * 获取首页内容板块(政策法规/信息公开)
-     * type: 1-政策法规 2-信息公开, 不传则返回全部
+     * 从新闻表统一读取: type=1→news type=8(政策法规), type=2→news type=9(信息公开)
+     * 不传type则返回政策法规+信息公开合并列表
      */
     @GetMapping("/homepage-sections")
-    public Result<List<HomepageSection>> listHomepageSections(
+    public Result<List<News>> listHomepageSections(
             @RequestParam(required = false) Integer type) {
-        return Result.success(homepageSectionService.listEnabled(type));
+        if (type != null) {
+            Integer newsType = (type == 1) ? 8 : (type == 2) ? 9 : type;
+            return Result.success(newsManageService.listEnabledByType(newsType));
+        }
+        // 不传type: 返回政策法规(8)+信息公开(9)合并
+        List<News> result = new ArrayList<>();
+        try { result.addAll(newsManageService.listEnabledByType(8)); } catch (Exception e) { }
+        try { result.addAll(newsManageService.listEnabledByType(9)); } catch (Exception e) { }
+        return Result.success(result);
     }
 
     /**
@@ -132,31 +141,36 @@ public class PublicController {
     }
 
     /**
-     * 获取单条公告详情(含content)
+     * 获取单条公告详情(从新闻表读取,含content)
      */
     @GetMapping("/announcements/{id}")
-    public Result<Announcement> getAnnouncementDetail(@PathVariable Long id) {
-        return Result.success(announcementManageService.getPublicDetail(id));
+    public Result<News> getAnnouncementDetail(@PathVariable Long id) {
+        return Result.success(newsManageService.getPublicDetail(id));
     }
 
     /**
-     * 获取单条首页板块详情(含content)
+     * 获取单条首页板块详情(从新闻表读取,含content)
      */
     @GetMapping("/homepage-sections/{id}")
-    public Result<HomepageSection> getHomepageSectionDetail(@PathVariable Long id) {
-        return Result.success(homepageSectionService.getPublicDetail(id));
+    public Result<News> getHomepageSectionDetail(@PathVariable Long id) {
+        return Result.success(newsManageService.getPublicDetail(id));
     }
 
     /**
      * 首页聚合接口 - 一次请求返回首页全部数据,减少HTTP并发
+     * 合并后统一从新闻表读取: type=1新闻动态, type=2重大活动, type=7通知公告, type=8政策法规, type=9信息公开
      */
     @GetMapping("/homepage")
     public Result<Map<String, Object>> homepage() {
         Map<String, Object> result = new HashMap<>();
-        try { result.put("news", newsManageService.listEnabled()); } catch (Exception e) { result.put("news", new ArrayList<>()); }
+        try { result.put("news", newsManageService.listEnabledByType(1)); } catch (Exception e) { result.put("news", new ArrayList<>()); }
         try { result.put("events", newsManageService.listEnabledByType(2)); } catch (Exception e) { result.put("events", new ArrayList<>()); }
-        try { result.put("announcements", announcementManageService.listEnabled()); } catch (Exception e) { result.put("announcements", new ArrayList<>()); }
-        try { result.put("homepageSections", homepageSectionService.listEnabled(null)); } catch (Exception e) { result.put("homepageSections", new ArrayList<>()); }
+        try { result.put("announcements", newsManageService.listEnabledByType(7)); } catch (Exception e) { result.put("announcements", new ArrayList<>()); }
+        // 政策法规(8) + 信息公开(9) 合并返回
+        List<News> sections = new ArrayList<>();
+        try { sections.addAll(newsManageService.listEnabledByType(8)); } catch (Exception e) { }
+        try { sections.addAll(newsManageService.listEnabledByType(9)); } catch (Exception e) { }
+        result.put("homepageSections", sections);
         return Result.success(result);
     }
 
@@ -281,10 +295,11 @@ public class PublicController {
             return Result.success(result);
         }
 
-        // 1. 搜索新闻（标题包含关键词）
+        // 1. 搜索新闻（标题包含关键词, 排除通知公告/政策法规/信息公开）
         try {
             List<News> allNews = newsManageService.listEnabled();
             List<News> newsMatches = allNews.stream()
+                    .filter(n -> (n.getType() == null || n.getType() <= 6))
                     .filter(n -> n.getTitle() != null && n.getTitle().contains(kw))
                     .collect(Collectors.toList());
             result.put("news", newsMatches);
@@ -292,10 +307,10 @@ public class PublicController {
             result.put("news", new ArrayList<>());
         }
 
-        // 2. 搜索公告（标题包含关键词）
+        // 2. 搜索通知公告（从新闻表type=7读取）
         try {
-            List<Announcement> allAnno = announcementManageService.listEnabled();
-            List<Announcement> annoMatches = allAnno.stream()
+            List<News> allAnno = newsManageService.listEnabledByType(7);
+            List<News> annoMatches = allAnno.stream()
                     .filter(a -> a.getTitle() != null && a.getTitle().contains(kw))
                     .collect(Collectors.toList());
             result.put("announcements", annoMatches);
@@ -319,10 +334,10 @@ public class PublicController {
             result.put("exams", new ArrayList<>());
         }
 
-        // 5. 搜索政策法规（标题包含关键词）
+        // 5. 搜索政策法规（从新闻表type=8读取）
         try {
-            List<HomepageSection> allSections = homepageSectionService.listEnabled(1);
-            List<HomepageSection> policyMatches = allSections.stream()
+            List<News> allPolicies = newsManageService.listEnabledByType(8);
+            List<News> policyMatches = allPolicies.stream()
                     .filter(s -> s.getTitle() != null && s.getTitle().contains(kw))
                     .collect(Collectors.toList());
             result.put("policies", policyMatches);

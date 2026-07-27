@@ -425,11 +425,11 @@ export default {
         // 通知公告
         const annoData = data.announcements || []
         this.announcements = Array.isArray(annoData) ? annoData : (annoData.list || annoData.records || [])
-        // 政策法规 + 信息公开
+        // 政策法规 + 信息公开 (合并后从新闻表读取: type=8政策法规, type=9信息公开)
         const sectionData = data.homepageSections || []
         const sectionList = Array.isArray(sectionData) ? sectionData : (sectionData.list || [])
-        this.policySections = sectionList.filter(item => item.type === 1)
-        this.disclosureSections = sectionList.filter(item => item.type === 2)
+        this.policySections = sectionList.filter(item => item.type === 8)
+        this.disclosureSections = sectionList.filter(item => item.type === 9)
       } catch (error) {
         // 聚合接口失败时回退到独立接口
         this.fetchAnnouncements()
@@ -443,8 +443,8 @@ export default {
         const res = await getHomepageSections()
         const data = res.data || res || []
         const list = Array.isArray(data) ? data : (data.list || [])
-        this.policySections = list.filter(item => item.type === 1)
-        this.disclosureSections = list.filter(item => item.type === 2)
+        this.policySections = list.filter(item => item.type === 8)
+        this.disclosureSections = list.filter(item => item.type === 9)
       } catch (error) {
         this.policySections = []
         this.disclosureSections = []

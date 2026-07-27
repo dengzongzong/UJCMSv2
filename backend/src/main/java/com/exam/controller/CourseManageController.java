@@ -94,8 +94,10 @@ public class CourseManageController {
                                                 @RequestParam(defaultValue = "1") Integer page,
                                                 @RequestParam(defaultValue = "10") Integer size,
                                                 @RequestParam(required = false) String phone,
-                                                @RequestParam(required = false) Integer unopened) {
-        PageResult<Student> result = courseManageService.studentsPage(id, page, size, phone, unopened);
+                                                @RequestParam(required = false) Integer unopened,
+                                                @RequestParam(required = false) String idCard,
+                                                @RequestParam(required = false) Integer exactCount) {
+        PageResult<Student> result = courseManageService.studentsPage(id, page, size, phone, unopened, idCard, exactCount);
         return Result.success(result);
     }
 

@@ -679,7 +679,7 @@ export default {
         if (this.records.length > 0) {
           Toast.success('找到 ' + this.records.length + ' 张证书')
         } else {
-          Toast('未找到您的证书，可能尚未绑定证书模板')
+          Toast('未找到您的证书')
         }
       } catch (error) {
         this.records = []

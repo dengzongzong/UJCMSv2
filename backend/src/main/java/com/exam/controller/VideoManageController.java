@@ -99,8 +99,10 @@ public class VideoManageController {
                                                 @RequestParam(defaultValue = "1") Integer page,
                                                 @RequestParam(defaultValue = "10") Integer size,
                                                 @RequestParam(required = false) String phone,
+                                                @RequestParam(required = false) String idCard,
+                                                @RequestParam(required = false) Integer exactCount,
                                                 @RequestParam(required = false) Integer unopened) {
-        PageResult<Student> result = videoManageService.studentsPage(id, page, size, phone, unopened);
+        PageResult<Student> result = videoManageService.studentsPage(id, page, size, phone, idCard, exactCount, unopened);
         return Result.success(result);
     }
 

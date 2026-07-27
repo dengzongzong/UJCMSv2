@@ -88,16 +88,18 @@ public class ExamManageController {
     }
 
     /**
-     * 查看已开通该考试的学生名单（分页，支持未开通查询和手机号搜索）
+     * 查看已开通该考试的学生名单（分页，支持未开通查询、手机号和身份证号搜索、显示最新N条）
      */
     @GetMapping("/{id}/students")
     public Result<PageResult<Student>> students(@PathVariable Long id,
                                                 @RequestParam(defaultValue = "1") Integer page,
                                                 @RequestParam(defaultValue = "10") Integer size,
                                                 @RequestParam(required = false) String phone,
+                                                @RequestParam(required = false) String idCard,
+                                                @RequestParam(required = false) Integer exactCount,
                                                 @RequestParam(required = false) Integer unopened,
                                                 @RequestParam(required = false) Integer unexamined) {
-        PageResult<Student> result = examManageService.studentsPage(id, page, size, phone, unopened, unexamined);
+        PageResult<Student> result = examManageService.studentsPage(id, page, size, phone, idCard, exactCount, unopened, unexamined);
         return Result.success(result);
     }
 

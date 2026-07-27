@@ -373,7 +373,12 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
     }
 
     @Override
-    public PageResult<Student> studentsPage(Long courseId, Integer page, Integer size, String phone, Integer unopened) {
+    public PageResult<Student> studentsPage(Long courseId, Integer page, Integer size, String phone, Integer unopened, String idCard, Integer exactCount) {
+        // 显示最新N条：固定第1页，size = exactCount
+        if (exactCount != null && exactCount > 0) {
+            page = 1;
+            size = exactCount;
+        }
         // 查询已开通的学生ID集合
         List<StudentCourse> studentCourses = studentCourseMapper.selectList(
                 new LambdaQueryWrapper<StudentCourse>().eq(StudentCourse::getCourseId, courseId));
@@ -381,6 +386,7 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
 
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(phone), Student::getPhone, phone);
+        wrapper.like(StringUtils.hasText(idCard), Student::getIdCard, idCard);
         if (unopened != null && unopened == 1) {
             // 未开通：id NOT IN openedIds
             if (!openedIds.isEmpty()) {
@@ -393,7 +399,7 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
             }
             wrapper.in(Student::getId, openedIds);
         }
-        wrapper.orderByDesc(Student::getCreateTime);
+        wrapper.orderByDesc(Student::getCreateTime).orderByDesc(Student::getId);
         Page<Student> p = new Page<>(page, size);
         Page<Student> result = studentMapper.selectPage(p, wrapper);
         result.getRecords().forEach(s -> s.setPassword(null));

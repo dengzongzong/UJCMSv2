@@ -26,6 +26,25 @@
           >
             <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
           </el-input>
+          <el-input
+            v-model="openedQuery.idCard"
+            placeholder="搜索身份证号"
+            clearable
+            size="small"
+            style="width: 220px; margin-bottom: 10px; margin-left: 10px"
+            @keyup.enter.native="fetchOpened"
+          >
+            <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
+          </el-input>
+          <el-input-number
+            v-model="openedQuery.exactCount"
+            :min="1"
+            :max="10000"
+            placeholder="显示最新N条"
+            size="small"
+            controls-position="right"
+            style="width: 180px; margin-bottom: 10px; margin-left: 10px"
+          />
           <el-table :data="opened" border size="mini" max-height="360">
             <el-table-column type="index" label="序号" width="60" align="center" />
             <el-table-column prop="name" label="姓名" min-width="100" show-overflow-tooltip>
@@ -74,6 +93,25 @@
           >
             <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
           </el-input>
+          <el-input
+            v-model="addQuery.idCard"
+            placeholder="搜索身份证号"
+            clearable
+            size="small"
+            style="width: 220px; margin-bottom: 10px; margin-left: 10px"
+            @keyup.enter.native="fetchUnopened"
+          >
+            <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
+          </el-input>
+          <el-input-number
+            v-model="addQuery.exactCount"
+            :min="1"
+            :max="10000"
+            placeholder="显示最新N条"
+            size="small"
+            controls-position="right"
+            style="width: 180px; margin-bottom: 10px; margin-left: 10px"
+          />
           <el-table
             :data="unopened"
             border
@@ -140,10 +178,10 @@ export default {
       activeTab: 'opened',
       opened: [],
       openedTotal: 0,
-      openedQuery: { page: 1, size: 10, phone: '' },
+      openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
       unopened: [],
       unopenedTotal: 0,
-      addQuery: { page: 1, size: 10, phone: '' },
+      addQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
       selected: []
     }
   },
@@ -162,8 +200,8 @@ export default {
       handler(val) {
         if (val && this.courseId) {
           this.activeTab = 'opened'
-          this.openedQuery = { page: 1, size: 10, phone: '' }
-          this.addQuery = { page: 1, size: 10, phone: '' }
+          this.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
+          this.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
           this.selected = []
           this.fetchOpened()
         }
@@ -183,7 +221,9 @@ export default {
       const params = {
         page: this.openedQuery.page,
         size: this.openedQuery.size,
-        phone: this.openedQuery.phone
+        phone: this.openedQuery.phone,
+        idCard: this.openedQuery.idCard,
+        exactCount: this.openedQuery.exactCount
       }
       getCourseStudents(this.courseId, params)
         .then((res) => {
@@ -205,6 +245,8 @@ export default {
         page: this.addQuery.page,
         size: this.addQuery.size,
         phone: this.addQuery.phone,
+        idCard: this.addQuery.idCard,
+        exactCount: this.addQuery.exactCount,
         unopened: 1
       }
       getCourseStudents(this.courseId, params)

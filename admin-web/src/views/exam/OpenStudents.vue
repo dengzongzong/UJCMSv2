@@ -17,16 +17,36 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane label="已开通学生" name="opened">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <el-input
-              v-model="openedQuery.phone"
-              placeholder="搜索手机号"
-              clearable
-              size="small"
-              style="width: 220px"
-              @keyup.enter.native="fetchOpened"
-            >
-              <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
-            </el-input>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <el-input
+                v-model="openedQuery.phone"
+                placeholder="搜索手机号"
+                clearable
+                size="small"
+                style="width: 220px"
+                @keyup.enter.native="fetchOpened"
+              >
+                <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
+              </el-input>
+              <el-input
+                v-model="openedQuery.idCard"
+                placeholder="搜索身份证号"
+                clearable
+                size="small"
+                style="width: 220px"
+                @keyup.enter.native="fetchOpened"
+              >
+                <el-button slot="append" icon="el-icon-search" @click="fetchOpened" />
+              </el-input>
+              <el-input-number
+                v-model="openedQuery.exactCount"
+                :min="1"
+                :max="10000"
+                placeholder="显示最新N条"
+                size="small"
+                style="width: 160px"
+              />
+            </div>
             <div>
               <el-button
                 :type="unexaminedFilter ? 'primary' : 'default'"
@@ -84,16 +104,36 @@
           />
         </el-tab-pane>
         <el-tab-pane label="新增开通" name="add">
-          <el-input
-            v-model="addQuery.phone"
-            placeholder="搜索学生手机号"
-            clearable
-            size="small"
-            style="width: 260px; margin-bottom: 10px"
-            @keyup.enter.native="fetchUnopened"
-          >
-            <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
-          </el-input>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+            <el-input
+              v-model="addQuery.phone"
+              placeholder="搜索学生手机号"
+              clearable
+              size="small"
+              style="width: 260px"
+              @keyup.enter.native="fetchUnopened"
+            >
+              <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
+            </el-input>
+            <el-input
+              v-model="addQuery.idCard"
+              placeholder="搜索身份证号"
+              clearable
+              size="small"
+              style="width: 260px"
+              @keyup.enter.native="fetchUnopened"
+            >
+              <el-button slot="append" icon="el-icon-search" @click="fetchUnopened" />
+            </el-input>
+            <el-input-number
+              v-model="addQuery.exactCount"
+              :min="1"
+              :max="10000"
+              placeholder="显示最新N条"
+              size="small"
+              style="width: 160px"
+            />
+          </div>
           <el-table
             :data="unopened"
             border
@@ -160,11 +200,11 @@ export default {
       activeTab: 'opened',
       opened: [],
       openedTotal: 0,
-      openedQuery: { page: 1, size: 10, phone: '' },
+      openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
       unexaminedFilter: false,
       unopened: [],
       unopenedTotal: 0,
-      addQuery: { page: 1, size: 10, phone: '' },
+      addQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null },
       selected: [],
       openedSelected: []
     }
@@ -184,8 +224,8 @@ export default {
       handler(val) {
         if (val && this.examId) {
           this.activeTab = 'opened'
-          this.openedQuery = { page: 1, size: 10, phone: '' }
-          this.addQuery = { page: 1, size: 10, phone: '' }
+          this.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
+          this.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null }
           this.selected = []
           this.openedSelected = []
           this.fetchOpened()
@@ -207,6 +247,8 @@ export default {
         page: this.openedQuery.page,
         size: this.openedQuery.size,
         phone: this.openedQuery.phone,
+        idCard: this.openedQuery.idCard,
+        exactCount: this.openedQuery.exactCount,
         unexamined: this.unexaminedFilter ? 1 : undefined
       }
       getExamStudents(this.examId, params)
@@ -234,6 +276,8 @@ export default {
         page: this.addQuery.page,
         size: this.addQuery.size,
         phone: this.addQuery.phone,
+        idCard: this.addQuery.idCard,
+        exactCount: this.addQuery.exactCount,
         unopened: 1
       }
       getExamStudents(this.examId, params)

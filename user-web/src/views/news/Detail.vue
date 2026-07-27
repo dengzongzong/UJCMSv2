@@ -68,6 +68,7 @@ export default {
         'announcement': '通知公告',
         'events': '重大活动',
         'policy': '政策法规',
+        'disclosure': '信息公开',
         'news': '新闻动态'
       }
       return map[this.detailType] || '新闻动态'
@@ -77,6 +78,7 @@ export default {
         'announcement': '/news/announcements',
         'events': '/news/center?type=events',
         'policy': '/news/center?type=policy',
+        'disclosure': '/news/center?type=disclosure',
         'news': '/news/center'
       }
       return map[this.detailType] || '/news/center'
@@ -123,7 +125,7 @@ export default {
         let res
         if (this.detailType === 'announcement') {
           res = await getAnnouncementDetail(this.newsId)
-        } else if (this.detailType === 'policy') {
+        } else if (this.detailType === 'policy' || this.detailType === 'disclosure') {
           res = await getHomepageSectionDetail(this.newsId)
         } else {
           // news 和 events 都用 news 详情接口

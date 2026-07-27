@@ -13,7 +13,7 @@ public class News {
     private String title;
     private String content;
     private String coverUrl;
-    private Integer type;    // 1-新闻动态 2-重大活动 (默认1)
+    private Integer type;    // 1-新闻动态 2-重大活动 3-报考条件 4-热门工种 5-行业信息 6-校企合作 7-通知公告 8-政策法规 9-信息公开 (默认1)
     private Integer status;  // 0-隐藏 1-显示
     private Integer sort;
     private Integer isTop;   // 是否置顶 0-否 1-是

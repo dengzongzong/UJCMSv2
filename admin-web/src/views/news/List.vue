@@ -24,6 +24,9 @@
           <el-option label="热门工种" :value="4" />
           <el-option label="行业信息" :value="5" />
           <el-option label="校企合作" :value="6" />
+          <el-option label="通知公告" :value="7" />
+          <el-option label="政策法规" :value="8" />
+          <el-option label="信息公开" :value="9" />
         </el-select>
         <el-select
           v-model="query.status"
@@ -146,6 +149,9 @@
                 <el-option label="热门工种" :value="4" />
                 <el-option label="行业信息" :value="5" />
                 <el-option label="校企合作" :value="6" />
+                <el-option label="通知公告" :value="7" />
+                <el-option label="政策法规" :value="8" />
+                <el-option label="信息公开" :value="9" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -246,11 +252,11 @@ export default {
   },
   methods: {
     newsTypeName(type) {
-      const map = { 1: '新闻动态', 2: '重大活动', 3: '报考条件', 4: '热门工种', 5: '行业信息', 6: '校企合作' }
+      const map = { 1: '新闻动态', 2: '重大活动', 3: '报考条件', 4: '热门工种', 5: '行业信息', 6: '校企合作', 7: '通知公告', 8: '政策法规', 9: '信息公开' }
       return map[type] || '新闻动态'
     },
     newsTagType(type) {
-      const map = { 1: '', 2: 'danger', 3: 'warning', 4: 'success', 5: 'info', 6: 'warning' }
+      const map = { 1: '', 2: 'danger', 3: 'warning', 4: 'success', 5: 'info', 6: 'warning', 7: 'info', 8: 'warning', 9: 'success' }
       return map[type] || ''
     },
     fetchList() {

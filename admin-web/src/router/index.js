@@ -342,6 +342,7 @@ export const constantRoutes = [
         path: 'announcement',
         name: 'AnnouncementList',
         component: () => import('@/views/announcement/List.vue'),
+        hidden: true,
         meta: { title: '系统公告', icon: 'el-icon-bell' }
       },
       {
@@ -354,6 +355,7 @@ export const constantRoutes = [
         path: 'homepage-section',
         name: 'HomepageSectionList',
         component: () => import('@/views/homepageSection/List.vue'),
+        hidden: true,
         meta: { title: '首页内容板块', icon: 'el-icon-files' }
       },
       {

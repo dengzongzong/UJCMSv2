@@ -62,12 +62,14 @@ export default {
         { key: 'news', label: '新闻动态' },
         { key: 'events', label: '重大活动' },
         { key: 'announcement', label: '通知公告' },
-        { key: 'policy', label: '政策法规' }
+        { key: 'policy', label: '政策法规' },
+        { key: 'disclosure', label: '信息公开' }
       ],
       newsList: [],
       eventsList: [],
       announcementList: [],
-      policyList: []
+      policyList: [],
+      disclosureList: []
     }
   },
   computed: {
@@ -80,7 +82,8 @@ export default {
         news: this.newsList,
         events: this.eventsList,
         announcement: this.announcementList,
-        policy: this.policyList
+        policy: this.policyList,
+        disclosure: this.disclosureList
       }
       return map[this.activeCategory] || []
     }
@@ -106,7 +109,8 @@ export default {
         this.announcementList = this.extractList(annoRes)
         const sectionsData = sectionsRes.data || sectionsRes || []
         const sectionsList = Array.isArray(sectionsData) ? sectionsData : (sectionsData.list || [])
-        this.policyList = sectionsList.filter(item => item.type === 1)
+        this.policyList = sectionsList.filter(item => item.type === 8)
+        this.disclosureList = sectionsList.filter(item => item.type === 9)
       } catch (e) {
         // ignore
       }
@@ -124,7 +128,8 @@ export default {
         news: 'news',
         events: 'events',
         announcement: 'announcement',
-        policy: 'policy'
+        policy: 'policy',
+        disclosure: 'disclosure'
       }
       const type = typeMap[this.activeCategory] || 'news'
       this.$router.push({ path: '/news/detail/' + item.id, query: { type } })
