@@ -362,9 +362,20 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 Map<String, Object> extra = mapper.readValue(extraJson, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
                 if (extra != null) {
-                    map.put("theoryScore", extra.get("theoryScore"));
-                    map.put("practicalScore", extra.get("practicalScore"));
-                    map.put("comprehensiveEvaluation", extra.get("comprehensiveEvaluation"));
+                    // 成绩字段: 优先用标准键(camelCase),回退到旧键名和 ext_ 键
+                    map.put("theoryScore", firstNonNull(
+                            extra.get("theoryScore"), extra.get("theory_score"),
+                            extra.get("ext_llzscjc"), extra.get("ext_llzscjd"),
+                            map.get("theoryScore")));
+                    map.put("practicalScore", firstNonNull(
+                            extra.get("practicalScore"), extra.get("practical_score"),
+                            extra.get("skill_score"),
+                            extra.get("ext_czjncjc"), extra.get("ext_czjncjd"),
+                            map.get("practicalScore")));
+                    map.put("comprehensiveEvaluation", firstNonNull(
+                            extra.get("comprehensiveEvaluation"), extra.get("comprehensive_score"),
+                            extra.get("ext_zhpjcj"), extra.get("ext_zhpjcjd"),
+                            map.get("comprehensiveEvaluation")));
                     map.put("birthday", extra.get("birthday"));
                     // cert_type 优先用数据库列的值(beanToMap 已写入 certType);
                     // 仅当列为空时, 才回退到 extra_json(兼容历史数据未迁移的情况)
@@ -378,6 +389,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             } catch (Exception ignored) {
             }
         }
+    }
+
+    /** 返回第一个非 null 的值,全部为 null 则返回 null */
+    private Object firstNonNull(Object... values) {
+        for (Object v : values) {
+            if (v != null && StringUtils.hasText(String.valueOf(v))) return v;
+        }
+        return null;
     }
 
     /** 从身份证号提取出生日期(yyyy-MM-dd),无效返回 null */
@@ -1466,16 +1485,26 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             case "theoryScore": {
                 String v = safeStr(c.getTheoryScore());
                 if (v.isEmpty()) v = safeStr(extra.get("theoryScore"));
+                if (v.isEmpty()) v = safeStr(extra.get("theory_score"));
+                if (v.isEmpty()) v = safeStr(extra.get("ext_llzscjc"));
+                if (v.isEmpty()) v = safeStr(extra.get("ext_llzscjd"));
                 return v;
             }
             case "practicalScore": {
                 String v = safeStr(c.getPracticalScore());
                 if (v.isEmpty()) v = safeStr(extra.get("practicalScore"));
+                if (v.isEmpty()) v = safeStr(extra.get("practical_score"));
+                if (v.isEmpty()) v = safeStr(extra.get("skill_score"));
+                if (v.isEmpty()) v = safeStr(extra.get("ext_czjncjc"));
+                if (v.isEmpty()) v = safeStr(extra.get("ext_czjncjd"));
                 return v;
             }
             case "comprehensiveEvaluation": {
                 String v = safeStr(c.getComprehensiveEvaluation());
                 if (v.isEmpty()) v = safeStr(extra.get("comprehensiveEvaluation"));
+                if (v.isEmpty()) v = safeStr(extra.get("comprehensive_score"));
+                if (v.isEmpty()) v = safeStr(extra.get("ext_zhpjcj"));
+                if (v.isEmpty()) v = safeStr(extra.get("ext_zhpjcjd"));
                 return v;
             }
             case "qr1": return safeStr(qr1);
@@ -1500,6 +1529,43 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             }
             case "phone": return safeStr(extra.get("phone"));
             case "uploadTime": return c.getUploadTime() != null ? c.getUploadTime().toString() : "";
+            // ext_ 字段键映射(职业能力/能力等级导出配置使用)
+            case "ext_llzscjc":
+            case "ext_llzscjd": {
+                String v = safeStr(extra.get(fieldKey));
+                if (v.isEmpty()) v = safeStr(c.getTheoryScore());
+                if (v.isEmpty()) v = safeStr(extra.get("theoryScore"));
+                if (v.isEmpty()) v = safeStr(extra.get("theory_score"));
+                return v;
+            }
+            case "ext_czjncjc":
+            case "ext_czjncjd": {
+                String v = safeStr(extra.get(fieldKey));
+                if (v.isEmpty()) v = safeStr(c.getPracticalScore());
+                if (v.isEmpty()) v = safeStr(extra.get("practicalScore"));
+                if (v.isEmpty()) v = safeStr(extra.get("skill_score"));
+                return v;
+            }
+            case "ext_zhpjcj":
+            case "ext_zhpjcjd": {
+                String v = safeStr(extra.get(fieldKey));
+                if (v.isEmpty()) v = safeStr(c.getComprehensiveEvaluation());
+                if (v.isEmpty()) v = safeStr(extra.get("comprehensiveEvaluation"));
+                if (v.isEmpty()) v = safeStr(extra.get("comprehensive_score"));
+                return v;
+            }
+            case "ext_jndjc":
+            case "ext_jndjd": {
+                String v = safeStr(extra.get(fieldKey));
+                if (v.isEmpty()) v = safeStr(c.getSkillLevel());
+                return v;
+            }
+            case "ext_zygz":
+            case "ext_zymcd": {
+                String v = safeStr(extra.get(fieldKey));
+                if (v.isEmpty()) v = safeStr(c.getProfession());
+                return v;
+            }
             default:
                 // 自定义字段从extra_json中取
                 return safeStr(extra.get(fieldKey));
