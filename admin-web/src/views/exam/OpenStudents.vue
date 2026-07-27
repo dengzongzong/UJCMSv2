@@ -16,8 +16,8 @@
       />
       <el-tabs v-model="activeTab">
         <el-tab-pane label="已开通学生" name="opened">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <el-input
                 v-model="openedQuery.phone"
                 placeholder="搜索手机号"
