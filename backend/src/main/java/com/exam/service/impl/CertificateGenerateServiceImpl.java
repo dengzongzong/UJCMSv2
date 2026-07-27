@@ -257,17 +257,28 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
                         .orderByAsc(CertificateTemplateField::getSort));
         if (fields == null) fields = Collections.emptyList();
 
-        // 4. 加载 photo (严格按 certificateId 查,不回退到 idCard)
+        // 4. 加载 photo (先按 certificateId 查,未找到则回退到 idCard 查最新照片)
         BufferedImage photoImg = null;
+        CertificatePhoto photoEntity = null;
         if (cert.getId() != null) {
-            CertificatePhoto pByCert = photoMapper.selectOne(new LambdaQueryWrapper<CertificatePhoto>()
+            photoEntity = photoMapper.selectOne(new LambdaQueryWrapper<CertificatePhoto>()
                     .eq(CertificatePhoto::getCertificateId, cert.getId())
                     .orderByDesc(CertificatePhoto::getUploadTime)
                     .last("LIMIT 1"));
-            if (pByCert != null) {
-                try {
-                    photoImg = loadImage(pByCert.getUrl());
-                } catch (Exception ignored) { }
+        }
+        // 回退: 按 idCard 查最新照片(兼容批量导入时未绑定 certificateId 的情况)
+        if (photoEntity == null && StringUtils.hasText(cert.getIdCard())) {
+            photoEntity = photoMapper.selectOne(new LambdaQueryWrapper<CertificatePhoto>()
+                    .eq(CertificatePhoto::getIdCard, cert.getIdCard())
+                    .orderByDesc(CertificatePhoto::getUploadTime)
+                    .last("LIMIT 1"));
+        }
+        if (photoEntity != null && StringUtils.hasText(photoEntity.getUrl())) {
+            try {
+                photoImg = loadImage(photoEntity.getUrl());
+            } catch (Exception e) {
+                System.err.println("[证书渲染] 照片加载失败 certId=" + cert.getId()
+                        + ", photoUrl=" + photoEntity.getUrl() + ": " + e.getMessage());
             }
         }
 
@@ -546,8 +557,20 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
             } else if (url.startsWith("/static/")) {
                 // 支持相对路径 /static/ 前缀(文件实际在 uploads/static/ 下)
                 localPath = uploadPath + url;
+            } else if (!url.startsWith("/") && !url.contains(":")) {
+                // 纯文件名(无路径前缀),拼接 uploadPath
+                localPath = uploadPath + "/" + url;
             }
-            img = ImageIO.read(new java.io.File(localPath));
+            java.io.File imgFile = new java.io.File(localPath);
+            if (!imgFile.exists()) {
+                System.err.println("[证书渲染] 图片文件不存在: " + localPath + " (原始URL: " + url + ")");
+                return null;
+            }
+            img = ImageIO.read(imgFile);
+        }
+        if (img == null) {
+            System.err.println("[证书渲染] ImageIO.read 返回 null,可能是不支持的图片格式: " + url);
+            return null;
         }
         // 确保图片支持alpha通道(透明背景)
         if (img != null && img.getTransparency() == BufferedImage.OPAQUE) {
