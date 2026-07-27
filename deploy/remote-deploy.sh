@@ -192,6 +192,20 @@ if [ -f "fix_id_card_empty.sql" ]; then
     echo "  身份证空字符串修复完成"
 fi
 
+# 6.7 回填职业能力/能力等级证书成绩(幂等UPDATE,每次执行都设为正确值)
+if [ -f "fix_zy_scores.sql" ]; then
+    echo "  回填职业能力证书成绩..."
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_zy_scores.sql 2>&1 | grep -v "Using a password"
+    echo "  职业能力证书成绩回填完成"
+fi
+
+# 6.8 修复证书颁发日期(幂等UPDATE,用Excel正确日期列替换错误的出生日期)
+if [ -f "fix_issue_date_v2.sql" ]; then
+    echo "  修复证书颁发日期..."
+    mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} --default-character-set=utf8mb4 --force < fix_issue_date_v2.sql 2>&1 | grep -v "Using a password"
+    echo "  证书颁发日期修复完成"
+fi
+
 # 7. 配置 Nginx (HTTPS 模式,带域名和SSL证书)
 echo "[7/8] 配置 Nginx (HTTPS)..."
 # 先备份当前配置

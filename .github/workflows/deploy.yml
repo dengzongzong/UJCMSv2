@@ -94,6 +94,8 @@ jobs:
           cp backend/sql/fix_publish_time.sql .
           cp backend/sql/fix_publish_time_v2.sql .
           cp backend/sql/fix_id_card_empty.sql .
+          cp backend/sql/fix_zy_scores.sql .
+          cp backend/sql/fix_issue_date_v2.sql .
           # 以下SQL仅首次部署需要,不再每次升级执行(避免覆盖用户手动修改的数据)
           # cp backend/sql/import_missing_certs.sql .   # 已完成使命,重复执行会用旧数据覆盖修复后的数据
           # cp backend/sql/fix_dup_certs.sql .           # 一次性修复,已完成
@@ -111,6 +113,8 @@ jobs:
           mv fix_publish_time.sql deploy-pkg/
           mv fix_publish_time_v2.sql deploy-pkg/
           mv fix_id_card_empty.sql deploy-pkg/
+          mv fix_zy_scores.sql deploy-pkg/
+          mv fix_issue_date_v2.sql deploy-pkg/
           tar -czf deployment.tar.gz deploy-pkg/
           ls -lh deployment.tar.gz
 
