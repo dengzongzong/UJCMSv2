@@ -86,6 +86,13 @@ ol {
   padding: 20px;
 }
 
+// 确保表格在 max-height 模式下水平+垂直滚动条都正常显示
+// Element UI 的 max-height 模式默认可能隐藏水平滚动条,这里强制开启
+.el-table .el-table__body-wrapper {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
 .filter-container {
   padding-bottom: 16px;
 
