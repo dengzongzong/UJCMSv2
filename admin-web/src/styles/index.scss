@@ -86,10 +86,9 @@ ol {
   padding: 20px;
 }
 
-// ====== 表格滚动条修复 (wrapper 方案) ======
-// 彻底放弃 Element UI 的 max-height 内部滚动, 改由外层 wrapper 处理所有滚动。
-// mixin 在 el-table 外面包一个 div.table-scroll-wrapper, 设置 height + overflow: auto。
-// 表格以自然尺寸渲染(fit=false), 超出 wrapper 时 wrapper 显示滚动条。
+// ====== 表格滚动条修复 (wrapper + fixed-layout 方案) ======
+// 外层 wrapper 处理所有滚动, JS 设置 table-layout:fixed + 列宽 + 表格宽度
+// 确保表格宽度 = 列宽之和, 超出容器时水平滚动条出现。
 
 // 外层滚动 wrapper
 .table-scroll-wrapper {
@@ -98,12 +97,18 @@ ol {
   border-radius: 4px;
 }
 
-// 禁用 Element UI 内部的 overflow 管理(由 wrapper 接管)
+// 禁用 Element UI 内部的 overflow(由 wrapper 接管)
 .el-table .el-table__body-wrapper {
   overflow: visible !important;
 }
 .el-table .el-table__body-wrapper[style] {
   overflow: visible !important;
+}
+
+// 强制 table-layout: fixed(列宽严格遵循设定值, 不被内容压缩)
+.el-table__body,
+.el-table__header {
+  table-layout: fixed !important;
 }
 
 .filter-container {
