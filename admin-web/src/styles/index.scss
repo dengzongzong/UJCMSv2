@@ -89,7 +89,7 @@ ol {
 // ====== 表格滚动条修复 ======
 // Element UI 默认 fit=true 用 table-layout:fixed 把列压缩到容器宽度,
 // 导致 scrollWidth===clientWidth, 水平滚动条永远不会出现。
-// 配合 mixin 中 :fit="false" + JS 显式设置表格宽度, 确保水平滚动正常。
+// 配合 mixin 中 :fit="false" + JS 显式设置单元格宽度和表格宽度, 确保水平滚动正常。
 .el-table .el-table__body-wrapper {
   overflow: auto !important;
 }
@@ -97,11 +97,8 @@ ol {
 .el-table .el-table__body-wrapper[style] {
   overflow: auto !important;
 }
-// fit=false 后表格宽度由 JS 控制, 这里确保 CSS 不干扰
-.el-table__body-wrapper .el-table__body,
-.el-table__header-wrapper .el-table__header {
-  width: auto !important;
-}
+// 注意: 不要在这里设置 table 的 width, 否则表头和主体宽度不一致
+// 表格宽度完全由 mixin 中的 JS 控制(内联 style)
 
 .filter-container {
   padding-bottom: 16px;
