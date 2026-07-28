@@ -447,11 +447,3 @@ UPDATE `certificate` c
   SET c.profession = p.name
   WHERE c.profession IS NOT NULL
     AND c.profession REGEXP '^[0-9]+$';
-
--- ============================================================
--- 13. 清理无效证书数据: 专业为空 且 创建时间在2026-07-25之后
---     (幂等: 只删除同时满足条件的行)
--- ============================================================
-DELETE FROM `certificate`
-  WHERE (profession IS NULL OR profession = '')
-    AND create_time > '2026-07-25 00:00:00';

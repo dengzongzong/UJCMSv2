@@ -58,29 +58,16 @@
           搜索
         </el-button>
         <el-button icon="el-icon-refresh" class="filter-item" @click="handleReset">重置</el-button>
-        <el-button
-          type="success"
-          icon="el-icon-upload2"
-          class="filter-item"
-          style="float: right"
-          @click="openImportDialog"
-        >
+        <el-button type="success" icon="el-icon-upload2" class="filter-item" @click="openImportDialog">
           批量导入
         </el-button>
-        <el-button
-          type="primary"
-          icon="el-icon-plus"
-          class="filter-item"
-          style="float: right"
-          @click="openAddDialog"
-        >
+        <el-button type="primary" icon="el-icon-plus" class="filter-item" @click="openAddDialog">
           新增学生
         </el-button>
         <el-button
           type="danger"
           icon="el-icon-delete"
           class="filter-item"
-          style="float: right"
           :disabled="selection.length === 0"
           @click="handleBatchDelete"
         >
