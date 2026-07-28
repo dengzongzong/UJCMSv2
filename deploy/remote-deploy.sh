@@ -161,6 +161,37 @@ fi
 # - import_missing_certs.sql      (缺失证书导入)
 # - fix_dup_certs.sql             (证书编号重复修复)
 
+# 6.1 证书数据恢复 (一次性,通过标记文件确保只执行一次)
+echo "[6.5/9] 检查证书数据恢复..."
+RECOVER_MARKER="${DEPLOY_DIR}/.cert_recovered_v4"
+if [ -f "$RECOVER_MARKER" ]; then
+    echo "  证书数据恢复已执行过(标记文件存在: $RECOVER_MARKER),跳过"
+else
+    if [ -f "recover_certificate_full.py" ]; then
+        echo "  首次部署检测到恢复脚本,开始执行证书数据恢复..."
+        echo "  恢复范围: 最近7天的DELETE记录"
+        echo "  恢复表: certificate / certificate_photo / certificate_template / certificate_template_field / certificate_user"
+        # 检查 python3 和 mysqlbinlog 是否可用
+        if command -v python3 &>/dev/null && command -v mysqlbinlog &>/dev/null; then
+            # 传入数据库密码 via 环境变量,设置较长超时
+            MYSQL_PASS="${MYSQL_PASS}" timeout 600 python3 recover_certificate_full.py 2>&1 || {
+                echo "  ⚠️  恢复脚本执行出错(已超时或异常),但不影响部署"
+                echo "  可在服务器上手动重新执行: MYSQL_PASS='xxx' python3 recover_certificate_full.py"
+            }
+            # 无论成功与否都创建标记文件(避免每次部署重复执行)
+            # 如需重新恢复,删除标记文件即可: rm -f /opt/exam-platform/.cert_recovered_v4
+            touch "$RECOVER_MARKER"
+            echo "  恢复脚本已执行,标记文件已创建: $RECOVER_MARKER"
+            echo "  如需重新恢复: rm -f $RECOVER_MARKER && MYSQL_PASS='xxx' python3 recover_certificate_full.py"
+        else
+            echo "  ⚠️  python3 或 mysqlbinlog 不可用,跳过自动恢复"
+            echo "  请在服务器上手动执行: MYSQL_PASS='xxx' python3 recover_certificate_full.py"
+        fi
+    else
+        echo "  recover_certificate_full.py 不存在,跳过"
+    fi
+fi
+
 # 7. 配置 Nginx (HTTPS 模式,带域名和SSL证书)
 echo "[7/8] 配置 Nginx (HTTPS)..."
 # 先备份当前配置
