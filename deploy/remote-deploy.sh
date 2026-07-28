@@ -216,6 +216,28 @@ else
     fi
 fi
 
+# 6.3 删除证书类型为空的数据(一次性,通过标记文件确保只执行一次)
+echo "[6.7/9] 删除证书类型为空的证书记录..."
+CLEAN_MARKER="${DEPLOY_DIR}/.cert_empty_type_cleaned_v1"
+if [ -f "$CLEAN_MARKER" ]; then
+    echo "  空证书类型清理已执行过(标记文件存在: $CLEAN_MARKER),跳过"
+else
+    # 先统计要删除的记录数
+    EMPTY_COUNT=$(mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} -N -e "SELECT COUNT(*) FROM certificate WHERE cert_type IS NULL OR cert_type = '';" 2>/dev/null)
+    echo "  证书类型为空的记录数: ${EMPTY_COUNT:-0}"
+    if [ "${EMPTY_COUNT:-0}" -gt 0 ]; then
+        echo "  开始删除..."
+        # 删除 certificate 表中 cert_type 为空的记录
+        mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} -e "DELETE FROM certificate WHERE cert_type IS NULL OR cert_type = '';" 2>&1 | grep -v "Using a password"
+        REMAINING=$(mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} -N -e "SELECT COUNT(*) FROM certificate WHERE cert_type IS NULL OR cert_type = '';" 2>/dev/null)
+        echo "  ✅ 删除完成,剩余空类型记录: ${REMAINING:-0}"
+    else
+        echo "  无需删除,没有证书类型为空的记录"
+    fi
+    touch "$CLEAN_MARKER"
+    echo "  标记文件已创建: $CLEAN_MARKER"
+fi
+
 # 7. 配置 Nginx (HTTPS 模式,带域名和SSL证书)
 echo "[7/8] 配置 Nginx (HTTPS)..."
 # 先备份当前配置
