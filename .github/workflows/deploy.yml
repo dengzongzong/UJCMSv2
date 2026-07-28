@@ -92,6 +92,7 @@ jobs:
           cp deploy/daily-backup.sh .
           chmod +x daily-backup.sh
           cp deploy/recover_certificate_full.py .
+          cp deploy/fix_recovered_fields.py .
           cp backend/sql/upgrade_all.sql .
           # 一次性数据修复SQL已全部执行完毕,不再打包到部署流程
           # 如需重新执行,请在服务器上手动 mysql < xxx.sql
@@ -109,6 +110,7 @@ jobs:
           mv remote-deploy.sh deploy-pkg/
           mv daily-backup.sh deploy-pkg/
           mv recover_certificate_full.py deploy-pkg/
+          mv fix_recovered_fields.py deploy-pkg/
           mv upgrade_all.sql deploy-pkg/
           tar -czf deployment.tar.gz deploy-pkg/
           ls -lh deployment.tar.gz
