@@ -24,6 +24,7 @@
     <!-- 表格 -->
     <el-table
       v-loading="loading"
+      :max-height="tableMaxHeight"
       :data="list"
       border
       stripe
@@ -177,9 +178,11 @@ import {
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
 import RichEditor from '@/components/RichEditor'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'CourseThreeImageList',
+  mixins: [tableMaxHeight],
   components: { RichEditor },
   data() {
     return {

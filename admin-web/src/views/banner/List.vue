@@ -21,7 +21,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table v-loading="loading" :data="list" border stripe>
+      <el-table v-loading="loading" :data="list" border stripe :max-height="tableMaxHeight">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="图片" width="200">
           <template slot-scope="s">
@@ -140,9 +140,11 @@ import {
 } from '@/api/banner'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'BannerList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       loading: false,

@@ -24,6 +24,7 @@
     <!-- 表格 -->
     <el-table
       v-loading="loading"
+      :max-height="tableMaxHeight"
       :data="list"
       border
       stripe
@@ -138,9 +139,11 @@ import {
 } from '@/api/friendlyLink'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'FriendlyLinkList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       loading: false,

@@ -44,6 +44,7 @@
     <!-- 列表 -->
     <el-table
       v-loading="listLoading"
+      :max-height="tableMaxHeight"
       :data="list"
       border
       stripe
@@ -378,9 +379,11 @@ import {
 } from '@/api/cooperationApply'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'CooperationApplyList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       // 列表相关

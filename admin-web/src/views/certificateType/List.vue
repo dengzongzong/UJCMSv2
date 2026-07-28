@@ -13,7 +13,7 @@
           新增类型
         </el-button>
       </div>
-      <el-table :data="list" border v-loading="loading" size="small">
+      <el-table :data="list" border v-loading="loading" size="small" :max-height="tableMaxHeight">
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="name" label="类型名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="code" label="编码(mcode)" width="140" align="center" />
@@ -69,9 +69,11 @@
 
 <script>
 import { certificateTypeList, addCertificateType, updateCertificateType, deleteCertificateType } from '@/api/certificateType'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'CertificateTypeList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       loading: false,

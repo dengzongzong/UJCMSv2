@@ -46,6 +46,7 @@
       <el-table
         v-loading="loading"
         :data="list"
+        :max-height="tableMaxHeight"
         border
         stripe
         style="width: 100%"
@@ -200,9 +201,11 @@ import {
   getCurrentAdmin,
   changeAdminPassword
 } from '@/api/admin'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'AdminList',
+  mixins: [tableMaxHeight],
   data() {
     const validatePassword = (rule, value, callback) => {
       if (!this.dialog.id && !value) {

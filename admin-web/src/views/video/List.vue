@@ -49,7 +49,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :data="list" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
+      <el-table v-loading="loading" :max-height="tableMaxHeight" :data="list" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="name" label="视频名称" min-width="180" show-overflow-tooltip />
@@ -290,9 +290,11 @@ import { videoPage, videoDetail, deleteVideo, sortVideo, getVideoStudents, openV
 import { professions } from '@/api/setting'
 import { formatFileSize, formatDuration } from '@/utils'
 import { apiUrl } from '@/utils/apiBase'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'VideoList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       loading: false,

@@ -6,7 +6,7 @@
         <el-button type="primary" size="mini" icon="el-icon-plus" style="float: right" @click="handleAdd">新增横幅</el-button>
       </div>
 
-      <el-table :data="list" border v-loading="loading" size="small">
+      <el-table :data="list" border v-loading="loading" size="small" :max-height="tableMaxHeight">
         <el-table-column type="index" label="#" width="50" align="center" />
         <el-table-column label="预览" width="160" align="center">
           <template slot-scope="{ row }">
@@ -78,9 +78,11 @@
 import { bannerImageList, addBannerImage, updateBannerImage, deleteBannerImage } from '@/api/bannerImage'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'BannerImageList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       loading: false,

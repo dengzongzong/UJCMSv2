@@ -69,6 +69,7 @@
       :data="list"
       border
       stripe
+      :max-height="tableMaxHeight"
       @selection-change="rows => (selection = rows)"
     >
       <el-table-column type="selection" width="50" />
@@ -458,9 +459,11 @@ import {
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
 import { templateList } from '@/api/certificateTemplate'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'CertificateList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       loading: false,

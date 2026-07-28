@@ -107,7 +107,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :data="list" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
+      <el-table v-loading="loading" :data="list" :max-height="tableMaxHeight" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column label="题型" width="90" align="center">
@@ -215,9 +215,11 @@ import {
 } from '@/api/question'
 import { questionCategories, professions } from '@/api/setting'
 import { downloadBlob } from '@/utils'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'QuestionList',
+  mixins: [tableMaxHeight],
   data() {
     return {
       loading: false,

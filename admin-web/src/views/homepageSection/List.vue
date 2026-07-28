@@ -19,7 +19,7 @@
       </div>
 
       <!-- 表格 -->
-      <el-table :data="list" v-loading="loading" border stripe @selection-change="onSelectionChange">
+      <el-table :data="list" v-loading="loading" border stripe @selection-change="onSelectionChange" :max-height="tableMaxHeight">
         <el-table-column type="selection" width="45" align="center" />
         <el-table-column type="index" label="#" width="50" align="center" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
@@ -113,9 +113,11 @@
 <script>
 import { homepageSectionPage, addHomepageSection, updateHomepageSection, deleteHomepageSection, batchDeleteHomepageSection } from '@/api/homepageSection'
 import RichEditor from '@/components/RichEditor'
+import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'HomepageSectionList',
+  mixins: [tableMaxHeight],
   components: { RichEditor },
   data() {
     return {
