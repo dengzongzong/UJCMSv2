@@ -260,7 +260,13 @@ export default {
         const api = this.isEdit ? updateCertificate : addCertificate
         api(submitData).then(() => {
           this.$message.success('保存成功')
-          this.$router.push('/certificate/list')
+          // 返回来源页面(支持从证书子类型页面跳转编辑后返回原页面)
+          const fromPath = this.$route.query.from
+          if (fromPath) {
+            this.$router.push(fromPath)
+          } else {
+            this.$router.back()
+          }
         }).finally(() => { this.submitting = false })
       })
     }

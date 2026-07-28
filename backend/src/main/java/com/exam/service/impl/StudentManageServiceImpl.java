@@ -289,6 +289,9 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (exist == null) {
             throw new BusinessException("学生不存在");
         }
+        // 保存旧值,用于同步到证书表(匹配旧姓名+旧身份证号的证书记录)
+        String oldName = exist.getName();
+        String oldIdCard = exist.getIdCard();
         // 1) 手机号唯一性校验(改手机号时要确认不和其他学员冲突)
         if (StringUtils.hasText(student.getPhone())
                 && !student.getPhone().equals(exist.getPhone())) {
@@ -352,6 +355,55 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         }
         // 同步到证书用户表(更新姓名/身份证号/手机号/专业等)
         certificateUserSyncService.syncStudent(exist);
+        // 同步到证书表(certificate): 学生管理修改属性后,证书管理界面也同步更新
+        syncStudentToCertificateTable(exist, oldName, oldIdCard);
+    }
+
+    /**
+     * 学生管理修改属性后,同步到证书表(certificate)
+     * 按旧姓名+旧身份证号匹配证书记录,更新姓名/身份证号/专业等属性
+     */
+    private void syncStudentToCertificateTable(Student student, String oldName, String oldIdCard) {
+        if (oldName == null || oldIdCard == null) return;
+        // 查找匹配的证书记录
+        List<Certificate> certs = certificateMapper.selectList(
+                new LambdaQueryWrapper<Certificate>()
+                        .eq(Certificate::getName, oldName)
+                        .eq(Certificate::getIdCard, oldIdCard));
+        if (certs.isEmpty()) return;
+        // 获取学生当前的专业名称列表
+        List<StudentProfession> sps = studentProfessionMapper.selectByStudentId(student.getId());
+        Map<Long, String> professionNameMap = loadProfessionNameMap();
+        List<String> newProfessionNames = new ArrayList<>();
+        for (StudentProfession sp : sps) {
+            String name = sp.getProfessionName();
+            if (name == null && sp.getProfessionId() != null) {
+                name = professionNameMap.get(sp.getProfessionId());
+            }
+            if (name != null) newProfessionNames.add(name);
+        }
+        for (Certificate cert : certs) {
+            boolean changed = false;
+            // 同步姓名
+            if (student.getName() != null && !student.getName().equals(cert.getName())) {
+                cert.setName(student.getName());
+                changed = true;
+            }
+            // 同步身份证号
+            if (student.getIdCard() != null && !student.getIdCard().equals(cert.getIdCard())) {
+                cert.setIdCard(student.getIdCard());
+                changed = true;
+            }
+            // 同步专业: 证书的当前专业不在学生新专业列表中时,更新为学生的第一个专业
+            if (!newProfessionNames.isEmpty() && cert.getProfession() != null
+                    && !newProfessionNames.contains(cert.getProfession())) {
+                cert.setProfession(newProfessionNames.get(0));
+                changed = true;
+            }
+            if (changed) {
+                certificateMapper.updateById(cert);
+            }
+        }
     }
 
     @Override
@@ -698,7 +750,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                 continue;
             }
 
-            // ====== 数据查重: 姓名+身份证号+专业+级别 四项完全相同则跳过 ======
+            // ====== 数据查重: 姓名+身份证号+专业+级别 四项完全相同则视为重复,计入失败 ======
             if (certificateService.existsByNameIdCardProfessionLevel(name, idCard,
                     StringUtils.hasText(professionName) ? professionName.trim() : null,
                     StringUtils.hasText(skillLevel) ? skillLevel.trim() : null)) {
@@ -713,6 +765,12 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                 dup.put("phone", row.getPhone());
                 dup.put("certType", row.getCertType());
                 duplicateList.add(dup);
+                // 同时计入失败列表,提示用户重复数据未导入
+                Map<String, Object> failItem = fail(name, idCard, "数据已存在(姓名+身份证+专业+级别重复,未导入)");
+                failItem.put("rowIndex", row.getRowIndex() != null ? row.getRowIndex() : 0);
+                failItem.put("profession", professionName);
+                failItem.put("skillLevel", skillLevel);
+                failList.add(failItem);
                 continue; // 四项完全相同,不允许导入
             }
 

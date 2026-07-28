@@ -841,6 +841,59 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 log.warn("颁发日期变更后重新生成编号失败: certId={}, error={}", dto.getId(), e.getMessage());
             }
         }
+        // 同步到学生表: 证书管理修改属性后,学生管理界面也同步更新
+        syncCertificateToStudentTable(exist, dto);
+    }
+
+    /**
+     * 证书管理修改属性后,同步到学生表(student)
+     * 按证书旧姓名+旧身份证号匹配学生记录,更新姓名/身份证号/专业等属性
+     */
+    private void syncCertificateToStudentTable(Certificate oldCert, CertificateDTO newDto) {
+        if (oldCert == null || newDto == null) return;
+        if (oldCert.getName() == null || oldCert.getIdCard() == null) return;
+        // 查找匹配的学生记录
+        List<Student> students = studentMapper.selectList(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getName, oldCert.getName())
+                        .eq(Student::getIdCard, oldCert.getIdCard()));
+        if (students.isEmpty()) return;
+        for (Student student : students) {
+            boolean changed = false;
+            // 同步姓名
+            if (StringUtils.hasText(newDto.getName()) && !newDto.getName().equals(student.getName())) {
+                student.setName(newDto.getName());
+                changed = true;
+            }
+            // 同步身份证号
+            if (StringUtils.hasText(newDto.getIdCard()) && !newDto.getIdCard().equals(student.getIdCard())) {
+                student.setIdCard(newDto.getIdCard().trim());
+                changed = true;
+            }
+            // 同步专业: 从证书的专业名称查找对应的 professionId,更新学生的主专业
+            if (StringUtils.hasText(newDto.getProfession()) && !newDto.getProfession().equals(oldCert.getProfession())) {
+                Profession prof = professionMapper.selectOne(
+                        new LambdaQueryWrapper<Profession>()
+                                .eq(Profession::getName, newDto.getProfession().trim())
+                                .last("LIMIT 1"));
+                if (prof != null) {
+                    student.setProfessionId(prof.getId());
+                    changed = true;
+                    // 同时更新 student_profession 关联表: 若新专业不存在则添加
+                    List<StudentProfession> sps = studentProfessionMapper.selectByStudentId(student.getId());
+                    boolean hasProf = sps.stream().anyMatch(sp -> prof.getId().equals(sp.getProfessionId()));
+                    if (!hasProf) {
+                        StudentProfession sp = new StudentProfession();
+                        sp.setStudentId(student.getId());
+                        sp.setProfessionId(prof.getId());
+                        studentProfessionMapper.insert(sp);
+                    }
+                }
+            }
+            if (changed) {
+                studentMapper.updateById(student);
+            }
+        }
     }
 
     @Override
@@ -2233,7 +2286,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      */
     private int createIfNotExists(Student student, String idCard, String profession,
                                   Map<Long, String> professionNameMap, String certType) {
-        // 查是否已有 姓名+身份证号+专业+级别 的证书记录(精确匹配,避免 like 误匹配)
+        // 查是否已有 姓名+身份证号+专业 的证书记录(精确匹配,避免 like 误匹配)
+        // 重复判断标准: 姓名 + 身份证号码 + 专业 三个字段相同即为重复,不再判断技能等级
         String trimmedProfession = StringUtils.hasText(profession) ? profession.trim() : null;
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                 .eq(Certificate::getName, student.getName() != null ? student.getName() : "");
@@ -2243,8 +2297,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         } else {
             w.and(ww -> ww.isNull(Certificate::getProfession).or().eq(Certificate::getProfession, ""));
         }
-        w.eq(Certificate::getSkillLevel, "高级");
-        if (this.count(w) > 0) return 0; // 已存在,跳过
+        if (this.count(w) > 0) return 0; // 已存在(姓名+身份证+专业重复),跳过
 
         // 创建新证书记录
         Certificate c = new Certificate();

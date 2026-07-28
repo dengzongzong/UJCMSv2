@@ -224,7 +224,7 @@ export const constantRoutes = [
         path: 'cert-type/:idx',
         name: 'CertificateListByType',
         component: () => import('@/views/certificate/List.vue'),
-        meta: { title: '证书类型', activeMenu: '/certificate/list' },
+        meta: { title: '证书类型' },
         hidden: true
       },
       {

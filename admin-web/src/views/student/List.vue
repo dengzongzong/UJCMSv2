@@ -422,8 +422,8 @@
       <!-- 导入结果 -->
       <div v-if="importDialog.result" class="import-result">
         <el-alert
-          :title="`导入完成:成功 ${importDialog.result.success || 0} 条,重复 ${importDialog.result.duplicateCount || 0} 条(已跳过),失败 ${importDialog.result.failCount || 0} 条`"
-          :type="importDialog.result.failList && importDialog.result.failList.length ? 'warning' : 'success'"
+          :title="`导入完成:成功 ${importDialog.result.success || 0} 条,失败 ${importDialog.result.failCount || 0} 条(含重复 ${(importDialog.result.duplicateCount || 0)} 条)`"
+          :type="(importDialog.result.failCount > 0 || importDialog.result.duplicateCount > 0) ? 'warning' : 'success'"
           :closable="false"
           show-icon
           style="margin-top: 12px"
@@ -1211,13 +1211,13 @@ export default {
           }
           const ok = this.importDialog.result.success
           const fail = this.importDialog.result.failCount
-          // 有重复数据时弹框提示
+          // 重复数据已计入 failCount,统一按失败处理
           if (dupCount > 0 && fail > 0 && ok === 0) {
-            this.$alert('全部数据未通过: 重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已跳过),失败 ' + fail + ' 条。请查看下方"重复列表"和"失败明细"。', '导入未通过', { type: 'error' })
-          } else if (dupCount > 0 && fail > 0) {
-            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(已自动跳过),失败 ' + fail + ' 条。请查看下方"重复列表"和"失败明细"。', '导入完成(有重复和失败)', { type: 'warning' })
-          } else if (dupCount > 0 && fail === 0) {
-            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,已自动跳过未重复导入)。请查看下方"重复列表"了解详情。', '导入完成(有重复)', { type: 'warning' })
+            this.$alert('全部数据未通过: 重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,未导入),其他失败 ' + (fail - dupCount) + ' 条。请查看下方"重复列表"和"失败明细"。', '导入未通过', { type: 'error' })
+          } else if (dupCount > 0 && fail > 0 && ok > 0) {
+            this.$alert('导入完成: 成功 ' + ok + ' 条,失败 ' + fail + ' 条(其中重复 ' + dupCount + ' 条未导入)。请查看下方"重复列表"和"失败明细"。', '导入完成(有重复和失败)', { type: 'warning' })
+          } else if (dupCount > 0 && fail === dupCount && ok >= 0) {
+            this.$alert('导入完成: 成功 ' + ok + ' 条,重复 ' + dupCount + ' 条(姓名+身份证+专业+级别完全相同,未导入)。请查看下方"重复列表"了解详情。', '导入完成(有重复)', { type: 'warning' })
           } else if (fail > 0 && ok === 0) {
             this.$alert('全部 ' + fail + ' 条数据未通过校验,请查看下方"失败明细"修正后重传。', '校验未通过', { type: 'error' })
           } else if (fail > 0) {

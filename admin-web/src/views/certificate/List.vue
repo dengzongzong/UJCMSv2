@@ -42,7 +42,7 @@
 
     <!-- 工具栏(只保留新增/同步/批量开关/批量删除) -->
     <div class="toolbar">
-      <el-button type="primary" icon="el-icon-plus" size="small" @click="$router.push('/certificate/edit')">新增证书用户</el-button>
+      <el-button type="primary" icon="el-icon-plus" size="small" @click="$router.push({ path: '/certificate/edit', query: { from: $route.fullPath } })">新增证书用户</el-button>
       <el-button type="warning" icon="el-icon-refresh" size="small" :loading="syncingUsers" @click="onSyncFromStudents">从学生管理同步</el-button>
       <el-button type="warning" icon="el-icon-picture-outline" size="small" @click="openBatchPhotoDialog">批量导入照片</el-button>
       <el-button
@@ -126,7 +126,7 @@
       <el-table-column label="操作" width="220" fixed="right">
         <template slot-scope="s">
           <div class="action-row">
-            <el-button size="mini" type="primary" @click="$router.push('/certificate/edit/' + s.row.id)">编辑</el-button>
+            <el-button size="mini" type="primary" @click="$router.push({ path: '/certificate/edit/' + s.row.id, query: { from: $route.fullPath } })">编辑</el-button>
             <el-button size="mini" type="success" @click="onOpenTemplateDialog(s.row)">绑定模板</el-button>
             <el-button size="mini" type="info" @click="onPreviewCert(s.row)">预览</el-button>
             <el-dropdown size="mini" split-button type="info" @click="onDownloadSingle(s.row, 'image')" @command="cmd => onDownloadSingle(s.row, cmd)" :loading="s.row._downloading">
