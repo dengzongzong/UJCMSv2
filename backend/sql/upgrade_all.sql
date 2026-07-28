@@ -436,3 +436,23 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 --      fix_publish_time_v2.sql, fix_id_card_empty.sql, fix_zy_scores.sql,
 --      fix_issue_date_v2.sql, import_missing_certs.sql, fix_dup_certs.sql,
 --      fix_cert_issue_date.sql, fix_cert_scores.sql, ensure_cert_types.sql
+
+-- ============================================================
+-- 12. 修复 certificate.profession 存储了专业ID(数字)的问题
+--     将纯数字的 profession 值替换为对应的 profession.name
+--     (幂等: 只处理 profession 为纯数字的行)
+-- ============================================================
+UPDATE `certificate` c
+  INNER JOIN `profession` p ON p.id = CAST(c.profession AS UNSIGNED)
+  SET c.profession = p.name
+  WHERE c.profession IS NOT NULL
+    AND c.profession REGEXP '^[0-9]+$';
+
+-- ============================================================
+-- 13. 清理无效证书数据: 专业为空 + 证书类型为空 + 未绑定模板
+--     (幂等: 只删除同时满足三个条件的行)
+-- ============================================================
+DELETE FROM `certificate`
+  WHERE (profession IS NULL OR profession = '')
+    AND (cert_type IS NULL OR cert_type = '')
+    AND template_id IS NULL;

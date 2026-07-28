@@ -96,7 +96,9 @@
       <el-table-column label="出生日期" width="120">
         <template slot-scope="s">{{ getBirthdayFromIdCard(s.row.idCard) || '-' }}</template>
       </el-table-column>
-      <el-table-column prop="profession" label="专业" min-width="120" />
+      <el-table-column label="专业" min-width="120">
+        <template slot-scope="s">{{ s.row.professionName || s.row.profession || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="skillLevel" label="技能等级" width="120" />
       <el-table-column label="颁发日期" width="150">
         <template slot-scope="s">{{ formatIssueDate(s.row.issueDateStr, s.row.issueDate) }}</template>

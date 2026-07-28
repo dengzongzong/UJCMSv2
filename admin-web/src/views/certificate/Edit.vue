@@ -21,7 +21,7 @@
         </el-form-item>
         <el-form-item label="专业名称" prop="profession">
           <el-select v-model="form.profession" placeholder="请选择专业" style="width:100%" filterable>
-            <el-option v-for="p in professionOptions" :key="p.id" :label="p.name" :value="p.id.toString()" />
+            <el-option v-for="p in professionOptions" :key="p.id" :label="p.name" :value="p.name" />
           </el-select>
         </el-form-item>
         <el-form-item label="技能等级">
@@ -213,9 +213,8 @@ export default {
       this.certTypeOptions = r.data || []
     }).catch(() => {})
     // 加载专业选项(用于"专业名称"下拉)
-    request({ url: '/public/professions', method: 'get' }).then(r => {
-      this.professionOptions = r.data || []
-    }).catch(() => {})
+    const profRes = await request({ url: '/public/professions', method: 'get' }).catch(() => ({ data: [] }))
+    this.professionOptions = profRes.data || []
     if (this.id) {
       this.isEdit = true
       const res = await certificateDetail(this.id)
@@ -229,10 +228,16 @@ export default {
             issueDay = dateParts[2]
           }
         }
+        // 兼容旧数据: profession 可能是 ID 数字, 需转换为名称
+        let professionValue = d.profession || ''
+        if (professionValue && /^\d+$/.test(professionValue)) {
+          const matched = this.professionOptions.find(p => String(p.id) === professionValue)
+          if (matched) professionValue = matched.name
+        }
         this.form = {
           id: d.id,
           name: d.name, idCard: d.idCard, gender: d.gender,
-          profession: d.profession, skillLevel: d.skillLevel,
+          profession: professionValue, skillLevel: d.skillLevel,
           issueYear, issueMonth, issueDay,
           certNo: d.certNo, studentNo: d.studentNo,
           agency: d.agency, agencyFee: d.agencyFee ? Number(d.agencyFee) : 0,
