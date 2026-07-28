@@ -9,12 +9,15 @@
  *   <el-table :max-height="tableMaxHeight" :fit="false" ...>
  *
  * 原理:
- *   Element UI 默认 fit=true 用 table-layout:fixed 把列压缩到容器宽度,
- *   导致 scrollWidth===clientWidth, 水平滚动条永远不会出现。
- *   设置 fit=false 后, Element UI 不再自动给单元格设置宽度,
- *   所以 JS 手动将每列的 minWidth 设到对应的 td/th 上,
- *   确保列保持最小宽度, 表格自然撑开, 水平滚动条出现。
- *   最后将表头和主体表格设为同一个显式宽度, 保证列对齐。
+ *   Element UI 的 doLayout() 在 fit=false 时仍然会:
+ *   1. 调用 updateColumnsWidth() → 给每个 td/th 设置列宽(来自 column.width/minWidth)
+ *   2. 设置 table style.width = '100%' → 表格被压缩到容器宽度
+ *   所以 scrollWidth === clientWidth, 水平滚动条不出现。
+ *
+ *   修复: 在 doLayout() 完成后, 从列定义 store 读取每列的 width/minWidth,
+ *   求和得到自然宽度, 显式设置 body/header 表格的 width 为自然宽度(像素值),
+ *   覆盖 100%, 使表格超出容器, 水平滚动条出现。
+ *   表头和主体设同一个值, 保证列对齐。
  */
 export default {
   data() {
@@ -25,7 +28,6 @@ export default {
   mounted() {
     this.calcTableMaxHeight()
     window.addEventListener('resize', this.calcTableMaxHeight)
-    // 多次延迟触发,确保在数据加载和 Element UI 布局完成后修正表格宽度
     this.$nextTick(() => this._fixAllTables())
     setTimeout(() => this._fixAllTables(), 100)
     setTimeout(() => this._fixAllTables(), 300)
@@ -45,15 +47,10 @@ export default {
   },
   methods: {
     calcTableMaxHeight() {
-      // 减去: header(56) + main padding(32) + app-container padding(40)
-      //        + 筛选区/工具栏/分页等(~170) ≈ 300
       this.tableMaxHeight = Math.max(200, window.innerHeight - 300)
       this.$nextTick(() => this._fixAllTables())
     },
 
-    /**
-     * 遍历所有 ElTable 子组件,修正宽度和布局
-     */
     _fixAllTables() {
       const visit = (vm) => {
         if (!vm || !vm.$children) return
@@ -67,14 +64,6 @@ export default {
       visit(this)
     },
 
-    /**
-     * 修正单个 ElTable:
-     * 1. 从 Element UI 列定义中读取 minWidth/width
-     * 2. 手动设到每个 td/th 上(因为 fit=false 时 Element UI 不会设)
-     * 3. 测量第一行总宽度
-     * 4. 如果超出容器, 将 body 和 header 表格设为同一个显式宽度
-     * 5. 调用 doLayout() 同步固定列
-     */
     _fixOneTable(tableVm) {
       try {
         const el = tableVm.$el
@@ -85,54 +74,41 @@ export default {
         const wrapper = el.querySelector('.el-table__body-wrapper')
         if (!bodyTable || !wrapper) return
 
-        // ---- Step 1: 从列定义读取宽度, 手动设到单元格上 ----
-        const columns = (tableVm.columns || tableVm.store.states.columns || [])
-        const bodyRows = bodyTable.querySelectorAll('tr')
-        const headerRows = headerTable ? headerTable.querySelectorAll('tr') : []
+        // ---- Step 1: 确保 table-layout: fixed(让列宽严格遵循设定值) ----
+        bodyTable.style.tableLayout = 'fixed'
+        if (headerTable) headerTable.style.tableLayout = 'fixed'
 
-        columns.forEach((col, idx) => {
-          // 取列的最小宽度或固定宽度
-          const w = col.minWidth || col.width
-          if (!w) return
+        // ---- Step 2: 从 Element UI 列定义 store 读取每列宽度 ----
+        const allColumns = (tableVm.store && tableVm.store.states && tableVm.store.states.columns) || []
+        // 过滤掉隐藏列
+        const columns = allColumns.filter(c => !c.filtered)
 
-          // 设到 body 的每个 td 上
-          bodyRows.forEach(row => {
-            const cell = row.querySelectorAll('td')[idx]
-            if (cell) cell.style.width = w + 'px'
-          })
-
-          // 设到 header 的每个 th 上(保持表头和数据列对齐)
-          headerRows.forEach(row => {
-            const cell = row.querySelectorAll('th')[idx]
-            if (cell) cell.style.width = w + 'px'
-          })
+        let totalNaturalWidth = 0
+        columns.forEach(col => {
+          // column.width: 有显式 width 或 Element UI 默认值(如 selection=48)
+          // column.minWidth: 有 min-width 时
+          const w = parseInt(col.width || col.minWidth || 0, 10)
+          if (w > 0) totalNaturalWidth += w
         })
 
-        // ---- Step 2: 测量第一行的总宽度 ----
-        const firstRow = bodyTable.querySelector('tr')
-        if (!firstRow) return
-        const cells = firstRow.querySelectorAll('td')
-        let totalWidth = 0
-        cells.forEach(cell => {
-          totalWidth += cell.getBoundingClientRect().width
-        })
+        if (totalNaturalWidth <= 0) return
 
         const containerWidth = wrapper.clientWidth
-        if (totalWidth > containerWidth + 1) {
-          // 列宽之和超出容器 → 设同一个显式宽度, 保证表头和主体对齐
-          const w = Math.ceil(totalWidth) + 'px'
+        if (totalNaturalWidth > containerWidth) {
+          // ---- Step 3: 设同一个显式宽度, 覆盖 100%, 保证对齐 + 水平滚动 ----
+          const w = totalNaturalWidth + 'px'
           bodyTable.style.width = w
           if (headerTable) headerTable.style.width = w
         }
 
-        // ---- Step 3: 调用 doLayout 同步固定列和滚动状态 ----
+        // ---- Step 4: doLayout 同步固定列和滚动状态 ----
         if (typeof tableVm.doLayout === 'function') {
           tableVm.doLayout()
         }
 
-        // doLayout 可能重置宽度, 再设一次
-        if (totalWidth > containerWidth + 1) {
-          const w = Math.ceil(totalWidth) + 'px'
+        // ---- Step 5: doLayout 可能重置 width, 再设一次 ----
+        if (totalNaturalWidth > containerWidth) {
+          const w = totalNaturalWidth + 'px'
           bodyTable.style.width = w
           if (headerTable) headerTable.style.width = w
         }
