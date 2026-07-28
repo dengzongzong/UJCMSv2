@@ -203,9 +203,70 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             }
         }
         if (StringUtils.hasText(student.getPhone()) || StringUtils.hasText(student.getIdCard())) {
-            long count = this.count(existWrapper);
-            if (count > 0) {
-                throw new BusinessException("该用户已存在");
+            List<Student> existing = this.list(existWrapper);
+            if (!existing.isEmpty()) {
+                Student existStudent = existing.get(0);
+                // 按身份证号匹配,判断专业是否重复
+                if (StringUtils.hasText(student.getIdCard()) && student.getIdCard().equals(existStudent.getIdCard())) {
+                    // 获取要导入的专业列表
+                    List<Long> newProfessionIds = student.getProfessionIds();
+                    if (newProfessionIds == null || newProfessionIds.isEmpty()) {
+                        if (student.getProfessionId() != null) {
+                            newProfessionIds = Collections.singletonList(student.getProfessionId());
+                        }
+                    }
+                    if (newProfessionIds != null && !newProfessionIds.isEmpty()) {
+                        // 查询已有学生的专业列表
+                        List<StudentProfession> existSps = studentProfessionMapper.selectList(
+                                new LambdaQueryWrapper<StudentProfession>()
+                                        .eq(StudentProfession::getStudentId, existStudent.getId()));
+                        Set<Long> existProfIds = new HashSet<>();
+                        for (StudentProfession sp : existSps) {
+                            existProfIds.add(sp.getProfessionId());
+                        }
+                        // 检查新专业是否都已存在
+                        boolean allProfessionsExist = true;
+                        List<Long> professionsToMerge = new ArrayList<>();
+                        for (Long profId : newProfessionIds) {
+                            if (profId != null && !existProfIds.contains(profId)) {
+                                allProfessionsExist = false;
+                                professionsToMerge.add(profId);
+                            }
+                        }
+                        if (allProfessionsExist && !existProfIds.isEmpty()) {
+                            throw new BusinessException("该身份证号「" + student.getIdCard() + "」已存在相同专业的学生数据,属于重复数据");
+                        }
+                        // 专业不同,合并新专业到已有学生
+                        Map<Long, String> professionNameMap = loadProfessionNameMap();
+                        for (Long profId : professionsToMerge) {
+                            StudentProfession sp = new StudentProfession();
+                            sp.setStudentId(existStudent.getId());
+                            sp.setProfessionId(profId);
+                            studentProfessionMapper.insert(sp);
+                            // 同步创建证书记录
+                            CertificateDTO certDto = new CertificateDTO();
+                            certDto.setName(existStudent.getName());
+                            certDto.setIdCard(existStudent.getIdCard());
+                            certDto.setProfession(professionNameMap.get(profId));
+                            if (StringUtils.hasText(existStudent.getCertType())) {
+                                certDto.setCertType(existStudent.getCertType().trim());
+                            }
+                            try {
+                                certificateService.add(certDto);
+                            } catch (Exception e) {
+                                // 证书创建失败不影响合并
+                            }
+                        }
+                        // 同步到证书用户
+                        certificateUserSyncService.syncStudent(existStudent);
+                        // 合并成功,不继续执行新建逻辑
+                        return;
+                    }
+                    // 没有专业信息,直接报重复
+                    throw new BusinessException("该身份证号「" + student.getIdCard() + "」已存在,属于重复数据");
+                }
+                // 手机号重复但身份证不同
+                throw new BusinessException("手机号码「" + student.getPhone() + "」已存在,属于重复数据");
             }
         }
         // 密码加密（使用 hutool 的 BCrypt）
@@ -805,7 +866,59 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
 
             // ====== 身份证号重复校验: 与已有学生数据比较 ======
             if (existByIdCard.containsKey(idCard) || createdInBatch.containsKey(idCard)) {
-                failList.add(fail(name, idCard, "导入失败：身份证号码「" + idCard + "」与已有学生数据重复"));
+                Student existStudent = existByIdCard.containsKey(idCard) ? existByIdCard.get(idCard) : createdInBatch.get(idCard);
+                // 匹配专业
+                String pName = StringUtils.hasText(professionName) ? professionName.trim() : null;
+                Long professionIdForCheck = pName != null ? professionNameMap.get(pName) : null;
+                // 如果专业不存在于profession表,先创建
+                if (pName != null && professionIdForCheck == null) {
+                    Profession newProf = new Profession();
+                    newProf.setName(pName);
+                    newProf.setSort(0);
+                    newProf.setStatus(1);
+                    professionMapper.insert(newProf);
+                    professionIdForCheck = newProf.getId();
+                    professionNameMap.put(pName, professionIdForCheck);
+                }
+                // 查询已有学生的专业列表
+                List<StudentProfession> existSps = studentProfessionMapper.selectList(
+                        new LambdaQueryWrapper<StudentProfession>()
+                                .eq(StudentProfession::getStudentId, existStudent.getId()));
+                Set<Long> existProfIds = new HashSet<>();
+                for (StudentProfession sp : existSps) {
+                    existProfIds.add(sp.getProfessionId());
+                }
+                // 如果专业为空,认为重复
+                if (professionIdForCheck == null) {
+                    failList.add(fail(name, idCard, "导入失败：身份证号码「" + idCard + "」与已有学生数据重复,且未指定专业"));
+                    continue;
+                }
+                // 专业相同 → 报重复
+                if (existProfIds.contains(professionIdForCheck)) {
+                    failList.add(fail(name, idCard, "导入失败：身份证号码「" + idCard + "」+专业「" + pName + "」与已有学生数据重复"));
+                    continue;
+                }
+                // 专业不同 → 合并专业到已有学生,显示成功
+                StudentProfession newSp = new StudentProfession();
+                newSp.setStudentId(existStudent.getId());
+                newSp.setProfessionId(professionIdForCheck);
+                studentProfessionMapper.insert(newSp);
+                // 同步创建证书记录
+                com.exam.dto.CertificateDTO certDto = new com.exam.dto.CertificateDTO();
+                certDto.setName(existStudent.getName());
+                certDto.setIdCard(idCard);
+                certDto.setProfession(pName);
+                if (StringUtils.hasText(row.getCertType())) {
+                    certDto.setCertType(row.getCertType().trim());
+                }
+                try {
+                    certificateService.add(certDto);
+                } catch (Exception e) {
+                    // 证书创建失败不影响合并
+                }
+                // 同步到证书用户
+                certificateUserSyncService.syncStudent(existStudent);
+                successCount++;
                 continue;
             }
 
