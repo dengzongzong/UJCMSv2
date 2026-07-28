@@ -1,13 +1,11 @@
 /**
- * 表格滚动 mixin (wrapper + fixed-layout 方案)
+ * 表格滚动 mixin (简洁方案)
  *
- * 用外层 wrapper 处理滚动, 同时用 table-layout: fixed + JS 设置列宽
- * 确保表格宽度 = 列宽之和, 超出容器时水平滚动条出现。
- *
- * 用法:
- *   import tableMaxHeight from '@/mixins/tableMaxHeight'
- *   export default { mixins: [tableMaxHeight], ... }
- *   <el-table :fit="false" ...>   ← 不需要 max-height
+ * 核心思路:
+ * 1. 覆盖 el-table 根元素 inline width:100% → 列宽之和 px
+ * 2. MutationObserver 强制 body-wrapper overflow:auto (对抗 Element UI JS)
+ * 3. 同步 header/body 水平滚动
+ * 4. updated 钩子确保数据变化后重新应用宽度
  */
 export default {
   data() {
@@ -17,121 +15,134 @@ export default {
   },
   mounted() {
     this._calcHeight()
-    this._setupWrapper()
-    window.addEventListener('resize', this._onResize)
-    // 多次延迟触发, 确保数据加载后也能修正
-    setTimeout(() => this._fixTableWidths(), 150)
-    setTimeout(() => this._fixTableWidths(), 400)
-    setTimeout(() => this._fixTableWidths(), 800)
+    this._initTableScroll()
+    window.addEventListener('resize', this._calcHeight)
   },
   activated() {
     this._calcHeight()
-    this._setupWrapper()
-    setTimeout(() => this._fixTableWidths(), 150)
+    this.$nextTick(() => this._applyWidths())
   },
   updated() {
-    if (this._t) clearTimeout(this._t)
-    this._t = setTimeout(() => this._fixTableWidths(), 100)
+    // 数据变化后 Vue 会重新设置 style="width:100%", 需要再次覆盖
+    if (this._ut) clearTimeout(this._ut)
+    this._ut = setTimeout(() => this._applyWidths(), 100)
   },
   beforeDestroy() {
-    window.removeEventListener('resize', this._onResize)
-    if (this._t) clearTimeout(this._t)
+    window.removeEventListener('resize', this._calcHeight)
+    if (this._mo) this._mo.disconnect()
+    if (this._bw) this._bw.removeEventListener('scroll', this._onBS)
+    if (this._ut) clearTimeout(this._ut)
   },
   methods: {
-    _onResize() {
-      this._calcHeight()
-    },
-
     _calcHeight() {
       this.tableMaxHeight = Math.max(200, window.innerHeight - 300)
     },
 
-    _setupWrapper() {
+    _initTableScroll() {
       this.$nextTick(() => {
         const tableEl = this.$el && this.$el.querySelector('.el-table')
         if (!tableEl) return
 
-        let wrapper = tableEl.parentElement
-        if (wrapper && wrapper.classList && wrapper.classList.contains('table-scroll-wrapper')) {
-          wrapper.style.height = this.tableMaxHeight + 'px'
-          return
+        const bw = tableEl.querySelector('.el-table__body-wrapper')
+        if (bw) {
+          this._bw = bw
+          bw.style.maxHeight = this.tableMaxHeight + 'px'
+          bw.style.overflow = 'auto'
+          bw.style.overflowX = 'auto'
+          bw.style.overflowY = 'auto'
+
+          // MutationObserver: 对抗 Element UI JS 对 overflow 的重写
+          this._mo = new MutationObserver(() => {
+            if (bw.style.overflowX !== 'auto') {
+              bw.style.overflow = 'auto'
+              bw.style.overflowX = 'auto'
+              bw.style.overflowY = 'auto'
+            }
+          })
+          this._mo.observe(bw, { attributes: true, attributeFilter: ['style'] })
+
+          // header/body 水平滚动同步
+          const hw = tableEl.querySelector('.el-table__header-wrapper')
+          this._onBS = () => {
+            if (hw) hw.scrollLeft = bw.scrollLeft
+          }
+          bw.addEventListener('scroll', this._onBS)
         }
 
-        wrapper = document.createElement('div')
-        wrapper.className = 'table-scroll-wrapper'
-        wrapper.style.height = this.tableMaxHeight + 'px'
-        wrapper.style.overflow = 'auto'
-        wrapper.style.position = 'relative'
-
-        tableEl.parentNode.insertBefore(wrapper, tableEl)
-        wrapper.appendChild(tableEl)
+        // 延迟应用宽度 (等数据加载)
+        setTimeout(() => this._applyWidths(), 300)
+        setTimeout(() => this._applyWidths(), 800)
+        setTimeout(() => this._applyWidths(), 1500)
       })
     },
 
-    /**
-     * 核心: 设置 table-layout: fixed + 列宽 + 表格宽度
-     * 确保表格宽度 = 列宽之和, 超出容器时水平滚动出现
-     */
-    _fixTableWidths() {
-      this.$nextTick(() => {
-        const tableEl = this.$el && this.$el.querySelector('.el-table')
-        if (!tableEl) return
+    _applyWidths() {
+      const tableEl = this.$el && this.$el.querySelector('.el-table')
+      if (!tableEl) return
 
-        const bodyTable = tableEl.querySelector('.el-table__body-wrapper .el-table__body')
-        const headerTable = tableEl.querySelector('.el-table__header-wrapper .el-table__header')
-        const wrapper = tableEl.querySelector('.el-table__body-wrapper')
-        if (!bodyTable || !wrapper) return
+      const vue = tableEl.__vue__
+      const columns = (vue && vue.store && vue.store.states && vue.store.states.columns) || []
+      if (columns.length === 0) return
 
-        // ---- Step 1: table-layout: fixed (列宽严格遵循设定值) ----
-        bodyTable.style.tableLayout = 'fixed'
-        if (headerTable) headerTable.style.tableLayout = 'fixed'
-
-        // ---- Step 2: 从 Element UI store 读取列宽, 设到每个 td/th ----
-        const columns = (tableEl.__vue__ && tableEl.__vue__.store && tableEl.__vue__.store.states.columns) || []
-        const containerWidth = wrapper.clientWidth
-
-        // 设 body 单元格宽度
-        const bodyRows = bodyTable.querySelectorAll('tbody > tr')
-        bodyRows.forEach(row => {
-          const cells = row.querySelectorAll('td')
-          let colIdx = 0
-          cells.forEach((cell, i) => {
-            if (colIdx >= columns.length) return
-            const col = columns[colIdx]
-            const w = parseInt(col.width || col.minWidth || 0, 10)
-            if (w > 0) cell.style.width = w + 'px'
-            colIdx++
-          })
-        })
-
-        // 设 header 单元格宽度(保持对齐)
-        if (headerTable) {
-          const headerRows = headerTable.querySelectorAll('thead > tr')
-          headerRows.forEach(row => {
-            const cells = row.querySelectorAll('th')
-            let colIdx = 0
-            cells.forEach((cell, i) => {
-              if (colIdx >= columns.length) return
-              const col = columns[colIdx]
-              const w = parseInt(col.width || col.minWidth || 0, 10)
-              if (w > 0) cell.style.width = w + 'px'
-              colIdx++
-            })
-          })
-        }
-
-        // ---- Step 3: 计算列宽之和, 设表格宽度 ----
-        let totalWidth = 0
-        columns.forEach(col => {
-          const w = parseInt(col.width || col.minWidth || 0, 10)
-          if (w > 0) totalWidth += w
-        })
-
-        if (totalWidth > 0 && totalWidth > containerWidth) {
-          bodyTable.style.width = totalWidth + 'px'
-          if (headerTable) headerTable.style.width = totalWidth + 'px'
-        }
+      // 计算列宽之和
+      let totalWidth = 0
+      columns.forEach(col => {
+        const w = parseInt(col.width || col.minWidth || 0, 10)
+        if (w > 0) totalWidth += w
       })
+      if (totalWidth <= 0) return
+
+      // 关键: 覆盖 el-table 根元素的 inline width:100%
+      tableEl.style.width = totalWidth + 'px'
+      tableEl.style.minWidth = totalWidth + 'px'
+      tableEl.style.maxWidth = 'none'
+
+      // 设置 body table
+      const bodyTable = tableEl.querySelector('.el-table__body')
+      if (bodyTable) {
+        bodyTable.style.width = totalWidth + 'px'
+        bodyTable.style.minWidth = totalWidth + 'px'
+        bodyTable.style.maxWidth = 'none'
+        bodyTable.style.tableLayout = 'fixed'
+      }
+
+      // 设置 header table
+      const headerTable = tableEl.querySelector('.el-table__header')
+      if (headerTable) {
+        headerTable.style.width = totalWidth + 'px'
+        headerTable.style.minWidth = totalWidth + 'px'
+        headerTable.style.maxWidth = 'none'
+        headerTable.style.tableLayout = 'fixed'
+      }
+
+      // 设置每个单元格宽度
+      if (bodyTable) {
+        bodyTable.querySelectorAll('tr').forEach(row => {
+          row.querySelectorAll('td').forEach((cell, i) => {
+            if (i >= columns.length) return
+            const w = parseInt(columns[i].width || columns[i].minWidth || 0, 10)
+            if (w > 0) cell.style.width = w + 'px'
+          })
+        })
+      }
+      if (headerTable) {
+        headerTable.querySelectorAll('tr').forEach(row => {
+          row.querySelectorAll('th').forEach((cell, i) => {
+            if (i >= columns.length) return
+            const w = parseInt(columns[i].width || columns[i].minWidth || 0, 10)
+            if (w > 0) cell.style.width = w + 'px'
+          })
+        })
+      }
+
+      // 确保 body wrapper 仍然是 auto
+      const bw = tableEl.querySelector('.el-table__body-wrapper')
+      if (bw) {
+        bw.style.overflow = 'auto'
+        bw.style.overflowX = 'auto'
+        bw.style.overflowY = 'auto'
+        bw.style.maxHeight = this.tableMaxHeight + 'px'
+      }
     }
   }
 }

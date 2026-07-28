@@ -86,26 +86,13 @@ ol {
   padding: 20px;
 }
 
-// ====== 表格滚动条修复 (wrapper + fixed-layout 方案) ======
-// 外层 wrapper 处理所有滚动, JS 设置 table-layout:fixed + 列宽 + 表格宽度
-// 确保表格宽度 = 列宽之和, 超出容器时水平滚动条出现。
+// ====== 表格滚动条修复 ======
+// JS (mixin) 负责:
+//   1. 覆盖 el-table 根元素 width:100% → 列宽之和 px
+//   2. MutationObserver 强制 body-wrapper overflow:auto
+//   3. 同步 header/body 水平滚动
+// CSS 只辅助 table-layout:fixed, 其余由 JS 控制
 
-// 外层滚动 wrapper
-.table-scroll-wrapper {
-  overflow: auto !important;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-}
-
-// 禁用 Element UI 内部的 overflow(由 wrapper 接管)
-.el-table .el-table__body-wrapper {
-  overflow: visible !important;
-}
-.el-table .el-table__body-wrapper[style] {
-  overflow: visible !important;
-}
-
-// 强制 table-layout: fixed(列宽严格遵循设定值, 不被内容压缩)
 .el-table__body,
 .el-table__header {
   table-layout: fixed !important;
