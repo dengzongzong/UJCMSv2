@@ -449,8 +449,28 @@ UPDATE `certificate` c
     AND c.profession REGEXP '^[0-9]+$';
 
 -- ============================================================
--- 13. 清理证书表中专业为空的脏数据(由同步逻辑缺陷产生)
---     (幂等: 只删除 profession 为空的行)
+-- 13. 证书表去重 + 添加 (id_card, profession) 唯一索引
+--     先删除专业为空的脏数据,再按 id_card+profession 去重(保留最新一条)
 -- ============================================================
+-- 13a. 删除专业为空的证书记录
 DELETE FROM `certificate`
   WHERE (profession IS NULL OR profession = '');
+
+-- 13b. 按 id_card+profession 去重: 同一身份证+同一专业只保留 id 最大(最新)的一条
+DELETE c1 FROM `certificate` c1
+  INNER JOIN `certificate` c2
+  ON c1.id_card = c2.id_card
+    AND c1.profession = c2.profession
+    AND c1.id < c2.id;
+
+-- 13c. 添加唯一索引(幂等: 先检查再添加)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate'
+    AND index_name = 'uk_idcard_profession');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE `certificate` ADD UNIQUE INDEX `uk_idcard_profession` (`id_card`, `profession`)',
+  'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
