@@ -2044,7 +2044,11 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
 
     /**
      * 从学生管理同步数据到证书表(certificate)。
-     * 按 姓名+身份证+专业 三维度检查,已存在的不重复创建。
+     * 同步逻辑:
+     * 1. 按身份证号查找学生,每个专业对应一条证书记录
+     * 2. 学生有多少个专业,证书表就应有多少条数据(缺的补建)
+     * 3. 学生历史专业变动后,证书表中多余的专业数据需删除
+     * 4. 专业为空的数据不创建,已有的专业为空数据也一并清理
      * @return 新创建的记录数
      */
     @Override
@@ -2063,28 +2067,62 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         for (Student student : students) {
             String idCard = StringUtils.hasText(student.getIdCard()) ? student.getIdCard().trim() : null;
             if (idCard == null) continue;
-            // 查学生的专业关联(用 LambdaQueryWrapper,避免 @Select JOIN 结果映射问题)
+            String name = student.getName() != null ? student.getName() : "";
+
+            // ====== 1. 获取学生当前的所有专业名称 ======
+            Set<String> expectedProfessions = new LinkedHashSet<>();
             List<StudentProfession> sps = student.getId() == null
                     ? Collections.emptyList()
                     : studentProfessionMapper.selectList(
                             new LambdaQueryWrapper<StudentProfession>()
                                     .eq(StudentProfession::getStudentId, student.getId()));
-            if (sps.isEmpty()) {
-                // 没有 student_profession 关联记录,兜底用 student.professionId
-                if (student.getProfessionId() != null) {
-                    String profName = professionNameMap.get(student.getProfessionId());
-                    created += createIfNotExists(student, idCard, profName, certType);
-                } else {
-                    // 确实没有专业信息:按 idCard+姓名 查是否已有证书(profession 为空的)
-                    created += createIfNotExists(student, idCard, null, certType);
+            for (StudentProfession sp : sps) {
+                if (sp.getProfessionId() != null) {
+                    String profName = professionNameMap.get(sp.getProfessionId());
+                    if (StringUtils.hasText(profName)) {
+                        expectedProfessions.add(profName.trim());
+                    }
                 }
-            } else {
-                for (StudentProfession sp : sps) {
-                    // 直接从 professionNameMap 取专业名称,不依赖 JOIN 的 professionName 字段
-                    String profName = sp.getProfessionId() != null
-                            ? professionNameMap.get(sp.getProfessionId()) : null;
-                    created += createIfNotExists(student, idCard, profName, certType);
+            }
+            // 兜底: 没有 student_profession 关联记录时,用 student.professionId
+            if (expectedProfessions.isEmpty() && student.getProfessionId() != null) {
+                String profName = professionNameMap.get(student.getProfessionId());
+                if (StringUtils.hasText(profName)) {
+                    expectedProfessions.add(profName.trim());
                 }
+            }
+
+            // ====== 2. 学生没有专业 → 不创建证书记录,并清理该学生专业为空的脏数据 ======
+            if (expectedProfessions.isEmpty()) {
+                this.remove(new LambdaQueryWrapper<Certificate>()
+                        .eq(Certificate::getIdCard, idCard)
+                        .eq(Certificate::getName, name)
+                        .and(w -> w.isNull(Certificate::getProfession).or().eq(Certificate::getProfession, "")));
+                continue;
+            }
+
+            // ====== 3. 为每个专业创建证书记录(姓名+身份证+专业 相同则跳过) ======
+            for (String profName : expectedProfessions) {
+                created += createIfNotExists(student, idCard, profName, certType);
+            }
+
+            // ====== 4. 删除该学生多余的证书记录(专业不在学生当前专业列表中的) ======
+            List<Certificate> existingCerts = this.list(new LambdaQueryWrapper<Certificate>()
+                    .eq(Certificate::getIdCard, idCard)
+                    .eq(Certificate::getName, name));
+            Set<String> finalExpected = expectedProfessions;
+            List<Long> toDelete = existingCerts.stream()
+                    .filter(cert -> {
+                        String certProf = cert.getProfession();
+                        // 专业为空 → 删除
+                        if (!StringUtils.hasText(certProf)) return true;
+                        // 专业不在学生当前专业列表中 → 删除(历史专业变动遗留)
+                        return !finalExpected.contains(certProf.trim());
+                    })
+                    .map(Certificate::getId)
+                    .collect(Collectors.toList());
+            if (!toDelete.isEmpty()) {
+                this.removeByIds(toDelete);
             }
         }
         return created;

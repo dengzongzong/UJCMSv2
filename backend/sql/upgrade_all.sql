@@ -447,3 +447,10 @@ UPDATE `certificate` c
   SET c.profession = p.name
   WHERE c.profession IS NOT NULL
     AND c.profession REGEXP '^[0-9]+$';
+
+-- ============================================================
+-- 13. 清理证书表中专业为空的脏数据(由同步逻辑缺陷产生)
+--     (幂等: 只删除 profession 为空的行)
+-- ============================================================
+DELETE FROM `certificate`
+  WHERE (profession IS NULL OR profession = '');
