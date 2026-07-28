@@ -30,8 +30,8 @@ DB_USER = os.environ.get("DB_USER", "root")
 DB_PASSWORD = os.environ.get("MYSQL_PASS", os.environ.get("DB_PASSWORD", "Root@123456"))
 DB_NAME = os.environ.get("DB_NAME", "exam_platform")
 
-# 恢复时间范围: 最近7天
-RECOVER_START = "2026-07-22 00:00:00"
+# 恢复时间范围: 今天上午11点之后
+RECOVER_START = "2026-07-28 11:00:00"
 RECOVER_END   = "2026-07-28 23:59:59"
 
 # MySQL数据目录(binlog文件所在位置)
