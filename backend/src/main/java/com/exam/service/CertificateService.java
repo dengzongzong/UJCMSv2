@@ -184,6 +184,21 @@ public interface CertificateService extends IService<Certificate> {
     int syncFromStudents(String certType);
 
     /**
+     * 从学生管理同步数据到证书表(带进度回调,用于异步任务)。
+     * @param certType 证书类型(可空)
+     * @param task 异步任务对象(用于更新进度),为 null 时不更新进度
+     * @return 新创建的记录数
+     */
+    int syncFromStudents(String certType, com.exam.common.AsyncTask task);
+
+    /**
+     * 证书专业变更后,反向同步到学生管理(按身份证号匹配)。
+     * 该身份证号在证书表中的所有专业,同步为学生管理的专业关联。
+     * @param idCard 身份证号
+     */
+    void syncProfessionToStudent(String idCard);
+
+    /**
      * 下载学生导入专用模板(25列,独立于证书管理模板)
      */
     void downloadStudentTemplate(HttpServletResponse response, String sheetName, String fileName) throws Exception;

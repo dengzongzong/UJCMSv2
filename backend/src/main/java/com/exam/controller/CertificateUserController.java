@@ -34,6 +34,8 @@ public class CertificateUserController {
     private CertificateMapper certificateMapper;
     @Autowired
     private com.exam.service.CertificateService certificateService;
+    @Autowired
+    private com.exam.service.AsyncTaskService asyncTaskService;
 
     /**
      * 分页查询证书用户
@@ -92,19 +94,37 @@ public class CertificateUserController {
     }
 
     /**
-     * 手动触发一次全量同步:
+     * 手动触发一次全量同步(异步执行):
      * 1. 同步学生数据到 certificate_user 表
      * 2. 同步学生数据到 certificate 表(界面实际展示的数据源)
+     * 返回异步任务ID,前端轮询 /admin/task/{taskId} 查询进度
      */
     @PostMapping("/sync")
     public Result<Map<String, Object>> sync(@RequestParam(required = false) String certType) {
-        // 1. 同步到 certificate_user 表
-        int userCount = certificateUserSyncService.syncAll(certType);
-        // 2. 同步到 certificate 表(界面展示的数据源,创建缺失的证书记录)
-        int certCount = certificateService.syncFromStudents(certType);
+        // 预先查询学生总数,用于进度计算
+        int studentCount = certificateUserSyncService.countStudents(certType);
+        // 提交异步任务
+        String taskId = asyncTaskService.submit(
+                "certificate-sync",
+                "从学生管理同步证书数据",
+                studentCount,
+                task -> {
+                    // 1. 同步到 certificate_user 表
+                    int userCount = certificateUserSyncService.syncAll(certType);
+                    // 2. 同步到 certificate 表(带进度回调)
+                    int certCount = certificateService.syncFromStudents(certType, task);
+                    // 记录结果到任务的 extraJson
+                    Map<String, Object> resultData = new HashMap<>();
+                    resultData.put("synced", userCount);
+                    resultData.put("created", certCount);
+                    try {
+                        task.setExtraJson(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(resultData));
+                    } catch (Exception e) {
+                        // 忽略序列化错误
+                    }
+                });
         Map<String, Object> data = new HashMap<>();
-        data.put("synced", userCount);
-        data.put("created", certCount);
+        data.put("taskId", taskId);
         return Result.success(data);
     }
 

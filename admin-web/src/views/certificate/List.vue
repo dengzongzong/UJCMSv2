@@ -243,6 +243,45 @@
       </div>
     </el-dialog>
 
+    <!-- 同步进度弹窗 -->
+    <el-dialog
+      title="从学生管理同步"
+      :visible.sync="syncDialog.visible"
+      width="500px"
+      :close-on-click-modal="false"
+      :show-close="syncDialog.status !== 'running'"
+      @close="closeSyncDialog"
+    >
+      <div style="text-align: center; padding: 20px 0;">
+        <el-progress
+          v-if="syncDialog.status === 'running'"
+          :percentage="syncDialog.progress"
+          :format="() => syncDialog.progress + '%'"
+          :stroke-width="20"
+          :text-inside="true"
+          status="success"
+        />
+        <div v-if="syncDialog.status === 'running'" style="margin-top: 12px; color: #909399; font-size: 13px;">
+          正在同步... 已处理 {{ syncDialog.processed }} / {{ syncDialog.total }} 名学生
+        </div>
+        <div v-if="syncDialog.status === 'success'" style="color: #67c23a; font-size: 16px;">
+          <i class="el-icon-success" style="font-size: 48px; display: block; margin-bottom: 12px;"></i>
+          {{ syncDialog.result }}
+        </div>
+        <div v-if="syncDialog.status === 'failed'" style="color: #f56c6c; font-size: 16px;">
+          <i class="el-icon-error" style="font-size: 48px; display: block; margin-bottom: 12px;"></i>
+          {{ syncDialog.result }}
+        </div>
+      </div>
+      <div slot="footer">
+        <el-button
+          v-if="syncDialog.status !== 'running'"
+          type="primary"
+          @click="closeSyncDialog"
+        >关闭</el-button>
+      </div>
+    </el-dialog>
+
     <!-- 批量导入照片弹窗 -->
     <el-dialog
       title="批量导入学员照片"
@@ -461,6 +500,7 @@ import {
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
 import { templateList } from '@/api/certificateTemplate'
+import { getTask } from '@/api/asyncTask'
 import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
@@ -477,6 +517,7 @@ export default {
       batchDownloading: null,
       exporting: false,
       syncingUsers: false,
+      syncDialog: { visible: false, progress: 0, processed: 0, total: 0, status: '', taskId: null, result: null, timer: null },
       unboundTemplateFilter: false,
       importDialog: false,
       importLoading: false,
@@ -673,18 +714,65 @@ export default {
         certificateUserSync(certType)
           .then((res) => {
             const data = (res && res.data) || {}
-            const synced = data.synced != null ? data.synced : 0
-            const created = data.created != null ? data.created : 0
-            this.$message.success('同步完成，共同步 ' + synced + ' 名学员，新建 ' + created + ' 条证书记录')
-            this.loadList()
+            const taskId = data.taskId
+            if (!taskId) {
+              this.$message.error('同步任务创建失败')
+              this.syncingUsers = false
+              return
+            }
+            // 打开进度弹窗,开始轮询
+            this.syncDialog.visible = true
+            this.syncDialog.progress = 0
+            this.syncDialog.processed = 0
+            this.syncDialog.total = 0
+            this.syncDialog.status = 'running'
+            this.syncDialog.taskId = taskId
+            this.syncDialog.result = null
+            this.pollSyncTask(taskId)
           })
           .catch(() => {
-            this.$message.error('同步失败，请稍后重试')
-          })
-          .finally(() => {
+            this.$message.error('同步任务创建失败，请稍后重试')
             this.syncingUsers = false
           })
       }).catch(() => {})
+    },
+    pollSyncTask(taskId) {
+      if (this.syncDialog.timer) clearTimeout(this.syncDialog.timer)
+      getTask(taskId).then((res) => {
+        const task = (res && res.data) || {}
+        this.syncDialog.progress = task.progress || 0
+        this.syncDialog.processed = task.processed || 0
+        this.syncDialog.total = task.total || 0
+        this.syncDialog.status = task.status || 'running'
+        if (task.status === 'success') {
+          this.syncingUsers = false
+          // 解析结果
+          let resultData = {}
+          try { resultData = task.extraJson ? JSON.parse(task.extraJson) : {} } catch (e) {}
+          const synced = resultData.synced != null ? resultData.synced : 0
+          const created = resultData.created != null ? resultData.created : 0
+          this.syncDialog.result = `同步完成：共同步 ${synced} 名学员，新建 ${created} 条证书记录`
+          this.$message.success(this.syncDialog.result)
+          this.loadList()
+        } else if (task.status === 'failed') {
+          this.syncingUsers = false
+          this.syncDialog.result = '同步失败：' + (task.errorMessage || '未知错误')
+          this.$message.error(this.syncDialog.result)
+        } else {
+          // 继续轮询
+          this.syncDialog.timer = setTimeout(() => this.pollSyncTask(taskId), 1500)
+        }
+      }).catch(() => {
+        // 网络错误,继续重试
+        this.syncDialog.timer = setTimeout(() => this.pollSyncTask(taskId), 2000)
+      })
+    },
+    closeSyncDialog() {
+      if (this.syncDialog.timer) {
+        clearTimeout(this.syncDialog.timer)
+        this.syncDialog.timer = null
+      }
+      this.syncDialog.visible = false
     },
     async loadList() {
       if (this.dateRange && this.dateRange.length === 2) {

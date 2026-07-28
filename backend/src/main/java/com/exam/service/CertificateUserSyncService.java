@@ -54,6 +54,17 @@ public class CertificateUserSyncService {
     }
 
     /**
+     * 统计学生数量(用于异步任务进度计算)
+     */
+    public int countStudents(String certType) {
+        LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
+        if (certType != null && !certType.isEmpty()) {
+            queryWrapper.eq(Student::getCertType, certType);
+        }
+        return Math.toIntExact(studentMapper.selectCount(queryWrapper));
+    }
+
+    /**
      * 全量同步所有学员到证书用户(按专业维度:每个专业一条记录)
      *
      * @param certType 证书类型过滤,为空时同步全部

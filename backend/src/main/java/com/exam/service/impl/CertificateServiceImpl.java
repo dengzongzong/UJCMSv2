@@ -828,11 +828,17 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         }
         // 同步到学生表: 证书管理修改属性后,学生管理界面也同步更新
         syncCertificateToStudentTable(exist, dto);
+        // 证书专业变更后,反向同步该身份证号的所有专业到学生管理
+        if (StringUtils.hasText(dto.getProfession()) && !dto.getProfession().equals(exist.getProfession())) {
+            String effectiveIdCard = StringUtils.hasText(dto.getIdCard()) ? dto.getIdCard().trim() : exist.getIdCard();
+            syncProfessionToStudent(effectiveIdCard);
+        }
     }
 
     /**
      * 证书管理修改属性后,同步到学生表(student)
-     * 按证书旧姓名+旧身份证号匹配学生记录,更新姓名/身份证号/专业等属性
+     * 按证书旧姓名+旧身份证号匹配学生记录,更新姓名/身份证号
+     * 专业同步由 syncProfessionToStudent 方法统一处理
      */
     private void syncCertificateToStudentTable(Certificate oldCert, CertificateDTO newDto) {
         if (oldCert == null || newDto == null) return;
@@ -855,26 +861,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 student.setIdCard(newDto.getIdCard().trim());
                 changed = true;
             }
-            // 同步专业: 从证书的专业名称查找对应的 professionId,更新学生的主专业
-            if (StringUtils.hasText(newDto.getProfession()) && !newDto.getProfession().equals(oldCert.getProfession())) {
-                Profession prof = professionMapper.selectOne(
-                        new LambdaQueryWrapper<Profession>()
-                                .eq(Profession::getName, newDto.getProfession().trim())
-                                .last("LIMIT 1"));
-                if (prof != null) {
-                    student.setProfessionId(prof.getId());
-                    changed = true;
-                    // 同时更新 student_profession 关联表: 若新专业不存在则添加
-                    List<StudentProfession> sps = studentProfessionMapper.selectByStudentId(student.getId());
-                    boolean hasProf = sps.stream().anyMatch(sp -> prof.getId().equals(sp.getProfessionId()));
-                    if (!hasProf) {
-                        StudentProfession sp = new StudentProfession();
-                        sp.setStudentId(student.getId());
-                        sp.setProfessionId(prof.getId());
-                        studentProfessionMapper.insert(sp);
-                    }
-                }
-            }
+            // 专业同步由 syncProfessionToStudent 统一处理,此处不再单独更新
             if (changed) {
                 studentMapper.updateById(student);
             }
@@ -884,7 +871,23 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     @Override
     public void delete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;
+        // 先收集要删除的证书的身份证号(用于删除后反向同步学生专业)
+        List<Certificate> certs = this.listByIds(ids);
+        Set<String> idCards = new HashSet<>();
+        for (Certificate c : certs) {
+            if (StringUtils.hasText(c.getIdCard())) {
+                idCards.add(c.getIdCard().trim());
+            }
+        }
         this.removeByIds(ids);
+        // 删除证书后,反向同步学生专业(证书表少了某专业,学生表也应减少)
+        for (String idCard : idCards) {
+            try {
+                syncProfessionToStudent(idCard);
+            } catch (Exception e) {
+                // 反向同步失败不阻断删除主流程
+            }
+        }
     }
 
     /**
@@ -2039,6 +2042,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int syncFromStudents(String certType) {
+        return syncFromStudents(certType, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int syncFromStudents(String certType, com.exam.common.AsyncTask task) {
         LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<>();
         if (certType != null && !certType.isEmpty()) {
             queryWrapper.eq(Student::getCertType, certType);
@@ -2049,7 +2058,15 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         Map<Long, String> professionNameMap = professionMapper.selectList(null).stream()
                 .collect(Collectors.toMap(Profession::getId, Profession::getName, (a, b) -> a));
         int created = 0;
+        int totalStudents = students.size();
+        int processedStudents = 0;
         for (Student student : students) {
+            // 更新异步任务进度
+            if (task != null) {
+                processedStudents++;
+                int progress = totalStudents > 0 ? (int)(processedStudents * 100.0 / totalStudents) : 100;
+                com.exam.service.impl.AsyncTaskServiceImpl.setProgress(task, progress, processedStudents);
+            }
             String idCard = StringUtils.hasText(student.getIdCard()) ? student.getIdCard().trim() : null;
             if (idCard == null) continue;
             String name = student.getName() != null ? student.getName() : "";
@@ -2372,5 +2389,92 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             }
         }
         return 1;
+    }
+
+    /**
+     * 证书专业变更后,反向同步到学生管理(按身份证号匹配)。
+     * 该身份证号在证书表中的所有专业,同步为学生管理的专业关联。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void syncProfessionToStudent(String idCard) {
+        if (!StringUtils.hasText(idCard)) return;
+        idCard = idCard.trim();
+        // 1. 查证书表中该身份证号的所有专业
+        List<Certificate> certs = this.list(new LambdaQueryWrapper<Certificate>()
+                .eq(Certificate::getIdCard, idCard));
+        Set<String> certProfessions = new LinkedHashSet<>();
+        for (Certificate c : certs) {
+            if (StringUtils.hasText(c.getProfession())) {
+                certProfessions.add(c.getProfession().trim());
+            }
+        }
+        // 2. 查学生表中该身份证号的学生
+        List<Student> students = studentMapper.selectList(
+                new LambdaQueryWrapper<Student>().eq(Student::getIdCard, idCard));
+        if (students.isEmpty()) return;
+        // 加载专业 name -> id 映射
+        Map<String, Long> profNameToId = professionMapper.selectList(null).stream()
+                .collect(Collectors.toMap(Profession::getName, Profession::getId, (a, b) -> a));
+        for (Student student : students) {
+            // 3. 获取学生当前的专业关联
+            List<StudentProfession> existingSps = studentProfessionMapper.selectList(
+                    new LambdaQueryWrapper<StudentProfession>()
+                            .eq(StudentProfession::getStudentId, student.getId()));
+            Map<Long, String> professionNameMap = professionMapper.selectList(null).stream()
+                    .collect(Collectors.toMap(Profession::getId, Profession::getName, (a, b) -> a));
+            Set<String> existingProfNames = new HashSet<>();
+            for (StudentProfession sp : existingSps) {
+                String pname = professionNameMap.get(sp.getProfessionId());
+                if (pname != null) existingProfNames.add(pname.trim());
+            }
+            // 4. 添加证书中有但学生没有的专业
+            for (String profName : certProfessions) {
+                if (!existingProfNames.contains(profName)) {
+                    Long profId = profNameToId.get(profName);
+                    if (profId == null) {
+                        // 专业不存在,自动创建
+                        Profession newProf = new Profession();
+                        newProf.setName(profName);
+                        newProf.setSort(0);
+                        newProf.setStatus(1);
+                        professionMapper.insert(newProf);
+                        profId = newProf.getId();
+                        profNameToId.put(profName, profId);
+                    }
+                    StudentProfession sp = new StudentProfession();
+                    sp.setStudentId(student.getId());
+                    sp.setProfessionId(profId);
+                    studentProfessionMapper.insert(sp);
+                }
+            }
+            // 5. 删除学生有但证书中没有的专业(证书管理删除了某专业,学生管理也删除)
+            List<Long> toDelete = new ArrayList<>();
+            for (StudentProfession sp : existingSps) {
+                String pname = professionNameMap.get(sp.getProfessionId());
+                if (pname != null && !certProfessions.contains(pname.trim())) {
+                    toDelete.add(sp.getId());
+                }
+            }
+            if (!toDelete.isEmpty()) {
+                studentProfessionMapper.deleteBatchIds(toDelete);
+            }
+            // 6. 更新学生主专业字段为第一个
+            if (!certProfessions.isEmpty()) {
+                String firstProf = certProfessions.iterator().next();
+                Long firstProfId = profNameToId.get(firstProf);
+                if (firstProfId != null && !firstProfId.equals(student.getProfessionId())) {
+                    student.setProfessionId(firstProfId);
+                    studentMapper.updateById(student);
+                }
+            } else if (existingSps.stream().anyMatch(sp -> {
+                String pname = professionNameMap.get(sp.getProfessionId());
+                return pname == null || !certProfessions.contains(pname.trim());
+            })) {
+                // 证书中没有专业了,学生主专业也清空
+                student.setProfessionId(null);
+                studentMapper.updateById(student);
+            }
+        }
     }
 }
