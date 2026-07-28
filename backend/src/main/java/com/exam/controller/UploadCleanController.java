@@ -16,6 +16,16 @@ import java.util.regex.Pattern;
  * 上传文件清理(图片/视频)。
  * <p>扫描 uploads 目录,比对数据库中所有字符串列里引用的 /uploads/ 文件名,
  * 找出未被任何业务数据引用的"孤儿文件",支持预览与删除。</p>
+ * <p>安全机制(多重防护,避免误删):
+ * <ol>
+ *   <li>跳过 cert_preview 缓存目录</li>
+ *   <li>跳过 static 目录(旧系统导入文件,引用格式多样)</li>
+ *   <li>按文件名匹配(同名文件只要有一个被引用,全部保护)</li>
+ *   <li>按相对路径匹配(image/20250715/xxx.png)</li>
+ *   <li>按多种路径前缀匹配(uploads/、static/upload/、static/)</li>
+ *   <li>删除前二次验证: 同时检查文件名和相对路径</li>
+ * </ol>
+ * </p>
  */
 @RestController
 @RequestMapping("/admin/upload")
@@ -27,13 +37,22 @@ public class UploadCleanController {
     @Value("${upload.path}")
     private String uploadPath;
 
-    /** 匹配字符串中 /uploads/xxx 或 /static/upload/xxx 或 /static/证书模板图/xxx 形式的引用 */
-    private static final Pattern UPLOAD_REF = Pattern.compile("/(?:uploads|static/upload|static/证书模板图)/([^\"'\\s<>)(\\\\]+)");
+    /**
+     * 匹配字符串中各种形式的上传文件引用:
+     * - /uploads/xxx
+     * - /static/upload/xxx
+     * - /static/证书模板图/xxx
+     * - /static/xxx (旧路径,如 /static/image/xxx.png)
+     * 同时兼容无前导 / 的情况: uploads/xxx
+     */
+    private static final Pattern UPLOAD_REF = Pattern.compile(
+            "/?(?:uploads|static/upload|static/证书模板图|static)/([^\"'\\s<>)(\\\\]+)"
+    );
 
     /**
      * 扫描孤儿文件(未被数据库任何业务数据引用的上传文件)。
      *
-     * @return { total, orphanCount, orphans:[{filename, size, lastModified, path}] }
+     * @return { total, orphanCount, referencedCount, orphans:[{filename, size, lastModified, path}] }
      */
     @GetMapping("/orphans")
     public Result<Map<String, Object>> orphans() {
@@ -44,27 +63,25 @@ public class UploadCleanController {
             collectFiles(root, diskFiles);
         }
 
-        // 2. 收集数据库中所有被引用的文件名(同时收集相对路径)
+        // 2. 收集数据库中所有被引用的文件名和相对路径
         Set<String> referencedNames = collectReferencedFilenames();
         Set<String> referencedPaths = collectReferencedFilePaths();
 
         // 3. 计算孤儿
         List<Map<String, Object>> orphanList = new ArrayList<>();
+        int referencedCount = 0;
         for (File f : diskFiles) {
             String name = f.getName();
             // 跳过证书预览缓存文件(由系统管理,不算孤儿)
             if (isUnderCertPreview(f)) continue;
             // 跳过 static 目录下的文件(旧系统导入的文件,引用格式多样,容易误报)
             if (isUnderStaticDir(f)) continue;
-            // 按文件名匹配
-            if (referencedNames.contains(name)) continue;
-            // 按相对路径匹配(如 image/20250715/xxx.png)
-            String relPath = relativePath(root, f).replace("/", "/");
-            if (relPath.startsWith("/")) relPath = relPath.substring(1);
-            if (referencedPaths.contains(relPath)) continue;
-            // 按相对路径的各层级匹配(如 uploads/image/20250715/xxx.png)
-            if (referencedPaths.contains("uploads/" + relPath)) continue;
-            if (referencedPaths.contains("static/upload/" + relPath)) continue;
+
+            // 多重匹配检查
+            if (isFileReferenced(f, root, name, referencedNames, referencedPaths)) {
+                referencedCount++;
+                continue;
+            }
 
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("filename", name);
@@ -76,6 +93,7 @@ public class UploadCleanController {
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("total", diskFiles.size());
+        data.put("referencedCount", referencedCount);
         data.put("orphanCount", orphanList.size());
         data.put("orphans", orphanList);
         return Result.success(data);
@@ -100,7 +118,8 @@ public class UploadCleanController {
         }
 
         // 安全:删除前再次确认这些文件未被引用,避免误删
-        Set<String> referenced = collectReferencedFilenames();
+        Set<String> referencedNames = collectReferencedFilenames();
+        Set<String> referencedPaths = collectReferencedFilePaths();
         File root = new File(uploadPath);
 
         int deleted = 0;
@@ -120,7 +139,8 @@ public class UploadCleanController {
                 failed.add(fail(name, "static目录下的文件不可删除(旧系统导入文件)"));
                 continue;
             }
-            if (referenced.contains(name)) {
+            // 二次验证: 同时检查文件名和相对路径
+            if (isFileReferenced(target, root, name, referencedNames, referencedPaths)) {
                 failed.add(fail(name, "该文件仍被业务数据引用,已跳过"));
                 continue;
             }
@@ -159,6 +179,32 @@ public class UploadCleanController {
 
     // ============ 内部方法 ============
 
+    /**
+     * 多重匹配: 判断文件是否被数据库引用
+     * 检查顺序(任一命中即认为被引用):
+     * 1. 文件名匹配(同名文件只要有一个被引用,全部保护)
+     * 2. 相对路径匹配(如 image/20250715/xxx.png)
+     * 3. uploads/ + 相对路径匹配
+     * 4. static/upload/ + 相对路径匹配
+     * 5. static/ + 相对路径匹配(旧路径格式)
+     */
+    private boolean isFileReferenced(File f, File root, String name,
+                                     Set<String> referencedNames, Set<String> referencedPaths) {
+        // 1. 按文件名匹配(最宽泛,同名即保护)
+        if (referencedNames.contains(name)) return true;
+
+        // 2. 按相对路径匹配
+        String relPath = relativePath(root, f);
+        if (relPath.startsWith("/")) relPath = relPath.substring(1);
+
+        if (referencedPaths.contains(relPath)) return true;
+        if (referencedPaths.contains("uploads/" + relPath)) return true;
+        if (referencedPaths.contains("static/upload/" + relPath)) return true;
+        if (referencedPaths.contains("static/" + relPath)) return true;
+
+        return false;
+    }
+
     /** 递归收集目录下所有文件 */
     private void collectFiles(File dir, List<File> out) {
         File[] children = dir.listFiles();
@@ -172,14 +218,14 @@ public class UploadCleanController {
         }
     }
 
-    /** 查询数据库所有字符串列中 /uploads/ 引用到的文件名集合 */
+    /** 查询数据库所有字符串列中引用到的文件名集合 */
     private Set<String> collectReferencedFilenames() {
         Set<String> referenced = new HashSet<>();
         collectReferencedFromDb(referenced, null);
         return referenced;
     }
 
-    /** 查询数据库所有字符串列中 /uploads/ 引用到的完整路径集合(如 image/20250715/xxx.png) */
+    /** 查询数据库所有字符串列中引用到的完整路径集合(如 image/20250715/xxx.png) */
     private Set<String> collectReferencedFilePaths() {
         Set<String> paths = new HashSet<>();
         collectReferencedFromDb(null, paths);
@@ -216,8 +262,14 @@ public class UploadCleanController {
             String table = String.valueOf(col.get("TABLE_NAME"));
             String column = String.valueOf(col.get("COLUMN_NAME"));
             try {
+                // 宽匹配: 覆盖 /uploads/、/static/upload/、/static/证书模板图/、/static/、uploads/ 等所有格式
                 List<String> values = jdbcTemplate.queryForList(
-                        "SELECT `" + column + "` FROM `" + table + "` WHERE `" + column + "` LIKE '%/uploads/%' OR `" + column + "` LIKE '%/static/upload/%' OR `" + column + "` LIKE '%/static/证书模板图/%' OR `" + column + "` LIKE '%uploads/%'",
+                        "SELECT `" + column + "` FROM `" + table + "` WHERE " +
+                                "`" + column + "` LIKE '%/uploads/%' " +
+                                "OR `" + column + "` LIKE '%/static/upload/%' " +
+                                "OR `" + column + "` LIKE '%/static/证书模板图/%' " +
+                                "OR `" + column + "` LIKE '%/static/%' " +
+                                "OR `" + column + "` LIKE '%uploads/%'",
                         String.class);
                 for (String v : values) {
                     if (v == null) continue;
