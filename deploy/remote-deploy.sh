@@ -163,7 +163,7 @@ fi
 
 # 6.1 证书数据恢复 (一次性,通过标记文件确保只执行一次)
 echo "[6.5/9] 检查证书数据恢复..."
-RECOVER_MARKER="${DEPLOY_DIR}/.cert_recovered_v4"
+RECOVER_MARKER="${DEPLOY_DIR}/.cert_recovered_v5"
 if [ -f "$RECOVER_MARKER" ]; then
     echo "  证书数据恢复已执行过(标记文件存在: $RECOVER_MARKER),跳过"
 else

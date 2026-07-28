@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """
-证书数据完整恢复脚本 v4 - 唯一索引处理版
-=========================================
+证书数据完整恢复脚本 v5 - 永久去除唯一索引 + 全表恢复
+=====================================================
 核心修复:
-  1. 【关键】恢复前临时删除 certificate 表的唯一索引(uk_idcard_profession/uk_cert_no/uk_student_no)
-     → 这些索引导致 INSERT IGNORE 静默丢弃约1000条冲突记录!
-  2. 恢复完成后重新添加唯一索引(先去重保留最新记录)
-  3. 新增 certificate_user 表恢复(证书用户关联)
+  1. 【关键】永久删除 certificate 表的唯一索引(uk_idcard_profession/uk_cert_no/uk_student_no)
+     → 用户要求不再添加这些索引,避免 INSERT IGNORE 静默丢弃数据
+     → 同时修复照片关联: 索引导致部分证书ID恢复失败, certificate_photo.certificate_id 指向空
+  2. 新增 certificate_type 表恢复(证书类型字典表)
+  3. 新增 certificate_export_column 表恢复(导出列配置)
   4. 动态读取表结构,不再硬编码列顺序
-  5. 恢复5张关联表: certificate_template / certificate_template_field / certificate / certificate_photo / certificate_user
+  5. 恢复7张关联表:
+     - certificate_type            (证书类型字典)
+     - certificate_template        (证书模板)
+     - certificate_template_field  (模板字段位置)
+     - certificate_export_column   (导出列配置)
+     - certificate                 (证书主表)
+     - certificate_photo           (学员照片)
+     - certificate_user            (证书用户关联)
   6. 直接读取本地binlog文件,不连接MySQL读binlog
 
 用法: python3 recover_certificate_full.py
@@ -30,25 +38,27 @@ DB_USER = os.environ.get("DB_USER", "root")
 DB_PASSWORD = os.environ.get("MYSQL_PASS", os.environ.get("DB_PASSWORD", "Root@123456"))
 DB_NAME = os.environ.get("DB_NAME", "exam_platform")
 
-# 恢复时间范围: 今天上午11点之后
-RECOVER_START = "2026-07-28 11:00:00"
-RECOVER_END   = "2026-07-28 23:59:59"
+# 恢复时间范围: 今天12点到14点
+RECOVER_START = "2026-07-28 12:00:00"
+RECOVER_END   = "2026-07-28 14:00:00"
 
 # MySQL数据目录(binlog文件所在位置)
 MYSQL_DATA_DIR = "/var/lib/mysql"
 
-# 需要恢复的表列表(按依赖顺序)
+# 需要恢复的表列表(按依赖顺序:先字典/模板,再主表,最后关联表)
 RECOVER_TABLES = [
-    "certificate_template",
-    "certificate_template_field",
-    "certificate",
-    "certificate_photo",
-    "certificate_user",
+    "certificate_type",            # 证书类型字典(先恢复,主表依赖类型名)
+    "certificate_template",        # 证书模板
+    "certificate_template_field",  # 模板字段位置
+    "certificate_export_column",   # 导出列配置
+    "certificate",                 # 证书主表
+    "certificate_photo",           # 学员照片(依赖 certificate.id)
+    "certificate_user",            # 证书用户关联
 ]
 
-# certificate 表上需要临时删除的唯一索引(恢复后重建)
+# certificate 表上需要永久删除的唯一索引(不再重建)
 CERT_UNIQUE_INDEXES = [
-    "uk_idcard_profession",  # (id_card, profession) — 最主要的元凶
+    "uk_idcard_profession",  # (id_card, profession) — 主要元凶,导致约1000条数据被静默丢弃
     "uk_cert_no",            # cert_no
     "uk_student_no",         # student_no
 ]
@@ -63,7 +73,6 @@ def run_mysql_cmd(sql, timeout=30):
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     if result.returncode != 0:
-        # 不打印stderr到stdout,只返回None
         return None
     return result.stdout.strip()
 
@@ -236,8 +245,7 @@ def escape_sql_val(val):
 
 
 def drop_index_if_exists(table_name, index_name):
-    """安全删除索引(如果存在)"""
-    # 检查索引是否存在
+    """永久删除索引(如果存在)"""
     check = run_mysql_cmd(
         f"SELECT COUNT(*) FROM information_schema.STATISTICS "
         f"WHERE TABLE_SCHEMA='{DB_NAME}' AND TABLE_NAME='{table_name}' "
@@ -247,7 +255,7 @@ def drop_index_if_exists(table_name, index_name):
         print(f"    删除索引 {index_name} ...")
         result = run_mysql_cmd_verbose(f"ALTER TABLE `{table_name}` DROP INDEX `{index_name}`;")
         if result is not None:
-            print(f"    ✅ 已删除 {index_name}")
+            print(f"    ✅ 已永久删除 {index_name}")
             return True
         else:
             print(f"    ❌ 删除 {index_name} 失败")
@@ -255,88 +263,6 @@ def drop_index_if_exists(table_name, index_name):
     else:
         print(f"    索引 {index_name} 不存在,跳过")
         return False
-
-
-def recreate_unique_indexes():
-    """恢复后重建唯一索引(先去重)"""
-    print()
-    print("  ── 重建唯一索引 ──")
-
-    # 1. 先清理专业为空的脏数据
-    print("    清理专业为空的记录...")
-    run_mysql_cmd_verbose(
-        "DELETE FROM `certificate` WHERE (profession IS NULL OR profession = '');"
-    )
-
-    # 2. 按 id_card+profession 去重(保留id最大的)
-    print("    按 (id_card, profession) 去重,保留最新记录...")
-    dedup_result = run_mysql_cmd_verbose(
-        "DELETE c1 FROM `certificate` c1 "
-        "INNER JOIN `certificate` c2 "
-        "ON c1.id_card = c2.id_card AND c1.profession = c2.profession "
-        "AND c1.id < c2.id;"
-    )
-
-    # 查看去重后的数量
-    after_dedup = run_mysql_cmd("SELECT COUNT(*) FROM `certificate`")
-    print(f"    去重后记录数: {after_dedup}")
-
-    # 3. 重建 uk_idcard_profession
-    check = run_mysql_cmd(
-        f"SELECT COUNT(*) FROM information_schema.STATISTICS "
-        f"WHERE TABLE_SCHEMA='{DB_NAME}' AND TABLE_NAME='certificate' "
-        f"AND INDEX_NAME='uk_idcard_profession';"
-    )
-    if check and int(check) == 0:
-        print("    重建 uk_idcard_profession ...")
-        result = run_mysql_cmd_verbose(
-            "ALTER TABLE `certificate` ADD UNIQUE INDEX `uk_idcard_profession` (`id_card`, `profession`);"
-        )
-        if result is not None:
-            print("    ✅ uk_idcard_profession 已重建")
-        else:
-            print("    ❌ uk_idcard_profession 重建失败(可能有重复数据)")
-    else:
-        print("    uk_idcard_profession 已存在,跳过")
-
-    # 4. 重建 uk_cert_no (允许NULL,不冲突)
-    check = run_mysql_cmd(
-        f"SELECT COUNT(*) FROM information_schema.STATISTICS "
-        f"WHERE TABLE_SCHEMA='{DB_NAME}' AND TABLE_NAME='certificate' "
-        f"AND INDEX_NAME='uk_cert_no';"
-    )
-    if check and int(check) == 0:
-        print("    重建 uk_cert_no ...")
-        # cert_no 可能有重复或NULL,先清理
-        run_mysql_cmd_verbose(
-            "DELETE c1 FROM `certificate` c1 "
-            "INNER JOIN `certificate` c2 "
-            "ON c1.cert_no = c2.cert_no AND c1.cert_no IS NOT NULL AND c1.cert_no != '' "
-            "AND c1.id < c2.id;"
-        )
-        run_mysql_cmd_verbose(
-            "ALTER TABLE `certificate` ADD UNIQUE INDEX `uk_cert_no` (`cert_no`);"
-        )
-        print("    ✅ uk_cert_no 已重建")
-
-    # 5. 重建 uk_student_no
-    check = run_mysql_cmd(
-        f"SELECT COUNT(*) FROM information_schema.STATISTICS "
-        f"WHERE TABLE_SCHEMA='{DB_NAME}' AND TABLE_NAME='certificate' "
-        f"AND INDEX_NAME='uk_student_no';"
-    )
-    if check and int(check) == 0:
-        print("    重建 uk_student_no ...")
-        run_mysql_cmd_verbose(
-            "DELETE c1 FROM `certificate` c1 "
-            "INNER JOIN `certificate` c2 "
-            "ON c1.student_no = c2.student_no AND c1.student_no IS NOT NULL AND c1.student_no != '' "
-            "AND c1.id < c2.id;"
-        )
-        run_mysql_cmd_verbose(
-            "ALTER TABLE `certificate` ADD UNIQUE INDEX `uk_student_no` (`student_no`);"
-        )
-        print("    ✅ uk_student_no 已重建")
 
 
 def recover_table(table_name, columns, all_binlog_files, recover_start_dt, recover_end_dt):
@@ -411,13 +337,12 @@ def recover_table(table_name, columns, all_binlog_files, recover_start_dt, recov
     print(f"\n  恢复预览(前5条):")
     for rec in missing_records[:5]:
         info_parts = [f"id={rec.get('id')}"]
-        for preview_col in ['name', 'id_card', 'profession', 'cert_type', 'template_id', 'url', 'field_key']:
+        for preview_col in ['name', 'id_card', 'profession', 'cert_type', 'template_id', 'url', 'field_key', 'code']:
             if preview_col in rec:
                 info_parts.append(f"{preview_col}={rec[preview_col]}")
         print(f"    {', '.join(info_parts)}")
 
-    # 逐条恢复 — 使用 INSERT IGNORE(仅按主键id去重)
-    # 唯一索引已在恢复前临时删除,不会静默丢弃数据
+    # 逐条恢复
     print(f"\n  开始恢复 {len(missing_records)} 条记录...")
     inserted = 0
     failed = 0
@@ -465,13 +390,13 @@ def recover_table(table_name, columns, all_binlog_files, recover_start_dt, recov
 
 def main():
     print()
-    print("╔══════════════════════════════════════════════════════════════════╗")
-    print("║  证书数据完整恢复 v4 (唯一索引处理 + 全表恢复)                    ║")
-    print("║  修复: INSERT IGNORE 被唯一索引静默丢弃数据的问题                 ║")
-    print("╚══════════════════════════════════════════════════════════════════╝")
+    print("╔══════════════════════════════════════════════════════════════════════╗")
+    print("║  证书数据完整恢复 v5 (永久去索引 + 7表全恢复)                        ║")
+    print("║  修复: 唯一索引导致数据丢失 + 照片关联断裂 + 证书类型/导出列遗漏    ║")
+    print("╚══════════════════════════════════════════════════════════════════════╝")
     print()
     print(f"  恢复时间范围: {RECOVER_START} ~ {RECOVER_END}")
-    print(f"  恢复表: {', '.join(RECOVER_TABLES)}")
+    print(f"  恢复表({len(RECOVER_TABLES)}张): {', '.join(RECOVER_TABLES)}")
     print(f"  读取方式: 本地binlog文件(不连接MySQL读binlog)")
     print()
 
@@ -508,26 +433,18 @@ def main():
     for f in binlog_files:
         print(f"    - {f['name']} ({f['size']/1024/1024:.1f} MB)")
 
-    # 4. 【关键】临时删除 certificate 表的唯一索引
+    # 4. 【关键】永久删除 certificate 表的唯一索引
     print()
-    print("━━━ 4. 临时删除 certificate 唯一索引 ━━━")
-    print("  ⚠️  这一步是关键!")
-    print("  certificate 表有唯一索引 uk_idcard_profession (id_card, profession)")
-    print("  INSERT IGNORE 会静默丢弃与现有记录 (id_card, profession) 冲突的数据")
-    print("  临时删除索引后,所有被删除的记录都能完整恢复")
-    print("  恢复完成后会自动重建索引(先去重保留最新记录)")
+    print("━━━ 4. 永久删除 certificate 唯一索引 ━━━")
+    print("  ⚠️  用户要求: 不再添加唯一索引")
+    print("  原因:")
+    print("    1. uk_idcard_profession 导致 INSERT IGNORE 静默丢弃约1000条恢复数据")
+    print("    2. 被丢弃的证书ID对应的照片(certificate_photo.certificate_id)变成孤儿,照片不显示")
+    print("    3. 去除索引后,所有被删除的记录都能完整恢复,照片关联也恢复正常")
     print()
 
-    dropped_indexes = []
     for idx_name in CERT_UNIQUE_INDEXES:
-        dropped = drop_index_if_exists("certificate", idx_name)
-        if dropped:
-            dropped_indexes.append(idx_name)
-
-    if not dropped_indexes:
-        print("  没有需要删除的索引(可能已被删除)")
-    else:
-        print(f"  已删除 {len(dropped_indexes)} 个唯一索引: {', '.join(dropped_indexes)}")
+        drop_index_if_exists("certificate", idx_name)
 
     # 5. 逐表恢复
     print()
@@ -546,15 +463,9 @@ def main():
         recovered = recover_table(table_name, cols, binlog_files, recover_start_dt, recover_end_dt)
         total_recovered += recovered
 
-    # 6. 【关键】重建唯一索引
+    # 6. 最终验证(不再重建索引)
     print()
-    print("━━━ 6. 重建 certificate 唯一索引 ━━━")
-    print("  恢复完成后,重建唯一索引(先去重保留最新记录)")
-    recreate_unique_indexes()
-
-    # 7. 最终验证
-    print()
-    print("━━━ 7. 最终验证 ━━━")
+    print("━━━ 6. 最终验证 ━━━")
     print(f"  总恢复记录数: {total_recovered}")
     print()
 
@@ -592,30 +503,41 @@ def main():
             print(f"    {line}")
 
     # 照片统计
-    photo_stats = run_mysql_cmd("SELECT COUNT(DISTINCT id_card) FROM certificate_photo")
-    if photo_stats:
-        print(f"  照片覆盖学员数: {photo_stats}")
+    print()
+    photo_total = run_mysql_cmd("SELECT COUNT(*) FROM certificate_photo")
+    photo_distinct = run_mysql_cmd("SELECT COUNT(DISTINCT id_card) FROM certificate_photo")
+    photo_with_cert = run_mysql_cmd(
+        "SELECT COUNT(*) FROM certificate_photo cp "
+        "INNER JOIN certificate c ON cp.certificate_id = c.id"
+    )
+    print(f"  照片总数: {photo_total}")
+    print(f"  照片覆盖学员数: {photo_distinct}")
+    print(f"  照片成功关联证书数: {photo_with_cert}")
+
+    # certificate_type 统计
+    type_count = run_mysql_cmd("SELECT COUNT(*) FROM certificate_type")
+    print(f"  证书类型字典: {type_count} 种")
 
     # certificate_user 统计
     user_stats = run_mysql_cmd("SELECT COUNT(*) FROM certificate_user")
-    if user_stats:
-        print(f"  证书用户关联: {user_stats} 条")
+    print(f"  证书用户关联: {user_stats} 条")
 
-    # 索引验证
+    # 索引验证(确认已永久删除)
     print()
-    print("  唯一索引状态:")
+    print("  唯一索引状态(应全部不存在):")
     for idx_name in CERT_UNIQUE_INDEXES:
         check = run_mysql_cmd(
             f"SELECT COUNT(*) FROM information_schema.STATISTICS "
             f"WHERE TABLE_SCHEMA='{DB_NAME}' AND TABLE_NAME='certificate' "
             f"AND INDEX_NAME='{idx_name}';"
         )
-        status = "✅ 存在" if check and int(check) > 0 else "❌ 缺失"
+        status = "❌ 仍存在" if check and int(check) > 0 else "✅ 已删除"
         print(f"    {idx_name}: {status}")
 
     print()
     print("══════════════════════════════════════")
     print("  全表恢复完成!")
+    print("  唯一索引已永久删除,不再重建")
     print("══════════════════════════════════════")
 
 

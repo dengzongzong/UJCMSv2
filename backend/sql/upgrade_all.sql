@@ -449,27 +449,40 @@ UPDATE `certificate` c
     AND c.profession REGEXP '^[0-9]+$';
 
 -- ============================================================
--- 13. 证书表去重 + 添加 (id_card, profession) 唯一索引
---     先删除专业为空的脏数据,再按 id_card+profession 去重(保留最新一条)
+-- 13. 证书表 (id_card, profession) 唯一索引 — 已废弃,不再添加
+--     用户要求: 不再添加唯一索引,避免数据恢复时 INSERT IGNORE 静默丢弃记录
+--     如需去重,请在应用层处理
 -- ============================================================
--- 13a. 删除专业为空的证书记录
-DELETE FROM `certificate`
-  WHERE (profession IS NULL OR profession = '');
-
--- 13b. 按 id_card+profession 去重: 同一身份证+同一专业只保留 id 最大(最新)的一条
-DELETE c1 FROM `certificate` c1
-  INNER JOIN `certificate` c2
-  ON c1.id_card = c2.id_card
-    AND c1.profession = c2.profession
-    AND c1.id < c2.id;
-
--- 13c. 添加唯一索引(幂等: 先检查再添加)
+-- 删除已存在的 uk_idcard_profession 索引(如果有)
 SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
   WHERE table_schema = DATABASE()
     AND table_name = 'certificate'
     AND index_name = 'uk_idcard_profession');
-SET @sql = IF(@idx_exists = 0,
-  'ALTER TABLE `certificate` ADD UNIQUE INDEX `uk_idcard_profession` (`id_card`, `profession`)',
+SET @sql = IF(@idx_exists > 0,
+  'ALTER TABLE `certificate` DROP INDEX `uk_idcard_profession`',
+  'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- 同理删除 uk_cert_no, uk_student_no 唯一索引(避免恢复时丢数据)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate'
+    AND index_name = 'uk_cert_no');
+SET @sql = IF(@idx_exists > 0,
+  'ALTER TABLE `certificate` DROP INDEX `uk_cert_no`',
+  'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate'
+    AND index_name = 'uk_student_no');
+SET @sql = IF(@idx_exists > 0,
+  'ALTER TABLE `certificate` DROP INDEX `uk_student_no`',
   'SELECT 1');
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
