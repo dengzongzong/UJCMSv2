@@ -161,82 +161,9 @@ fi
 # - import_missing_certs.sql      (缺失证书导入)
 # - fix_dup_certs.sql             (证书编号重复修复)
 
-# 6.1 证书数据恢复 (一次性,通过标记文件确保只执行一次)
-echo "[6.5/9] 检查证书数据恢复..."
-RECOVER_MARKER="${DEPLOY_DIR}/.cert_recovered_v6"
-if [ -f "$RECOVER_MARKER" ]; then
-    echo "  证书数据恢复已执行过(标记文件存在: $RECOVER_MARKER),跳过"
-else
-    if [ -f "recover_certificate_full.py" ]; then
-        echo "  首次部署检测到恢复脚本,开始执行证书数据恢复..."
-        echo "  恢复范围: 今天12:00-14:00的DELETE记录"
-        echo "  恢复表: certificate_type / certificate_template / certificate_template_field / certificate_export_column / certificate / certificate_photo / certificate_user"
-        # 检查 python3 和 mysqlbinlog 是否可用
-        if command -v python3 &>/dev/null && command -v mysqlbinlog &>/dev/null; then
-            # 传入数据库密码 via 环境变量,设置较长超时
-            MYSQL_PASS="${MYSQL_PASS}" timeout 600 python3 recover_certificate_full.py 2>&1 || {
-                echo "  ⚠️  恢复脚本执行出错(已超时或异常),但不影响部署"
-                echo "  可在服务器上手动重新执行: MYSQL_PASS='xxx' python3 recover_certificate_full.py"
-            }
-            # 无论成功与否都创建标记文件(避免每次部署重复执行)
-            touch "$RECOVER_MARKER"
-            echo "  恢复脚本已执行,标记文件已创建: $RECOVER_MARKER"
-            echo "  如需重新恢复: rm -f $RECOVER_MARKER && MYSQL_PASS='xxx' python3 recover_certificate_full.py"
-        else
-            echo "  ⚠️  python3 或 mysqlbinlog 不可用,跳过自动恢复"
-            echo "  请在服务器上手动执行: MYSQL_PASS='xxx' python3 recover_certificate_full.py"
-        fi
-    else
-        echo "  recover_certificate_full.py 不存在,跳过"
-    fi
-fi
-
-# 6.2 证书恢复数据修复 — 从 extra_json 补全 certType/templateId/成绩/照片关联
-echo "[6.6/9] 检查证书恢复数据修复..."
-FIX_MARKER="${DEPLOY_DIR}/.cert_fields_fixed_v1"
-if [ -f "$FIX_MARKER" ]; then
-    echo "  证书字段修复已执行过(标记文件存在: $FIX_MARKER),跳过"
-else
-    if [ -f "fix_recovered_fields.py" ]; then
-        echo "  开始执行证书字段修复(从 extra_json 提取 certType/成绩,重新绑定模板,修复照片关联)..."
-        if command -v python3 &>/dev/null; then
-            MYSQL_PASS="${MYSQL_PASS}" timeout 300 python3 fix_recovered_fields.py 2>&1 || {
-                echo "  ⚠️  字段修复脚本执行出错,但不影响部署"
-                echo "  可在服务器上手动重新执行: MYSQL_PASS='xxx' python3 fix_recovered_fields.py"
-            }
-            touch "$FIX_MARKER"
-            echo "  字段修复脚本已执行,标记文件已创建: $FIX_MARKER"
-            echo "  如需重新修复: rm -f $FIX_MARKER && MYSQL_PASS='xxx' python3 fix_recovered_fields.py"
-        else
-            echo "  ⚠️  python3 不可用,跳过自动修复"
-            echo "  请在服务器上手动执行: MYSQL_PASS='xxx' python3 fix_recovered_fields.py"
-        fi
-    else
-        echo "  fix_recovered_fields.py 不存在,跳过"
-    fi
-fi
-
-# 6.3 删除证书类型为空的数据(一次性,通过标记文件确保只执行一次)
-echo "[6.7/9] 删除证书类型为空的证书记录..."
-CLEAN_MARKER="${DEPLOY_DIR}/.cert_empty_type_cleaned_v1"
-if [ -f "$CLEAN_MARKER" ]; then
-    echo "  空证书类型清理已执行过(标记文件存在: $CLEAN_MARKER),跳过"
-else
-    # 先统计要删除的记录数
-    EMPTY_COUNT=$(mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} -N -e "SELECT COUNT(*) FROM certificate WHERE cert_type IS NULL OR cert_type = '';" 2>/dev/null)
-    echo "  证书类型为空的记录数: ${EMPTY_COUNT:-0}"
-    if [ "${EMPTY_COUNT:-0}" -gt 0 ]; then
-        echo "  开始删除..."
-        # 删除 certificate 表中 cert_type 为空的记录
-        mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} -e "DELETE FROM certificate WHERE cert_type IS NULL OR cert_type = '';" 2>&1 | grep -v "Using a password"
-        REMAINING=$(mysql -u${MYSQL_USER} -p${MYSQL_PASS} ${MYSQL_DB} -N -e "SELECT COUNT(*) FROM certificate WHERE cert_type IS NULL OR cert_type = '';" 2>/dev/null)
-        echo "  ✅ 删除完成,剩余空类型记录: ${REMAINING:-0}"
-    else
-        echo "  无需删除,没有证书类型为空的记录"
-    fi
-    touch "$CLEAN_MARKER"
-    echo "  标记文件已创建: $CLEAN_MARKER"
-fi
+# 一次性数据恢复/修复脚本已全部执行完毕,已从部署流程中移除
+# 包括: recover_certificate_full.py, fix_recovered_fields.py, 删除空证书类型
+# 如需重新执行,请在服务器上手动操作
 
 # 7. 配置 Nginx (HTTPS 模式,带域名和SSL证书)
 echo "[7/8] 配置 Nginx (HTTPS)..."
