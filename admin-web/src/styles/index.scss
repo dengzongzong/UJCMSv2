@@ -87,15 +87,19 @@ ol {
 }
 
 // ====== 表格滚动条修复 ======
-// JS (mixin) 负责:
-//   1. 覆盖 el-table 根元素 width:100% → 列宽之和 px
-//   2. MutationObserver 强制 body-wrapper overflow:auto
-//   3. 同步 header/body 水平滚动
+// 原理: el-table 根 width:100% (容器宽度), body-wrapper 也 100%
+//   内部 table 设为列宽之和 → 超出 body-wrapper → 水平滚动条
+//   MutationObserver 防止 Element UI 重置样式
 // CSS 只辅助 table-layout:fixed, 其余由 JS 控制
 
 .el-table__body,
 .el-table__header {
   table-layout: fixed !important;
+}
+
+// 确保 el-table 根元素不裁剪 body-wrapper 的滚动条
+.el-table {
+  overflow: visible !important;
 }
 
 .filter-container {
