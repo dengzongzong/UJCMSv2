@@ -2044,7 +2044,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
 
     /**
      * 从学生管理同步数据到证书表(certificate)。
-     * 按身份证号+专业维度检查,已存在的不重复创建。
+     * 按 姓名+身份证+专业 三维度检查,已存在的不重复创建。
      * @return 新创建的记录数
      */
     @Override
@@ -2056,27 +2056,34 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         }
         List<Student> students = studentMapper.selectList(queryWrapper);
         if (students.isEmpty()) return 0;
-        // 加载专业名称映射
+        // 加载专业 id -> name 映射(直接从 profession 表查,不依赖 JOIN 映射)
         Map<Long, String> professionNameMap = professionMapper.selectList(null).stream()
                 .collect(Collectors.toMap(Profession::getId, Profession::getName, (a, b) -> a));
         int created = 0;
         for (Student student : students) {
             String idCard = StringUtils.hasText(student.getIdCard()) ? student.getIdCard().trim() : null;
             if (idCard == null) continue;
-            // 查学生的专业
+            // 查学生的专业关联(用 LambdaQueryWrapper,避免 @Select JOIN 结果映射问题)
             List<StudentProfession> sps = student.getId() == null
                     ? Collections.emptyList()
-                    : studentProfessionMapper.selectByStudentId(student.getId());
+                    : studentProfessionMapper.selectList(
+                            new LambdaQueryWrapper<StudentProfession>()
+                                    .eq(StudentProfession::getStudentId, student.getId()));
             if (sps.isEmpty()) {
-                // 没有专业关联:按 idCard 查是否已有证书(profession 为空的)
-                created += createIfNotExists(student, idCard, null, professionNameMap, certType);
+                // 没有 student_profession 关联记录,兜底用 student.professionId
+                if (student.getProfessionId() != null) {
+                    String profName = professionNameMap.get(student.getProfessionId());
+                    created += createIfNotExists(student, idCard, profName, certType);
+                } else {
+                    // 确实没有专业信息:按 idCard+姓名 查是否已有证书(profession 为空的)
+                    created += createIfNotExists(student, idCard, null, certType);
+                }
             } else {
                 for (StudentProfession sp : sps) {
-                    String profName = sp.getProfessionName();
-                    if (profName == null && sp.getProfessionId() != null) {
-                        profName = professionNameMap.get(sp.getProfessionId());
-                    }
-                    created += createIfNotExists(student, idCard, profName, professionNameMap, certType);
+                    // 直接从 professionNameMap 取专业名称,不依赖 JOIN 的 professionName 字段
+                    String profName = sp.getProfessionId() != null
+                            ? professionNameMap.get(sp.getProfessionId()) : null;
+                    created += createIfNotExists(student, idCard, profName, certType);
                 }
             }
         }
@@ -2284,8 +2291,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      * 检查学生是否已有证书记录(idCard + profession),没有则创建
      * @return 1=新建,0=已存在跳过
      */
-    private int createIfNotExists(Student student, String idCard, String profession,
-                                  Map<Long, String> professionNameMap, String certType) {
+    private int createIfNotExists(Student student, String idCard, String profession, String certType) {
         // 查是否已有 姓名+身份证号+专业 的证书记录(精确匹配,避免 like 误匹配)
         // 重复判断标准: 姓名 + 身份证号码 + 专业 三个字段相同即为重复,不再判断技能等级
         String trimmedProfession = StringUtils.hasText(profession) ? profession.trim() : null;

@@ -750,6 +750,33 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                 continue;
             }
 
+            // ====== 身份证号重复校验: 与已有学生数据比较 ======
+            if (existByIdCard.containsKey(idCard) || createdInBatch.containsKey(idCard)) {
+                failList.add(fail(name, idCard, "导入失败：身份证号码「" + idCard + "」与已有学生数据重复"));
+                continue;
+            }
+
+            // ====== 手机号重复校验: 与已有学生数据比较 ======
+            String phone = StringUtils.hasText(row.getPhone()) ? row.getPhone().trim() : null;
+            if (phone != null) {
+                if (existByPhone.containsKey(phone)) {
+                    failList.add(fail(name, idCard, "导入失败：手机号码「" + phone + "」与已有学生数据重复"));
+                    continue;
+                }
+                // 同批次内手机号重复检查
+                boolean phoneDupInBatch = false;
+                for (Student created : createdInBatch.values()) {
+                    if (phone.equals(created.getPhone())) {
+                        phoneDupInBatch = true;
+                        break;
+                    }
+                }
+                if (phoneDupInBatch) {
+                    failList.add(fail(name, idCard, "导入失败：手机号码「" + phone + "」与本批次已导入数据重复"));
+                    continue;
+                }
+            }
+
             // ====== 数据查重: 姓名+身份证号+专业+级别 四项完全相同则视为重复,计入失败 ======
             if (certificateService.existsByNameIdCardProfessionLevel(name, idCard,
                     StringUtils.hasText(professionName) ? professionName.trim() : null,
@@ -795,113 +822,46 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             }
 
             try {
-                Student student = existByIdCard.get(idCard);
-                if (student == null) {
-                    student = createdInBatch.get(idCard);
+                // 身份证号/手机号重复校验已在上方完成,此处直接创建新学生
+                // 创建新学生(用身份证号作为标识,手机号从Excel读取)
+                Student newStudent = new Student();
+                newStudent.setName(name);
+                newStudent.setStudentNo(studentNumberService.generateStudentNo());
+                // 手机号: phone 已在上方校验过不与已有数据重复,直接使用
+                if (phone != null) {
+                    existByPhone.put(phone, newStudent); // 标记为已占用
+                }
+                newStudent.setPhone(phone);
+                newStudent.setIdCard(idCard);
+                newStudent.setPassword(encodedPassword);
+                newStudent.setNickname(StringUtils.hasText(name) ? name : "学员");
+                newStudent.setProfessionId(professionId);
+                newStudent.setStatus(1);
+                newStudent.setRegisterTime(LocalDateTime.now());
+                // 证书类型: 从Excel第25列读取
+                if (StringUtils.hasText(row.getCertType())) {
+                    newStudent.setCertType(row.getCertType().trim());
+                }
+                this.save(newStudent);
+
+                // 保存专业关联
+                if (professionId != null) {
+                    StudentProfession sp = new StudentProfession();
+                    sp.setStudentId(newStudent.getId());
+                    sp.setProfessionId(professionId);
+                    studentProfessionMapper.insert(sp);
                 }
 
-                if (student == null) {
-                    // 检查手机号是否已存在(避免 uk_phone 唯一约束冲突)
-                    String phone = StringUtils.hasText(row.getPhone()) ? row.getPhone().trim() : null;
-                    if (phone != null) {
-                        Student existByPhoneStudent = existByPhone.get(phone);
-                        if (existByPhoneStudent != null) {
-                            // 手机号已存在 → 复用该学生(不创建新的)
-                            student = existByPhoneStudent;
-                            existByIdCard.put(idCard, student);
-                            createdInBatch.put(idCard, student);
-                        }
-                    }
-                }
+                // 同步到证书用户
+                certificateUserSyncService.syncStudent(newStudent);
 
-                if (student == null) {
-                    // 1. 创建新学生(用身份证号作为标识,手机号从Excel读取)
-                    Student newStudent = new Student();
-                    newStudent.setName(name);
-                    newStudent.setStudentNo(studentNumberService.generateStudentNo());
-                    // 手机号：从Excel第15列读取，空时存 null(避免 uk_phone 唯一约束在多个空串上冲突)
-                    String phone = StringUtils.hasText(row.getPhone()) ? row.getPhone().trim() : null;
-                    // 如果同一批次内已有该手机号,不再用(避免唯一约束冲突),改为 null
-                    if (phone != null && existByPhone.containsKey(phone)) {
-                        phone = null;
-                    }
-                    if (phone != null) {
-                        existByPhone.put(phone, newStudent); // 标记为已占用
-                    }
-                    newStudent.setPhone(phone);
-                    newStudent.setIdCard(idCard);
-                    newStudent.setPassword(encodedPassword);
-                    newStudent.setNickname(StringUtils.hasText(name) ? name : "学员");
-                    newStudent.setProfessionId(professionId);
-                    newStudent.setStatus(1);
-                    newStudent.setRegisterTime(LocalDateTime.now());
-                    // 证书类型: 从Excel第25列读取
-                    if (StringUtils.hasText(row.getCertType())) {
-                        newStudent.setCertType(row.getCertType().trim());
-                    }
-                    this.save(newStudent);
+                existByIdCard.put(idCard, newStudent);
+                createdInBatch.put(idCard, newStudent);
 
-                    // 保存专业关联
-                    if (professionId != null) {
-                        StudentProfession sp = new StudentProfession();
-                        sp.setStudentId(newStudent.getId());
-                        sp.setProfessionId(professionId);
-                        studentProfessionMapper.insert(sp);
-                    }
-
-                    // 同步到证书用户
-                    certificateUserSyncService.syncStudent(newStudent);
-
-                    student = newStudent;
-                    existByIdCard.put(idCard, newStudent);
-                    createdInBatch.put(idCard, newStudent);
-                } else {
-                    // 2. 已存在的用户：专业做累加
-                    if (professionId != null) {
-                        List<StudentProfession> sps = studentProfessionMapper.selectList(
-                                new LambdaQueryWrapper<StudentProfession>()
-                                        .eq(StudentProfession::getStudentId, student.getId()));
-                        Set<Long> existingProfessionIds = sps.stream()
-                                .map(StudentProfession::getProfessionId).collect(Collectors.toSet());
-                        if (!existingProfessionIds.contains(professionId)) {
-                            StudentProfession sp = new StudentProfession();
-                            sp.setStudentId(student.getId());
-                            sp.setProfessionId(professionId);
-                            studentProfessionMapper.insert(sp);
-                        }
-                        // 同步更新主专业字段（取第一个关联专业）
-                        if (student.getProfessionId() == null) {
-                            student.setProfessionId(professionId);
-                            this.updateById(student);
-                        }
-                    }
-                    // 证书类型: 从Excel读取,有值则更新
-                    if (StringUtils.hasText(row.getCertType())) {
-                        String certType = row.getCertType().trim();
-                        if (!certType.equals(student.getCertType())) {
-                            student.setCertType(certType);
-                            this.updateById(student);
-                        }
-                    }
-                }
-
-                // 3. 创建证书记录(每个导入行按专业创建一条)
+                // 创建证书记录(每个导入行按专业创建一条)
                 com.exam.dto.CertificateDTO certDto = certificateService.toImportDto(row);
-                // 确保证书记录中的学生信息是最新的
-                // 注意: 不把学生的登录学号(student.student_no)写入证书的学员编号(certificate.student_no),
-                // 否则同一学员多张证书会共用同一个编号,触发 certificate.uk_student_no 唯一约束冲突。
-                // 证书的学员编号由 certificateService.add() 按"编号配置"规则独立生成(每张证书唯一)。
-                if (student != null) {
-                    certDto.setName(student.getName());
-                    // 仅在学生表 idCard 非空时才覆盖（避免 DB 中 NULL 的 idCard 覆盖 Excel 行已校验的 idCard）
-                    if (StringUtils.hasText(student.getIdCard())) {
-                        certDto.setIdCard(student.getIdCard());
-                    } else if (StringUtils.hasText(idCard)) {
-                        // 学生表 idCard 为空而 Excel 行有值：回填学生表
-                        student.setIdCard(idCard);
-                        this.updateById(student);
-                    }
-                }
+                certDto.setName(newStudent.getName());
+                certDto.setIdCard(idCard);
                 certificateService.add(certDto);
                 // add 内部去重:姓名+身份证+专业+级别相同则跳过,不影响学生创建结果
                 successCount++;

@@ -449,10 +449,9 @@ UPDATE `certificate` c
     AND c.profession REGEXP '^[0-9]+$';
 
 -- ============================================================
--- 13. 清理无效证书数据: 专业为空 + 证书类型为空 + 未绑定模板
---     (幂等: 只删除同时满足三个条件的行)
+-- 13. 清理无效证书数据: 专业为空 且 创建时间在2026-07-25之后
+--     (幂等: 只删除同时满足条件的行)
 -- ============================================================
 DELETE FROM `certificate`
   WHERE (profession IS NULL OR profession = '')
-    AND (cert_type IS NULL OR cert_type = '')
-    AND template_id IS NULL;
+    AND create_time > '2026-07-25 00:00:00';
