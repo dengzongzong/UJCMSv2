@@ -60,7 +60,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :data="list" :max-height="tableMaxHeight" :fit="false" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
+      <el-table v-loading="loading" :data="list" :fit="false" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="name" label="试卷名称" min-width="200" show-overflow-tooltip />
@@ -78,7 +78,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-        <el-table-column label="操作" width="220" align="center" fixed="right">
+        <el-table-column label="操作" width="220" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-view" @click="handleDetail(row)">详情</el-button>
             <el-button type="text" icon="el-icon-edit" @click="handleEdit(row)">编辑</el-button>

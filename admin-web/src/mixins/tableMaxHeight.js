@@ -1,120 +1,76 @@
 /**
- * 表格最大高度 mixin
- * 自动计算 el-table 的 max-height,使表格在可视区域内滚动
- * 同时确保水平+垂直滚动条都正常显示, 表头和数据列对齐
+ * 表格滚动 mixin (wrapper 方案)
+ *
+ * 彻底放弃 Element UI 的 max-height 内部滚动机制(它不断把 table width 重置为 100%,
+ * 导致水平滚动条永远不出来), 改为在外层包一个 scroll wrapper, 由 wrapper 处理
+ * 所有垂直+水平滚动。
  *
  * 用法:
  *   import tableMaxHeight from '@/mixins/tableMaxHeight'
  *   export default { mixins: [tableMaxHeight], ... }
- *   <el-table :max-height="tableMaxHeight" :fit="false" ...>
+ *   <el-table :fit="false" ...>   ← 不需要 max-height, 不需要 max-height!
  *
  * 原理:
- *   Element UI 的 doLayout() 在 fit=false 时仍然会:
- *   1. 调用 updateColumnsWidth() → 给每个 td/th 设置列宽(来自 column.width/minWidth)
- *   2. 设置 table style.width = '100%' → 表格被压缩到容器宽度
- *   所以 scrollWidth === clientWidth, 水平滚动条不出现。
- *
- *   修复: 在 doLayout() 完成后, 从列定义 store 读取每列的 width/minWidth,
- *   求和得到自然宽度, 显式设置 body/header 表格的 width 为自然宽度(像素值),
- *   覆盖 100%, 使表格超出容器, 水平滚动条出现。
- *   表头和主体设同一个值, 保证列对齐。
+ *   1. 在 el-table 外面包一个 div.table-scroll-wrapper
+ *   2. wrapper 设置 height + overflow: auto → 成为滚动容器
+ *   3. 表格在 wrapper 内以自然尺寸渲染(fit=false → 列不压缩)
+ *   4. 表格超出 wrapper 时, wrapper 显示滚动条
+ *   5. 禁用 Element UI 内部的 overflow(由 CSS 处理)
  */
 export default {
   data() {
     return {
-      tableMaxHeight: 500
+      tableMaxHeight: 500 // 保留兼容, 但不再用于 max-height prop
     }
   },
   mounted() {
-    this.calcTableMaxHeight()
-    window.addEventListener('resize', this.calcTableMaxHeight)
-    this.$nextTick(() => this._fixAllTables())
-    setTimeout(() => this._fixAllTables(), 100)
-    setTimeout(() => this._fixAllTables(), 300)
-    setTimeout(() => this._fixAllTables(), 600)
+    this._calcHeight()
+    this._setupWrapper()
+    window.addEventListener('resize', this._onResize)
   },
   activated() {
-    this.$nextTick(() => this._fixAllTables())
-    setTimeout(() => this._fixAllTables(), 100)
-  },
-  updated() {
-    if (this._t) clearTimeout(this._t)
-    this._t = setTimeout(() => this._fixAllTables(), 80)
+    this._calcHeight()
+    this._setupWrapper()
   },
   beforeDestroy() {
-    window.removeEventListener('resize', this.calcTableMaxHeight)
-    if (this._t) clearTimeout(this._t)
+    window.removeEventListener('resize', this._onResize)
   },
   methods: {
-    calcTableMaxHeight() {
+    _onResize() {
+      this._calcHeight()
+    },
+
+    _calcHeight() {
+      // wrapper 高度 = 视口高度 - 顶部空间
+      // 顶部空间: header(56px) + layout-main padding(32px) + app-container padding(40px)
+      //          + 筛选区/工具栏/分页等(~170px) ≈ 300px
       this.tableMaxHeight = Math.max(200, window.innerHeight - 300)
-      this.$nextTick(() => this._fixAllTables())
     },
 
-    _fixAllTables() {
-      const visit = (vm) => {
-        if (!vm || !vm.$children) return
-        vm.$children.forEach(child => {
-          if (child.$options && child.$options.name === 'ElTable') {
-            this._fixOneTable(child)
-          }
-          visit(child)
-        })
-      }
-      visit(this)
-    },
+    _setupWrapper() {
+      this.$nextTick(() => {
+        // 找到本组件的第一个 el-table
+        const tableEl = this.$el && this.$el.querySelector('.el-table')
+        if (!tableEl) return
 
-    _fixOneTable(tableVm) {
-      try {
-        const el = tableVm.$el
-        if (!el) return
-
-        const bodyTable = el.querySelector('.el-table__body-wrapper .el-table__body')
-        const headerTable = el.querySelector('.el-table__header-wrapper .el-table__header')
-        const wrapper = el.querySelector('.el-table__body-wrapper')
-        if (!bodyTable || !wrapper) return
-
-        // ---- Step 1: 确保 table-layout: fixed(让列宽严格遵循设定值) ----
-        bodyTable.style.tableLayout = 'fixed'
-        if (headerTable) headerTable.style.tableLayout = 'fixed'
-
-        // ---- Step 2: 从 Element UI 列定义 store 读取每列宽度 ----
-        const allColumns = (tableVm.store && tableVm.store.states && tableVm.store.states.columns) || []
-        // 过滤掉隐藏列
-        const columns = allColumns.filter(c => !c.filtered)
-
-        let totalNaturalWidth = 0
-        columns.forEach(col => {
-          // column.width: 有显式 width 或 Element UI 默认值(如 selection=48)
-          // column.minWidth: 有 min-width 时
-          const w = parseInt(col.width || col.minWidth || 0, 10)
-          if (w > 0) totalNaturalWidth += w
-        })
-
-        if (totalNaturalWidth <= 0) return
-
-        const containerWidth = wrapper.clientWidth
-        if (totalNaturalWidth > containerWidth) {
-          // ---- Step 3: 设同一个显式宽度, 覆盖 100%, 保证对齐 + 水平滚动 ----
-          const w = totalNaturalWidth + 'px'
-          bodyTable.style.width = w
-          if (headerTable) headerTable.style.width = w
+        // 如果已经包过了, 只更新高度
+        let wrapper = tableEl.parentElement
+        if (wrapper && wrapper.classList && wrapper.classList.contains('table-scroll-wrapper')) {
+          wrapper.style.height = this.tableMaxHeight + 'px'
+          return
         }
 
-        // ---- Step 4: doLayout 同步固定列和滚动状态 ----
-        if (typeof tableVm.doLayout === 'function') {
-          tableVm.doLayout()
-        }
+        // 创建 wrapper 并包裹表格
+        wrapper = document.createElement('div')
+        wrapper.className = 'table-scroll-wrapper'
+        wrapper.style.height = this.tableMaxHeight + 'px'
+        wrapper.style.overflow = 'auto'
+        wrapper.style.position = 'relative'
 
-        // ---- Step 5: doLayout 可能重置 width, 再设一次 ----
-        if (totalNaturalWidth > containerWidth) {
-          const w = totalNaturalWidth + 'px'
-          bodyTable.style.width = w
-          if (headerTable) headerTable.style.width = w
-        }
-      } catch (e) {
-        // ignore
-      }
+        // 在 el-table 的位置插入 wrapper
+        tableEl.parentNode.insertBefore(wrapper, tableEl)
+        wrapper.appendChild(tableEl)
+      })
     }
   }
 }

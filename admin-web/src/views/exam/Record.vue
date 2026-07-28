@@ -45,7 +45,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :max-height="tableMaxHeight" :fit="false" :data="list" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
+      <el-table v-loading="loading" :fit="false" :data="list" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column label="封面" width="90" align="center">
@@ -83,7 +83,7 @@
             <el-tag v-else type="info" size="mini">无</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="操作" width="200" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-view" @click="handleDetail(row)">详情</el-button>
             <el-button type="text" icon="el-icon-edit" @click="handleGrade(row)" v-if="row.pendingCount > 0">批改</el-button>

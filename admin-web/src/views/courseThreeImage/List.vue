@@ -24,7 +24,7 @@
     <!-- 表格 -->
     <el-table
       v-loading="loading"
-      :max-height="tableMaxHeight" :fit="false"
+      :fit="false"
       :data="list"
       border
       stripe
@@ -73,7 +73,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="180">
         <template slot-scope="s">
           <el-button size="mini" type="primary" @click="openDialog(s.row)">编辑</el-button>
           <el-button size="mini" type="danger" @click="onDeleteOne(s.row.id)">删除</el-button>

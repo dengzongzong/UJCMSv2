@@ -86,21 +86,24 @@ ol {
   padding: 20px;
 }
 
-// ====== 表格滚动条修复 ======
-// Element UI 的 doLayout() 会把 table width 设为 100%, 压缩列宽,
-// 导致 scrollWidth===clientWidth, 水平滚动条不出现。
-// 修复: fit=false + JS 从列定义 store 读取自然宽度, 显式覆盖 100%。
+// ====== 表格滚动条修复 (wrapper 方案) ======
+// 彻底放弃 Element UI 的 max-height 内部滚动, 改由外层 wrapper 处理所有滚动。
+// mixin 在 el-table 外面包一个 div.table-scroll-wrapper, 设置 height + overflow: auto。
+// 表格以自然尺寸渲染(fit=false), 超出 wrapper 时 wrapper 显示滚动条。
+
+// 外层滚动 wrapper
+.table-scroll-wrapper {
+  overflow: auto !important;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+}
+
+// 禁用 Element UI 内部的 overflow 管理(由 wrapper 接管)
 .el-table .el-table__body-wrapper {
-  overflow: auto !important;
+  overflow: visible !important;
 }
-// 兜底: 覆盖 inline style 的 overflow
 .el-table .el-table__body-wrapper[style] {
-  overflow: auto !important;
-}
-// 确保 table-layout: fixed, 列宽严格遵循设定值(不被内容压缩)
-.el-table__body-wrapper .el-table__body,
-.el-table__header-wrapper .el-table__header {
-  table-layout: fixed !important;
+  overflow: visible !important;
 }
 
 .filter-container {

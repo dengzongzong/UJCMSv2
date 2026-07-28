@@ -46,7 +46,7 @@
       <el-table
         v-loading="loading"
         :data="list"
-        :max-height="tableMaxHeight" :fit="false"
+        :fit="false"
         border
         stripe
         style="width: 100%"
@@ -74,7 +74,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="操作" width="200" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-edit" @click="handleEdit(row)">编辑</el-button>
             <el-button

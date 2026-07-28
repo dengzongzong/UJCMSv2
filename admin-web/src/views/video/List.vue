@@ -49,7 +49,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :max-height="tableMaxHeight" :fit="false" :data="list" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
+      <el-table v-loading="loading" :fit="false" :data="list" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="name" label="视频名称" min-width="180" show-overflow-tooltip />
@@ -76,7 +76,7 @@
         <el-table-column prop="uploadTime" label="上传时间" width="170" align="center" />
         <el-table-column prop="playCount" label="播放量" width="100" align="center" sortable />
         <el-table-column prop="studyCount" label="学习人数" width="100" align="center" sortable />
-        <el-table-column label="操作" width="320" align="center" fixed="right">
+        <el-table-column label="操作" width="320" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-view" @click="handleDetail(row)">详情</el-button>
             <el-button type="text" icon="el-icon-edit" @click="handleEdit(row)">编辑</el-button>

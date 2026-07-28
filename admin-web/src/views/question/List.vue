@@ -107,7 +107,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :data="list" :max-height="tableMaxHeight" :fit="false" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
+      <el-table v-loading="loading" :data="list" :fit="false" border stripe style="width: 100%" @selection-change="rows => (selection = rows)">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column label="题型" width="90" align="center">
@@ -141,7 +141,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" align="center" fixed="right">
+        <el-table-column label="操作" width="160" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-edit" @click="handleEdit(row)">编辑</el-button>
             <el-button type="text" icon="el-icon-delete" class="danger-text" @click="handleDelete(row)">

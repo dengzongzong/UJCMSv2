@@ -19,7 +19,7 @@
       </div>
 
       <!-- 表格 -->
-      <el-table :data="list" v-loading="loading" border stripe @selection-change="onSelectionChange" :max-height="tableMaxHeight" :fit="false">
+      <el-table :data="list" v-loading="loading" border stripe @selection-change="onSelectionChange" :fit="false">
         <el-table-column type="selection" width="45" align="center" />
         <el-table-column type="index" label="#" width="50" align="center" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
@@ -42,7 +42,7 @@
           <template slot-scope="{ row }">{{ row.publishTime || row.createTime }}</template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="160" align="center" />
-        <el-table-column label="操作" width="150" align="center" fixed="right">
+        <el-table-column label="操作" width="150" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" @click="handleEdit(row)">编辑</el-button>
             <el-button type="text" style="color: #f56c6c" @click="handleDelete(row)">删除</el-button>

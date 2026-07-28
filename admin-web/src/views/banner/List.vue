@@ -21,7 +21,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table v-loading="loading" :data="list" border stripe :max-height="tableMaxHeight" :fit="false">
+      <el-table v-loading="loading" :data="list" border stripe :fit="false">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="图片" width="200">
           <template slot-scope="s">
@@ -52,7 +52,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="180">
           <template slot-scope="s">
             <el-button size="mini" type="primary" @click="onEdit(s.row)">编辑</el-button>
             <el-button size="mini" :type="s.row.status === 1 ? 'info' : 'success'" @click="onToggle(s.row)">

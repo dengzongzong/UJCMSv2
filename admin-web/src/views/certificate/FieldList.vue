@@ -26,7 +26,7 @@
             <el-tag size="mini" :type="s.row.isSystem === 1 ? 'warning' : 'success'">{{ s.row.isSystem === 1 ? '系统' : '自定义' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="180">
           <template slot-scope="s">
             <el-button size="mini" :disabled="s.row.isSystem === 1" @click="onEdit(s.row)">编辑</el-button>
             <el-button size="mini" type="danger" :disabled="s.row.isSystem === 1" @click="onDelete(s.row)">删除</el-button>

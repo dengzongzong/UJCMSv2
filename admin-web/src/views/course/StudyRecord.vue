@@ -63,7 +63,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :max-height="tableMaxHeight" :fit="false" :data="list" border stripe style="width: 100%">
+      <el-table v-loading="loading" :fit="false" :data="list" border stripe style="width: 100%">
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="courseName" label="课程名称" min-width="180" show-overflow-tooltip />
         <el-table-column label="课程标签" width="160">
@@ -104,7 +104,7 @@
             <el-tag :type="statusType(row.status)" size="mini">{{ statusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100" align="center" fixed="right">
+        <el-table-column label="操作" width="100" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-view" @click="handleDetail(row)">详情</el-button>
           </template>

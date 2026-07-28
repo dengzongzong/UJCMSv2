@@ -69,7 +69,7 @@
       :data="list"
       border
       stripe
-      :max-height="tableMaxHeight" :fit="false"
+      :fit="false"
       @selection-change="rows => (selection = rows)"
     >
       <el-table-column type="selection" width="50" />
@@ -124,7 +124,7 @@
           <el-tag v-else type="info" size="mini">已关闭</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column label="操作" width="220">
         <template slot-scope="s">
           <div class="action-row">
             <el-button size="mini" type="primary" @click="$router.push({ path: '/certificate/edit/' + s.row.id, query: { from: $route.fullPath } })">编辑</el-button>

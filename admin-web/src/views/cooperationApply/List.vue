@@ -44,7 +44,7 @@
     <!-- 列表 -->
     <el-table
       v-loading="listLoading"
-      :max-height="tableMaxHeight" :fit="false"
+      :fit="false"
       :data="list"
       border
       stripe
@@ -71,7 +71,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-      <el-table-column label="操作" width="150" align="center" fixed="right">
+      <el-table-column label="操作" width="150" align="center">
         <template slot-scope="s">
           <el-button type="text" @click="openEdit(s.row)">编辑</el-button>
           <el-button type="text" class="danger-text" @click="onDeleteOne(s.row.id)">删除</el-button>

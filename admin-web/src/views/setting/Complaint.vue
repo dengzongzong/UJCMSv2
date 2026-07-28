@@ -34,7 +34,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="提交时间" width="170" align="center" />
-        <el-table-column label="操作" width="180" align="center" fixed="right">
+        <el-table-column label="操作" width="180" align="center">
           <template slot-scope="s">
             <el-button type="text" @click="openDetail(s.row)">查看</el-button>
             <el-button v-if="s.row.status === 0" type="text" @click="onHandle(s.row)">标记已处理</el-button>

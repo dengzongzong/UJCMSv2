@@ -80,7 +80,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="160" align="center" />
-        <el-table-column label="操作" width="220" align="center" fixed="right">
+        <el-table-column label="操作" width="220" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-view" @click="openView(row)">查看</el-button>
             <el-button type="text" icon="el-icon-edit" @click="openEdit(row)">编辑</el-button>

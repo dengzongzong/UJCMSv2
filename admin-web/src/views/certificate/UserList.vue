@@ -102,7 +102,7 @@
       <el-table-column label="同步时间" width="170" align="center">
         <template slot-scope="s">{{ formatDateCN(s.row.syncTime) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="160" align="center" fixed="right">
+      <el-table-column label="操作" width="160" align="center">
         <template slot-scope="s">
           <el-button type="text" icon="el-icon-edit" @click="openEditDialog(s.row)">编辑</el-button>
           <el-button type="text" icon="el-icon-delete" class="danger-text" @click="handleDelete(s.row)">删除</el-button>

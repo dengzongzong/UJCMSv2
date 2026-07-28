@@ -74,7 +74,7 @@
           <template slot-scope="s">{{ formatDuration(s.row) }}</template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="280">
           <template slot-scope="s">
             <el-button v-if="isPending(s.row)" size="mini" type="danger" @click="onCancel(s.row)">取消</el-button>
             <el-button v-if="canRetry(s.row)" size="mini" type="warning" @click="onRetry(s.row)">重试</el-button>

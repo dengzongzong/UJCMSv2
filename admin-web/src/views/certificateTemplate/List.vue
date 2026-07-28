@@ -5,7 +5,7 @@
         <span>证书模板</span>
         <el-button style="float:right" type="primary" size="small" icon="el-icon-plus" @click="$router.push('/certificate/template/edit')">新增模板</el-button>
       </div>
-      <el-table v-loading="loading" :data="list" border :max-height="tableMaxHeight" :fit="false">
+      <el-table v-loading="loading" :data="list" border :fit="false">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="预览" width="120">
           <template slot-scope="s">
@@ -23,7 +23,7 @@
         </el-table-column>
         <el-table-column prop="remark" label="备注" />
         <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="280">
           <template slot-scope="s">
             <el-button size="mini" @click="$router.push('/certificate/template/edit/' + s.row.id)">编辑字段位置</el-button>
             <el-button v-if="s.row.isDefault !== 1" size="mini" type="warning" @click="onSetDefault(s.row.id)">设为默认</el-button>
