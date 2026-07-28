@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
 """
-证书数据完整恢复脚本 v5 - 永久去除唯一索引 + 全表恢复
-=====================================================
-核心修复:
-  1. 【关键】永久删除 certificate 表的唯一索引(uk_idcard_profession/uk_cert_no/uk_student_no)
-     → 用户要求不再添加这些索引,避免 INSERT IGNORE 静默丢弃数据
-     → 同时修复照片关联: 索引导致部分证书ID恢复失败, certificate_photo.certificate_id 指向空
-  2. 新增 certificate_type 表恢复(证书类型字典表)
-  3. 新增 certificate_export_column 表恢复(导出列配置)
-  4. 动态读取表结构,不再硬编码列顺序
-  5. 恢复7张关联表:
-     - certificate_type            (证书类型字典)
-     - certificate_template        (证书模板)
-     - certificate_template_field  (模板字段位置)
-     - certificate_export_column   (导出列配置)
-     - certificate                 (证书主表)
-     - certificate_photo           (学员照片)
-     - certificate_user            (证书用户关联)
-  6. 直接读取本地binlog文件,不连接MySQL读binlog
+证书数据完整恢复脚本 v6 - 修复关键字段丢失问题
+===================================================
+核心修复(相比v5):
+  1. 【关键】检查 binlog_row_image 设置
+     → 如果是 MINIMAL,DELETE 事件只记录主键列,其他列值不在 binlog 中
+     → 如果是 FULL(默认),DELETE 事件记录所有列,可以完整恢复
+  2. 【关键】对已存在的记录用 UPDATE 补全缺失字段(不再跳过)
+     → v5 的 bug: 用 INSERT IGNORE + check_existing_ids 跳过已存在记录
+     → 如果之前恢复时插入了残缺数据(只有 id/name/id_card,没有 cert_type/scores),
+       v5 会跳过这些记录,导致字段永远无法补全
+     → v6: 对已存在的记录执行 UPDATE,用 binlog 中的完整数据覆盖残缺数据
+  3. 新增 binlog 原始内容采样诊断
+     → 打印第一条 DELETE 事件的原始 @N=value 内容,方便确认哪些列有值
+  4. 直接读取本地 binlog 文件,不连接 MySQL 读 binlog
 
 用法: python3 recover_certificate_full.py
 
@@ -62,6 +58,9 @@ CERT_UNIQUE_INDEXES = [
     "uk_cert_no",            # cert_no
     "uk_student_no",         # student_no
 ]
+
+# 诊断模式: 打印第一条 DELETE 事件的原始内容
+DIAGNOSTIC_SAMPLE = True
 
 
 def run_mysql_cmd(sql, timeout=30):
@@ -169,8 +168,11 @@ def get_binlog_time_range_local(binlog_path):
     return None
 
 
-def scan_binlog_for_table_deletes(binlog_path, start_dt, end_dt, table_name, columns):
-    """扫描本地binlog文件,提取指定表的DELETE记录"""
+def scan_binlog_for_table_deletes(binlog_path, start_dt, end_dt, table_name, columns, diagnostic=False):
+    """扫描本地binlog文件,提取指定表的DELETE记录
+
+    diagnostic=True 时,打印第一条 DELETE 事件的原始内容用于诊断
+    """
     cmd = [
         "mysqlbinlog", "--base64-output=DECODE-ROWS", "-v",
         f"--start-datetime={start_dt}",
@@ -187,16 +189,19 @@ def scan_binlog_for_table_deletes(binlog_path, start_dt, end_dt, table_name, col
     target_pattern = f"`{DB_NAME}`.`{table_name}`"
     lines = output.split("\n")
     i = 0
+    first_delete_printed = False
 
     while i < len(lines):
         line = lines[i].strip()
         if "### DELETE FROM" in line and target_pattern in line:
             values = {}
+            raw_lines = []  # 保存原始行用于诊断
             i += 1
             while i < len(lines):
                 col_line = lines[i].strip()
                 if not col_line.startswith("###"):
                     break
+                raw_lines.append(col_line)
                 match = re.match(r'###\s+@(\d+)=(.*)', col_line)
                 if match:
                     col_idx = int(match.group(1))
@@ -211,7 +216,32 @@ def scan_binlog_for_table_deletes(binlog_path, start_dt, end_dt, table_name, col
                                 col_val = col_val[1:-1]
                                 col_val = col_val.replace("\\'", "'").replace("\\\\", "\\")
                             values[col_name] = col_val
+                    else:
+                        # @N 超出列数范围 — 说明 binlog 中的列数与当前表结构不匹配
+                        if diagnostic and not first_delete_printed:
+                            print(f"    ⚠️  @N={col_idx} 超出当前列数({len(columns)}),可能表结构不匹配")
                 i += 1
+
+            # 诊断: 打印第一条 DELETE 事件的原始内容
+            if diagnostic and not first_delete_printed and raw_lines:
+                first_delete_printed = True
+                print(f"\n    📋 诊断 - {table_name} 第一条DELETE事件原始内容:")
+                print(f"    DELETE FROM {target_pattern}")
+                for rl in raw_lines:
+                    # 截断过长的行
+                    display = rl if len(rl) <= 200 else rl[:200] + "..."
+                    print(f"    {display}")
+                print(f"    解析到的列: {len(values)} / {len(columns)}")
+                # 检查关键字段是否存在
+                key_fields = ['cert_type', 'template_id', 'theory_score',
+                              'practical_score', 'comprehensive_evaluation',
+                              'extra_json', 'photo_url', 'url']
+                present_fields = [f for f in key_fields if f in values and values[f] is not None]
+                missing_fields = [f for f in key_fields if f not in values or values[f] is None]
+                print(f"    关键字段有值: {present_fields if present_fields else '(无)'}")
+                print(f"    关键字段缺失: {missing_fields if missing_fields else '(无)'}")
+                print()
+
             if 'id' in values and values['id'] is not None:
                 deleted_records.append(values)
         else:
@@ -266,7 +296,10 @@ def drop_index_if_exists(table_name, index_name):
 
 
 def recover_table(table_name, columns, all_binlog_files, recover_start_dt, recover_end_dt):
-    """恢复单张表的DELETE记录"""
+    """恢复单张表的DELETE记录
+
+    v6 关键改进: 对已存在的记录执行 UPDATE 补全缺失字段,不再跳过
+    """
     print()
     print(f"{'='*60}")
     print(f"  恢复表: {table_name}")
@@ -278,6 +311,7 @@ def recover_table(table_name, columns, all_binlog_files, recover_start_dt, recov
 
     # 扫描binlog
     all_deleted = []
+    is_first_binlog = True
     for bf in all_binlog_files:
         binlog_name = bf['name']
         print(f"\n  扫描 {binlog_name} ({bf['size']/1024/1024:.1f} MB) ...")
@@ -296,9 +330,12 @@ def recover_table(table_name, columns, all_binlog_files, recover_start_dt, recov
                 print(f"    跳过(晚于恢复结束时间)")
                 continue
 
+        # 只在第一个找到DELETE记录的binlog上打印诊断信息
         records = scan_binlog_for_table_deletes(
-            binlog_path, RECOVER_START, RECOVER_END, table_name, columns
+            binlog_path, RECOVER_START, RECOVER_END, table_name, columns,
+            diagnostic=(DIAGNOSTIC_SAMPLE and is_first_binlog)
         )
+        is_first_binlog = False
 
         if records:
             print(f"    ✅ 找到 {len(records)} 条 {table_name} DELETE 记录")
@@ -325,74 +362,102 @@ def recover_table(table_name, columns, all_binlog_files, recover_start_dt, recov
     all_ids = [int(r['id']) for r in unique_records if r.get('id')]
     existing_ids = check_existing_ids(table_name, all_ids)
     missing_records = [r for r in unique_records if int(r['id']) not in existing_ids]
+    existing_records = [r for r in unique_records if int(r['id']) in existing_ids]
 
-    print(f"  已存在(跳过): {len(existing_ids)} 条")
-    print(f"  需要恢复: {len(missing_records)} 条")
+    print(f"  已存在(需UPDATE补全): {len(existing_records)} 条")
+    print(f"  不存在(需INSERT): {len(missing_records)} 条")
 
-    if not missing_records:
-        print(f"  {table_name}: 所有删除记录都已存在,无需操作")
-        return 0
-
-    # 预览
+    # === 预览 ===
     print(f"\n  恢复预览(前5条):")
-    for rec in missing_records[:5]:
+    for rec in (missing_records + existing_records)[:5]:
         info_parts = [f"id={rec.get('id')}"]
-        for preview_col in ['name', 'id_card', 'profession', 'cert_type', 'template_id', 'url', 'field_key', 'code']:
+        for preview_col in ['name', 'id_card', 'profession', 'cert_type', 'template_id',
+                            'theory_score', 'practical_score', 'comprehensive_evaluation',
+                            'url', 'field_key', 'code']:
             if preview_col in rec:
-                info_parts.append(f"{preview_col}={rec[preview_col]}")
+                val = rec[preview_col]
+                if val is not None:
+                    val_str = str(val)[:50]
+                    info_parts.append(f"{preview_col}={val_str}")
+                else:
+                    info_parts.append(f"{preview_col}=NULL")
         print(f"    {', '.join(info_parts)}")
 
-    # 逐条恢复
-    print(f"\n  开始恢复 {len(missing_records)} 条记录...")
+    # === v6 关键改进: 对已存在的记录执行 UPDATE 补全缺失字段 ===
+    updated = 0
+    update_failed = 0
+    if existing_records:
+        print(f"\n  开始 UPDATE {len(existing_records)} 条已存在记录(补全缺失字段)...")
+        for idx, rec in enumerate(existing_records):
+            # 只 UPDATE 非NULL的字段(不覆盖已有值)
+            set_parts = []
+            for col in columns:
+                if col in rec and rec[col] is not None and col != 'id':
+                    set_parts.append(f"`{col}` = {escape_sql_val(rec[col])}")
+            if not set_parts:
+                continue
+            set_parts.append("`update_time` = NOW()")
+            sql = f"UPDATE `{table_name}` SET {', '.join(set_parts)} WHERE `id` = {rec['id']};"
+            result = run_mysql_cmd(sql, timeout=10)
+            if result is not None:
+                updated += 1
+            else:
+                update_failed += 1
+            if (idx + 1) % 200 == 0:
+                print(f"    UPDATE进度: {idx + 1}/{len(existing_records)} (成功 {updated}, 失败 {update_failed})")
+
+        print(f"  UPDATE完成: 成功 {updated}, 失败 {update_failed}")
+
+    # === INSERT 不存在的记录 ===
     inserted = 0
     failed = 0
     failed_records = []
+    if missing_records:
+        print(f"\n  开始 INSERT {len(missing_records)} 条新记录...")
+        for idx, rec in enumerate(missing_records):
+            col_list = []
+            val_list = []
+            for col in columns:
+                if col in rec:
+                    col_list.append(f"`{col}`")
+                    val_list.append(escape_sql_val(rec[col]))
 
-    for idx, rec in enumerate(missing_records):
-        col_list = []
-        val_list = []
-        for col in columns:
-            if col in rec:
-                col_list.append(f"`{col}`")
-                val_list.append(escape_sql_val(rec[col]))
+            if not col_list:
+                failed += 1
+                continue
 
-        if not col_list:
-            failed += 1
-            continue
+            sql = f"INSERT IGNORE INTO `{table_name}` ({', '.join(col_list)}) VALUES ({', '.join(val_list)})"
+            result = run_mysql_cmd(sql, timeout=10)
 
-        sql = f"INSERT IGNORE INTO `{table_name}` ({', '.join(col_list)}) VALUES ({', '.join(val_list)})"
-        result = run_mysql_cmd(sql, timeout=10)
+            if result is not None:
+                inserted += 1
+            else:
+                failed += 1
+                failed_records.append(rec)
 
-        if result is not None:
-            inserted += 1
-        else:
-            failed += 1
-            failed_records.append(rec)
-
-        if (idx + 1) % 200 == 0:
-            print(f"    进度: {idx + 1}/{len(missing_records)} (成功 {inserted}, 失败 {failed})")
+            if (idx + 1) % 200 == 0:
+                print(f"    INSERT进度: {idx + 1}/{len(missing_records)} (成功 {inserted}, 失败 {failed})")
 
     print(f"\n  {table_name} 恢复完成:")
-    print(f"    尝试恢复: {len(missing_records)} 条")
-    print(f"    成功插入: {inserted} 条")
-    print(f"    失败: {failed} 条")
+    print(f"    INSERT: 尝试 {len(missing_records)} 条, 成功 {inserted} 条, 失败 {failed} 条")
+    print(f"    UPDATE: 尝试 {len(existing_records)} 条, 成功 {updated} 条, 失败 {update_failed} 条")
 
     if failed_records:
-        print(f"    失败记录预览(前3条):")
+        print(f"    INSERT失败记录预览(前3条):")
         for rec in failed_records[:3]:
             print(f"      id={rec.get('id')}, name={rec.get('name')}, id_card={rec.get('id_card')}")
 
     after_count = run_mysql_cmd(f"SELECT COUNT(*) FROM `{table_name}`")
     print(f"    记录数: {before_count} → {after_count}")
 
-    return inserted
+    return inserted + updated
 
 
 def main():
     print()
     print("╔══════════════════════════════════════════════════════════════════════╗")
-    print("║  证书数据完整恢复 v5 (永久去索引 + 7表全恢复)                        ║")
-    print("║  修复: 唯一索引导致数据丢失 + 照片关联断裂 + 证书类型/导出列遗漏    ║")
+    print("║  证书数据完整恢复 v6 (UPDATE补全 + binlog诊断 + 7表全恢复)          ║")
+    print("║  修复: INSERT IGNORE跳过已存在记录 → 改用UPDATE补全缺失字段        ║")
     print("╚══════════════════════════════════════════════════════════════════════╝")
     print()
     print(f"  恢复时间范围: {RECOVER_START} ~ {RECOVER_END}")
@@ -410,6 +475,32 @@ def main():
     print(f"  ✅ MySQL连接正常")
     print(f"  当前 certificate 表记录数: {cert_count}")
 
+    # 1.5 【关键】检查 binlog_row_image 设置
+    print()
+    print("━━━ 1.5 检查 binlog_row_image 设置(决定DELETE事件是否包含全部列) ━━━")
+    row_image = run_mysql_cmd("SHOW VARIABLES LIKE 'binlog_row_image'")
+    print(f"  binlog_row_image = {row_image}")
+    if row_image and "MINIMAL" in str(row_image).upper():
+        print("  ⚠️⚠️⚠️ 严重警告: binlog_row_image = MINIMAL")
+        print("  这意味着 DELETE 事件只记录主键列,其他列值(cert_type/scores/template_id等)不在 binlog 中!")
+        print("  恢复的数据将只包含主键,其他字段全部为 NULL")
+        print("  解决方案:")
+        print("    1. 这些字段无法从 binlog 恢复")
+        print("    2. 只能从 extra_json(如果有的话)或其他来源补录")
+        print("    3. 建议修改 MySQL 配置: binlog_row_image = FULL,然后重启 MySQL")
+        print("    4. 继续执行恢复,但字段补全依赖 fix_recovered_fields.py")
+    elif row_image and "FULL" in str(row_image).upper():
+        print("  ✅ binlog_row_image = FULL,DELETE 事件包含所有列值,可以完整恢复")
+    else:
+        print(f"  ℹ️  binlog_row_image 未明确设置,MySQL 默认为 FULL(8.0+),应该可以完整恢复")
+
+    # 也检查 binlog_format
+    binlog_format = run_mysql_cmd("SHOW VARIABLES LIKE 'binlog_format'")
+    print(f"  binlog_format = {binlog_format}")
+    if binlog_format and "STATEMENT" in str(binlog_format).upper():
+        print("  ⚠️ 警告: binlog_format = STATEMENT,DELETE 事件不记录行数据!")
+        print("  需要 binlog_format = ROW 或 MIXED 才能从 binlog 恢复 DELETE 数据")
+
     # 2. 检查各表状态
     print()
     print("━━━ 2. 检查各关联表状态 ━━━")
@@ -419,6 +510,8 @@ def main():
         table_columns[table_name] = cols
         count = run_mysql_cmd(f"SELECT COUNT(*) FROM `{table_name}`")
         print(f"  {table_name}: {count} 条, {len(cols)} 列")
+        if table_name == "certificate" and cols:
+            print(f"    列名: {', '.join(cols)}")
 
     # 3. 检查binlog
     print()
@@ -437,11 +530,6 @@ def main():
     print()
     print("━━━ 4. 永久删除 certificate 唯一索引 ━━━")
     print("  ⚠️  用户要求: 不再添加唯一索引")
-    print("  原因:")
-    print("    1. uk_idcard_profession 导致 INSERT IGNORE 静默丢弃约1000条恢复数据")
-    print("    2. 被丢弃的证书ID对应的照片(certificate_photo.certificate_id)变成孤儿,照片不显示")
-    print("    3. 去除索引后,所有被删除的记录都能完整恢复,照片关联也恢复正常")
-    print()
 
     for idx_name in CERT_UNIQUE_INDEXES:
         drop_index_if_exists("certificate", idx_name)
@@ -450,6 +538,7 @@ def main():
     print()
     print("━━━ 5. 开始逐表恢复 ━━━")
     print(f"  恢复顺序: {' → '.join(RECOVER_TABLES)}")
+    print(f"  诊断模式: {'开启(打印第一条DELETE原始内容)' if DIAGNOSTIC_SAMPLE else '关闭'}")
 
     recover_start_dt = datetime.strptime(RECOVER_START, "%Y-%m-%d %H:%M:%S")
     recover_end_dt = datetime.strptime(RECOVER_END, "%Y-%m-%d %H:%M:%S")
@@ -463,10 +552,10 @@ def main():
         recovered = recover_table(table_name, cols, binlog_files, recover_start_dt, recover_end_dt)
         total_recovered += recovered
 
-    # 6. 最终验证(不再重建索引)
+    # 6. 最终验证
     print()
     print("━━━ 6. 最终验证 ━━━")
-    print(f"  总恢复记录数: {total_recovered}")
+    print(f"  总恢复记录数(INSERT+UPDATE): {total_recovered}")
     print()
 
     for table_name in RECOVER_TABLES:
@@ -478,8 +567,6 @@ def main():
     cert_count_final = run_mysql_cmd("SELECT COUNT(*) FROM certificate")
     print(f"  certificate 最终记录数: {cert_count_final}")
     print(f"  恢复前: {cert_count} → 恢复后: {cert_count_final}")
-    diff = int(cert_count_final) - int(cert_count) if cert_count and cert_count_final else 0
-    print(f"  净增: {diff} 条")
 
     # cert_type 统计
     print()
@@ -492,37 +579,53 @@ def main():
         for line in cert_type_stats.split("\n"):
             print(f"    {line}")
 
-    # template_id 统计
-    template_stats = run_mysql_cmd(
-        "SELECT IFNULL(template_id,'(未绑定)'), COUNT(*) FROM certificate "
-        "GROUP BY template_id ORDER BY COUNT(*) DESC LIMIT 10"
-    )
-    if template_stats:
-        print("  模板绑定分布:")
-        for line in template_stats.split("\n"):
-            print(f"    {line}")
+    # 关键字段统计
+    print()
+    has_cert_type = run_mysql_cmd(
+        "SELECT COUNT(*) FROM certificate WHERE cert_type IS NOT NULL AND cert_type != ''"
+    ) or "?"
+    has_template = run_mysql_cmd(
+        "SELECT COUNT(*) FROM certificate WHERE template_id IS NOT NULL"
+    ) or "?"
+    has_theory = run_mysql_cmd(
+        "SELECT COUNT(*) FROM certificate WHERE theory_score IS NOT NULL AND theory_score != ''"
+    ) or "?"
+    has_practical = run_mysql_cmd(
+        "SELECT COUNT(*) FROM certificate WHERE practical_score IS NOT NULL AND practical_score != ''"
+    ) or "?"
+    has_extra_json = run_mysql_cmd(
+        "SELECT COUNT(*) FROM certificate WHERE extra_json IS NOT NULL AND extra_json != ''"
+    ) or "?"
+    has_photo = run_mysql_cmd(
+        "SELECT COUNT(DISTINCT c.id) FROM certificate c "
+        "INNER JOIN certificate_photo cp ON cp.certificate_id = c.id"
+    ) or "?"
+
+    print(f"  关键字段统计:")
+    print(f"    有 cert_type:      {has_cert_type} / {cert_count_final}")
+    print(f"    有 template_id:    {has_template} / {cert_count_final}")
+    print(f"    有 theory_score:   {has_theory} / {cert_count_final}")
+    print(f"    有 practical_score:{has_practical} / {cert_count_final}")
+    print(f"    有 extra_json:     {has_extra_json} / {cert_count_final}")
+    print(f"    有照片关联:        {has_photo} / {cert_count_final}")
 
     # 照片统计
     print()
     photo_total = run_mysql_cmd("SELECT COUNT(*) FROM certificate_photo")
-    photo_distinct = run_mysql_cmd("SELECT COUNT(DISTINCT id_card) FROM certificate_photo")
     photo_with_cert = run_mysql_cmd(
         "SELECT COUNT(*) FROM certificate_photo cp "
         "INNER JOIN certificate c ON cp.certificate_id = c.id"
     )
+    photo_orphan = run_mysql_cmd(
+        "SELECT COUNT(*) FROM certificate_photo cp "
+        "WHERE cp.certificate_id IS NULL "
+        "OR cp.certificate_id NOT IN (SELECT id FROM certificate)"
+    )
     print(f"  照片总数: {photo_total}")
-    print(f"  照片覆盖学员数: {photo_distinct}")
-    print(f"  照片成功关联证书数: {photo_with_cert}")
+    print(f"  照片成功关联证书: {photo_with_cert}")
+    print(f"  孤儿照片(需修复关联): {photo_orphan}")
 
-    # certificate_type 统计
-    type_count = run_mysql_cmd("SELECT COUNT(*) FROM certificate_type")
-    print(f"  证书类型字典: {type_count} 种")
-
-    # certificate_user 统计
-    user_stats = run_mysql_cmd("SELECT COUNT(*) FROM certificate_user")
-    print(f"  证书用户关联: {user_stats} 条")
-
-    # 索引验证(确认已永久删除)
+    # 索引验证
     print()
     print("  唯一索引状态(应全部不存在):")
     for idx_name in CERT_UNIQUE_INDEXES:
@@ -535,10 +638,13 @@ def main():
         print(f"    {idx_name}: {status}")
 
     print()
-    print("══════════════════════════════════════")
-    print("  全表恢复完成!")
-    print("  唯一索引已永久删除,不再重建")
-    print("══════════════════════════════════════")
+    print("═══════════════════════════════════════════════════════════════")
+    print("  恢复完成!")
+    print("  如果关键字段(cert_type/scores/template_id)仍为空:")
+    print("    1. 检查上方诊断输出中 DELETE 事件是否包含这些列")
+    print("    2. 如果 binlog_row_image=MINIMAL,这些列不在 binlog 中")
+    print("    3. 执行 fix_recovered_fields.py 从 extra_json 补全")
+    print("═══════════════════════════════════════════════════════════════")
 
 
 if __name__ == "__main__":
