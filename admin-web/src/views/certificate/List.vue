@@ -69,7 +69,7 @@
       :data="list"
       border
       stripe
-      :max-height="tableMaxHeight"
+      :max-height="tableMaxHeight" :fit="false"
       @selection-change="rows => (selection = rows)"
     >
       <el-table-column type="selection" width="50" />

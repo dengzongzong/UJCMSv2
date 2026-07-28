@@ -46,7 +46,7 @@
       <el-table
         v-loading="loading"
         :data="list"
-        :max-height="tableMaxHeight"
+        :max-height="tableMaxHeight" :fit="false"
         border
         stripe
         style="width: 100%"

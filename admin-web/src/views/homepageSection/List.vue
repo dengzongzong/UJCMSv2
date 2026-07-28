@@ -19,7 +19,7 @@
       </div>
 
       <!-- 表格 -->
-      <el-table :data="list" v-loading="loading" border stripe @selection-change="onSelectionChange" :max-height="tableMaxHeight">
+      <el-table :data="list" v-loading="loading" border stripe @selection-change="onSelectionChange" :max-height="tableMaxHeight" :fit="false">
         <el-table-column type="selection" width="45" align="center" />
         <el-table-column type="index" label="#" width="50" align="center" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />

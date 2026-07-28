@@ -6,7 +6,7 @@
         <el-button type="primary" size="mini" icon="el-icon-plus" style="float: right" @click="handleAdd">新增横幅</el-button>
       </div>
 
-      <el-table :data="list" border v-loading="loading" size="small" :max-height="tableMaxHeight">
+      <el-table :data="list" border v-loading="loading" size="small" :max-height="tableMaxHeight" :fit="false">
         <el-table-column type="index" label="#" width="50" align="center" />
         <el-table-column label="预览" width="160" align="center">
           <template slot-scope="{ row }">

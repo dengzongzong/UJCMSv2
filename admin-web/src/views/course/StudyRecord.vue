@@ -63,7 +63,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :max-height="tableMaxHeight" :data="list" border stripe style="width: 100%">
+      <el-table v-loading="loading" :max-height="tableMaxHeight" :fit="false" :data="list" border stripe style="width: 100%">
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="courseName" label="课程名称" min-width="180" show-overflow-tooltip />
         <el-table-column label="课程标签" width="160">

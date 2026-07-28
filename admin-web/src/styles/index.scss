@@ -87,18 +87,20 @@ ol {
 }
 
 // ====== 表格滚动条修复 ======
-// Element UI 的 .el-table__body-wrapper 默认 overflow: hidden,
-// max-height 模式下只开启 overflow-y, 水平滚动条会消失。
-// 这里用 shorthand overflow: auto !important 一次性覆盖两个方向,
-// 配合 mixin 中的 doLayout() 调用, 确保水平+垂直滚动条都正常显示。
+// Element UI 默认 fit=true 用 table-layout:fixed 把列压缩到容器宽度,
+// 导致 scrollWidth===clientWidth, 水平滚动条永远不会出现。
+// 配合 mixin 中 :fit="false" + JS 显式设置表格宽度, 确保水平滚动正常。
 .el-table .el-table__body-wrapper {
   overflow: auto !important;
 }
-
-// 某些 Element UI 版本会给 body-wrapper 加 inline style 的 overflow,
-// 用属性选择器 + !important 进一步兜底
+// 兜底: 覆盖 inline style 的 overflow
 .el-table .el-table__body-wrapper[style] {
   overflow: auto !important;
+}
+// fit=false 后表格宽度由 JS 控制, 这里确保 CSS 不干扰
+.el-table__body-wrapper .el-table__body,
+.el-table__header-wrapper .el-table__header {
+  width: auto !important;
 }
 
 .filter-container {

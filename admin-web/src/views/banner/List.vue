@@ -21,7 +21,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table v-loading="loading" :data="list" border stripe :max-height="tableMaxHeight">
+      <el-table v-loading="loading" :data="list" border stripe :max-height="tableMaxHeight" :fit="false">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="图片" width="200">
           <template slot-scope="s">

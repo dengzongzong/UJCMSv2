@@ -88,7 +88,7 @@
         </el-button>
       </div>
 
-      <el-table v-loading="loading" :data="list" border stripe style="width: 100%" :max-height="tableMaxHeight" @selection-change="rows => (selection = rows)">
+      <el-table v-loading="loading" :data="list" border stripe style="width: 100%" :max-height="tableMaxHeight" :fit="false" @selection-change="rows => (selection = rows)">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="realName" label="姓名" min-width="120" show-overflow-tooltip>

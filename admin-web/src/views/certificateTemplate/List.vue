@@ -5,7 +5,7 @@
         <span>证书模板</span>
         <el-button style="float:right" type="primary" size="small" icon="el-icon-plus" @click="$router.push('/certificate/template/edit')">新增模板</el-button>
       </div>
-      <el-table v-loading="loading" :data="list" border :max-height="tableMaxHeight">
+      <el-table v-loading="loading" :data="list" border :max-height="tableMaxHeight" :fit="false">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="预览" width="120">
           <template slot-scope="s">

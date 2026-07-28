@@ -44,7 +44,7 @@
     <!-- 列表 -->
     <el-table
       v-loading="listLoading"
-      :max-height="tableMaxHeight"
+      :max-height="tableMaxHeight" :fit="false"
       :data="list"
       border
       stripe
