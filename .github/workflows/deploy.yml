@@ -89,6 +89,8 @@ jobs:
         run: |
           cp deploy/remote-deploy.sh .
           chmod +x remote-deploy.sh
+          cp deploy/daily-backup.sh .
+          chmod +x daily-backup.sh
           cp backend/sql/upgrade_all.sql .
           # 一次性数据修复SQL已全部执行完毕,不再打包到部署流程
           # 如需重新执行,请在服务器上手动 mysql < xxx.sql
@@ -104,6 +106,7 @@ jobs:
           mv admin-web-dist.tar.gz deploy-pkg/
           mv user-web-dist.tar.gz deploy-pkg/
           mv remote-deploy.sh deploy-pkg/
+          mv daily-backup.sh deploy-pkg/
           mv upgrade_all.sql deploy-pkg/
           tar -czf deployment.tar.gz deploy-pkg/
           ls -lh deployment.tar.gz

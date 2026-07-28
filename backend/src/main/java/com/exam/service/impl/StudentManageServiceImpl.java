@@ -363,7 +363,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
      * 学生管理修改属性后,同步到证书表(certificate)
      * 按旧姓名+旧身份证号匹配证书记录:
      * 1. 更新姓名/身份证号
-     * 2. 删除专业已不在学生当前专业列表中的证书
+     * 2. 学生专业变更时,更新证书的专业(只改不删)
      * 3. 为学生新增的专业创建证书记录
      */
     private void syncStudentToCertificateTable(Student student, String oldName, String oldIdCard) {
@@ -394,9 +394,14 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         String newName = student.getName() != null ? student.getName() : oldName;
         String newIdCard = student.getIdCard() != null ? student.getIdCard() : oldIdCard;
 
-        // 1. 更新现有证书的姓名/身份证号,并删除专业不在学生当前列表中的证书
+        // 1. 更新现有证书的姓名/身份证号; 专业不匹配时改为学生当前专业(只改不删)
         Set<String> existingProfessions = new HashSet<>();
-        List<Long> toDelete = new ArrayList<>();
+        // 收集需要改成的新专业(学生有但证书中没有的专业,按顺序取)
+        List<String> newProfessionsToAdd = new ArrayList<>();
+        for (String prof : currentProfessions) {
+            newProfessionsToAdd.add(prof);
+        }
+        int newProfIdx = 0;
         for (Certificate cert : certs) {
             // 更新姓名
             cert.setName(newName);
@@ -405,18 +410,35 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             // 检查专业
             String certProf = cert.getProfession();
             if (!StringUtils.hasText(certProf)) {
-                // 专业为空 → 删除
-                toDelete.add(cert.getId());
+                // 专业为空 → 改为学生当前第一个专业(只改不删)
+                if (!newProfessionsToAdd.isEmpty() && newProfIdx < newProfessionsToAdd.size()) {
+                    cert.setProfession(newProfessionsToAdd.get(newProfIdx));
+                    existingProfessions.add(newProfessionsToAdd.get(newProfIdx));
+                    newProfIdx++;
+                }
+                certificateMapper.updateById(cert);
             } else if (!currentProfessions.contains(certProf.trim())) {
-                // 专业不在学生当前专业列表中 → 删除(不能改成其他专业,否则重复)
-                toDelete.add(cert.getId());
+                // 专业不在学生当前专业列表中 → 改为学生当前专业(只改不删)
+                // 找一个还没被占用的学生专业来替换
+                String replacementProf = null;
+                for (String prof : currentProfessions) {
+                    if (!existingProfessions.contains(prof)) {
+                        replacementProf = prof;
+                        break;
+                    }
+                }
+                if (replacementProf != null) {
+                    cert.setProfession(replacementProf);
+                    existingProfessions.add(replacementProf);
+                } else {
+                    // 所有学生专业都已被证书占用,保留原专业(不删不改)
+                    existingProfessions.add(certProf.trim());
+                }
+                certificateMapper.updateById(cert);
             } else {
                 existingProfessions.add(certProf.trim());
                 certificateMapper.updateById(cert);
             }
-        }
-        if (!toDelete.isEmpty()) {
-            certificateMapper.deleteBatchIds(toDelete);
         }
 
         // 2. 为学生新增的专业创建证书记录(当前专业中有但证书表没有的)
@@ -475,11 +497,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         // 级联删除学生专业关联
         studentProfessionMapper.delete(new LambdaQueryWrapper<StudentProfession>()
                 .eq(StudentProfession::getStudentId, id));
-        // 清理该学生的证书(按身份证号匹配)
-        if (StringUtils.hasText(exist.getIdCard())) {
-            certificateMapper.delete(new LambdaQueryWrapper<Certificate>()
-                    .eq(Certificate::getIdCard, exist.getIdCard()));
-        }
+        // 注意: 不删除证书数据(证书数据不允许通过学生删除来清理)
         // 最后删除学生主体
         this.removeById(id);
     }

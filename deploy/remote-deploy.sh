@@ -307,6 +307,25 @@ else
     echo "  警告: exam-platform 服务启动失败,查看日志: journalctl -u exam-platform -n 20"
 fi
 
+# 9. 安装每日备份脚本和定时任务
+echo "[9/9] 安装每日备份定时任务..."
+if [ -f "${SCRIPT_DIR}/daily-backup.sh" ]; then
+    cp "${SCRIPT_DIR}/daily-backup.sh" "${DEPLOY_DIR}/daily-backup.sh"
+    chmod +x "${DEPLOY_DIR}/daily-backup.sh"
+    # 设置数据库密码
+    sed -i "s/MYSQL_PASS=\"Root@123456\"/MYSQL_PASS=\"${MYSQL_PASS}\"/" "${DEPLOY_DIR}/daily-backup.sh"
+    # 创建备份目录
+    mkdir -p "${DEPLOY_DIR}/backups"
+    # 添加 crontab (每天0点执行),先清除旧的再添加避免重复
+    (crontab -l 2>/dev/null | grep -v "daily-backup.sh"; echo "0 0 * * * ${DEPLOY_DIR}/daily-backup.sh >> ${DEPLOY_DIR}/backups/backup.log 2>&1") | crontab -
+    echo "  每日备份定时任务已安装 (每天0点执行)"
+    echo "  备份脚本: ${DEPLOY_DIR}/daily-backup.sh"
+    echo "  备份目录: ${DEPLOY_DIR}/backups/"
+    echo "  保留最近5个备份"
+else
+    echo "  警告: daily-backup.sh 不存在,跳过"
+fi
+
 echo ""
 echo "========================================"
 echo "  部署完成!"

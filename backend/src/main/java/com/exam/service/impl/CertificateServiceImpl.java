@@ -2095,36 +2095,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             }
 
             // ====== 2. 学生没有专业 → 跳过(不创建,也不删除已有证书) ======
-            // 该学生在学生管理没有专业信息,不作为基准去删除证书
             if (expectedProfessions.isEmpty()) {
                 continue;
             }
 
             // ====== 3. 为每个专业创建证书记录(身份证+专业 相同则跳过) ======
+            // 注意: 同步只创建不删除,证书数据不允许通过同步删除
             for (String profName : expectedProfessions) {
                 created += createIfNotExists(student, idCard, profName, certType);
-            }
-
-            // ====== 4. 删除该学生多余的证书记录 ======
-            // 逻辑: 该身份证号在学生管理存在(当前遍历的就是学生),以学生管理为基准
-            //   - 证书专业为空 → 保留(可能是手动导入的数据,不属于同步管辖范围)
-            //   - 证书专业不在学生当前专业列表中 → 删除(学生已移除该专业)
-            // 注意: 证书管理中有但学生管理中没有的身份证号,不会被遍历到,自然保留
-            List<Certificate> existingCerts = this.list(new LambdaQueryWrapper<Certificate>()
-                    .eq(Certificate::getIdCard, idCard));
-            Set<String> finalExpected = expectedProfessions;
-            List<Long> toDelete = existingCerts.stream()
-                    .filter(cert -> {
-                        String certProf = cert.getProfession();
-                        // 专业为空 → 保留(手动导入的数据不删)
-                        if (!StringUtils.hasText(certProf)) return false;
-                        // 专业不在学生当前专业列表中 → 删除
-                        return !finalExpected.contains(certProf.trim());
-                    })
-                    .map(Certificate::getId)
-                    .collect(Collectors.toList());
-            if (!toDelete.isEmpty()) {
-                this.removeByIds(toDelete);
             }
         }
         return created;

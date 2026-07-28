@@ -37,15 +37,16 @@ public class UploadCleanController {
      */
     @GetMapping("/orphans")
     public Result<Map<String, Object>> orphans() {
-        // 1. 收集磁盘上所有文件(排除证书预览缓存目录 cert_preview)
+        // 1. 收集磁盘上所有文件(排除证书预览缓存目录 cert_preview 和 static 目录)
         File root = new File(uploadPath);
         List<File> diskFiles = new ArrayList<>();
         if (root.exists() && root.isDirectory()) {
             collectFiles(root, diskFiles);
         }
 
-        // 2. 收集数据库中所有被引用的文件名
-        Set<String> referenced = collectReferencedFilenames();
+        // 2. 收集数据库中所有被引用的文件名(同时收集相对路径)
+        Set<String> referencedNames = collectReferencedFilenames();
+        Set<String> referencedPaths = collectReferencedFilePaths();
 
         // 3. 计算孤儿
         List<Map<String, Object>> orphanList = new ArrayList<>();
@@ -53,14 +54,24 @@ public class UploadCleanController {
             String name = f.getName();
             // 跳过证书预览缓存文件(由系统管理,不算孤儿)
             if (isUnderCertPreview(f)) continue;
-            if (!referenced.contains(name)) {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("filename", name);
-                m.put("size", f.length());
-                m.put("lastModified", f.lastModified());
-                m.put("path", relativePath(root, f));
-                orphanList.add(m);
-            }
+            // 跳过 static 目录下的文件(旧系统导入的文件,引用格式多样,容易误报)
+            if (isUnderStaticDir(f)) continue;
+            // 按文件名匹配
+            if (referencedNames.contains(name)) continue;
+            // 按相对路径匹配(如 image/20250715/xxx.png)
+            String relPath = relativePath(root, f).replace("/", "/");
+            if (relPath.startsWith("/")) relPath = relPath.substring(1);
+            if (referencedPaths.contains(relPath)) continue;
+            // 按相对路径的各层级匹配(如 uploads/image/20250715/xxx.png)
+            if (referencedPaths.contains("uploads/" + relPath)) continue;
+            if (referencedPaths.contains("static/upload/" + relPath)) continue;
+
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("filename", name);
+            m.put("size", f.length());
+            m.put("lastModified", f.lastModified());
+            m.put("path", relativePath(root, f));
+            orphanList.add(m);
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -103,6 +114,10 @@ public class UploadCleanController {
             }
             if (isUnderCertPreview(target)) {
                 failed.add(fail(name, "证书预览缓存不可通过此接口删除"));
+                continue;
+            }
+            if (isUnderStaticDir(target)) {
+                failed.add(fail(name, "static目录下的文件不可删除(旧系统导入文件)"));
                 continue;
             }
             if (referenced.contains(name)) {
@@ -160,24 +175,41 @@ public class UploadCleanController {
     /** 查询数据库所有字符串列中 /uploads/ 引用到的文件名集合 */
     private Set<String> collectReferencedFilenames() {
         Set<String> referenced = new HashSet<>();
+        collectReferencedFromDb(referenced, null);
+        return referenced;
+    }
+
+    /** 查询数据库所有字符串列中 /uploads/ 引用到的完整路径集合(如 image/20250715/xxx.png) */
+    private Set<String> collectReferencedFilePaths() {
+        Set<String> paths = new HashSet<>();
+        collectReferencedFromDb(null, paths);
+        return paths;
+    }
+
+    /**
+     * 统一的数据库引用扫描: 同时收集文件名和相对路径
+     * @param nameSet 文件名集合(可为null)
+     * @param pathSet 相对路径集合(可为null)
+     */
+    private void collectReferencedFromDb(Set<String> nameSet, Set<String> pathSet) {
         // 取当前库名
         String dbName;
         try {
             dbName = jdbcTemplate.queryForObject("SELECT DATABASE()", String.class);
         } catch (Exception e) {
-            return referenced;
+            return;
         }
-        if (dbName == null) return referenced;
+        if (dbName == null) return;
 
-        // 查询所有字符串类型列
+        // 查询所有字符串类型列(包括 json 类型)
         List<Map<String, Object>> cols;
         try {
             cols = jdbcTemplate.queryForList(
                     "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS " +
-                            "WHERE TABLE_SCHEMA = ? AND DATA_TYPE IN ('varchar','text','mediumtext','longtext','char','tinytext')",
+                            "WHERE TABLE_SCHEMA = ? AND DATA_TYPE IN ('varchar','text','mediumtext','longtext','char','tinytext','json')",
                     dbName);
         } catch (Exception e) {
-            return referenced;
+            return;
         }
 
         for (Map<String, Object> col : cols) {
@@ -185,26 +217,32 @@ public class UploadCleanController {
             String column = String.valueOf(col.get("COLUMN_NAME"));
             try {
                 List<String> values = jdbcTemplate.queryForList(
-                        "SELECT `" + column + "` FROM `" + table + "` WHERE `" + column + "` LIKE '%/uploads/%' OR `" + column + "` LIKE '%/static/upload/%' OR `" + column + "` LIKE '%/static/证书模板图/%'",
+                        "SELECT `" + column + "` FROM `" + table + "` WHERE `" + column + "` LIKE '%/uploads/%' OR `" + column + "` LIKE '%/static/upload/%' OR `" + column + "` LIKE '%/static/证书模板图/%' OR `" + column + "` LIKE '%uploads/%'",
                         String.class);
                 for (String v : values) {
                     if (v == null) continue;
                     Matcher m = UPLOAD_REF.matcher(v);
                     while (m.find()) {
                         String path = m.group(1);
+                        // 收集完整相对路径(如 image/20250715/xxx.png)
+                        if (pathSet != null) {
+                            pathSet.add(path);
+                        }
+                        // 收集文件名
                         int slash = path.lastIndexOf('/');
                         String name = slash >= 0 ? path.substring(slash + 1) : path;
                         // 去掉可能的 query 参数
                         int q = name.indexOf('?');
                         if (q >= 0) name = name.substring(0, q);
-                        if (!name.isEmpty()) referenced.add(name);
+                        if (!name.isEmpty() && nameSet != null) {
+                            nameSet.add(name);
+                        }
                     }
                 }
             } catch (Exception ignored) {
                 // 某些表/列可能无权访问或不存在,跳过
             }
         }
-        return referenced;
     }
 
     /** 在 uploads 根目录(含子目录)按文件名查找文件 */
@@ -232,6 +270,15 @@ public class UploadCleanController {
     private boolean isUnderCertPreview(File f) {
         try {
             return f.getCanonicalPath().startsWith(new File(uploadPath, "cert_preview").getCanonicalPath());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** 判断文件是否在 static 目录下(旧系统导入的文件,引用格式多样,不做孤儿扫描) */
+    private boolean isUnderStaticDir(File f) {
+        try {
+            return f.getCanonicalPath().startsWith(new File(uploadPath, "static").getCanonicalPath());
         } catch (Exception e) {
             return false;
         }
