@@ -326,6 +326,10 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             // 不复用学生登录学号作为证书学员编号,避免一人多证时 certificate.uk_student_no 冲突;
             // 证书学员编号由 certificateService.add() 按"编号配置"规则独立生成。
             certDto.setProfession(professionNameMap.get(professionId));
+            // 传递证书类型,用于自动绑定同名模板
+            if (StringUtils.hasText(student.getCertType())) {
+                certDto.setCertType(student.getCertType().trim());
+            }
             try {
                 certificateService.add(certDto);
                 // 去重时 add 返回 false,这里不关心返回值
