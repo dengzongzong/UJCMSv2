@@ -50,7 +50,8 @@ public class GlobalExceptionHandler {
 
     /** 请求体 JSON 格式错误或无法解析 */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public Result<Void> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+    public Result<Void> handleHttpMessageNotReadable(HttpMessageNotReadableException e, HttpServletRequest request) {
+        log.warn("请求数据格式错误: {} - {}", request.getRequestURI(), e.getMessage());
         return Result.error(400, "请求数据格式错误，请检查提交的内容是否完整且格式正确");
     }
 

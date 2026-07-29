@@ -578,7 +578,9 @@ export default {
         authCode: row.authCode || '',
         authExpireDate: row.authExpireDate || '',
         authStartDate: row.authStartDate || '',
-        cooperationIntent: row.cooperationIntent || [],
+        cooperationIntent: row.cooperationIntent
+          ? (Array.isArray(row.cooperationIntent) ? row.cooperationIntent : row.cooperationIntent.split(','))
+          : [],
         contactName: row.contactName || '',
         contactPhone: row.contactPhone || '',
         status: row.status !== undefined ? row.status : 0,
@@ -599,6 +601,16 @@ export default {
         if (!valid) return
         this.submitting = true
         const data = { ...this.form }
+        // cooperationIntent: 后端是String(逗号分隔)，前端checkbox-group是数组，需要转换
+        if (Array.isArray(data.cooperationIntent)) {
+          data.cooperationIntent = data.cooperationIntent.join(',')
+        }
+        // 日期字段：空字符串转为null，避免后端LocalDate解析失败
+        ;['establishedDate', 'authStartDate', 'authExpireDate'].forEach(field => {
+          if (data[field] === '') {
+            data[field] = null
+          }
+        })
         const api = this.isEdit
           ? updateCooperationApply({ ...data, id: this.editId })
           : addCooperationApply(data)
