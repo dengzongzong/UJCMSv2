@@ -621,9 +621,28 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 }
             }
         }
-        // 默认颁发日期 = 今天
+        // ====== 同一身份证号的证书记录保持一致: 报单机构/颁发日期/级别 ======
+        // 一人多专业时,每个专业的证书记录这三项应保持一致,从已有记录继承
+        if (StringUtils.hasText(c.getIdCard())) {
+            Certificate existing = this.getOne(new LambdaQueryWrapper<Certificate>()
+                    .eq(Certificate::getIdCard, c.getIdCard())
+                    .orderByDesc(Certificate::getId)
+                    .last("LIMIT 1"));
+            if (existing != null) {
+                if (!StringUtils.hasText(c.getAgency())) {
+                    c.setAgency(existing.getAgency());
+                }
+                if (c.getIssueDate() == null) {
+                    c.setIssueDate(existing.getIssueDate());
+                }
+                if (!StringUtils.hasText(c.getSkillLevel())) {
+                    c.setSkillLevel(existing.getSkillLevel());
+                }
+            }
+        }
+        // 默认颁发日期 = 今天(继承后仍为空时才用默认值)
         if (c.getIssueDate() == null) c.setIssueDate(LocalDate.now());
-        // 默认技能等级
+        // 默认技能等级(继承后仍为空时才用默认值)
         if (!StringUtils.hasText(c.getSkillLevel())) c.setSkillLevel("高级");
 
         // ====== 去重检查: 身份证号 + 专业 相同则跳过(唯一键) ======
@@ -2327,8 +2346,6 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         c.setIdCard(idCard);
         c.setGender(CertificateNumberServiceImpl.extractGenderFromIdCard(idCard));
         c.setProfession(trimmedProfession);
-        c.setSkillLevel("高级");
-        c.setIssueDate(LocalDate.now());
         c.setCertNo(null); // 证书编号在绑定模板时生成
         c.setStudentNo(null); // 下方自动生成
         // 设置证书类型(优先用传入的 certType,其次用学生自身的 certType)
@@ -2336,6 +2353,21 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (StringUtils.hasText(effectiveCertType)) {
             c.setCertType(effectiveCertType.trim());
         }
+        // ====== 同一身份证号的证书记录保持一致: 报单机构/颁发日期/级别 ======
+        if (StringUtils.hasText(idCard)) {
+            Certificate existing = this.getOne(new LambdaQueryWrapper<Certificate>()
+                    .eq(Certificate::getIdCard, idCard)
+                    .orderByDesc(Certificate::getId)
+                    .last("LIMIT 1"));
+            if (existing != null) {
+                c.setAgency(existing.getAgency());
+                c.setIssueDate(existing.getIssueDate());
+                c.setSkillLevel(existing.getSkillLevel());
+            }
+        }
+        // 继承后仍为空时使用默认值
+        if (c.getIssueDate() == null) c.setIssueDate(LocalDate.now());
+        if (!StringUtils.hasText(c.getSkillLevel())) c.setSkillLevel("高级");
         // 自动生成学员编号(日期取自颁发日期=今天)
         numberService.fillStudentNoIfEmpty(c);
         // extra_json: 成绩为空(前端显示横杠)

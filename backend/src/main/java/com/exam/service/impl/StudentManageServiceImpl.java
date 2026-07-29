@@ -911,6 +911,10 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                 if (StringUtils.hasText(row.getCertType())) {
                     certDto.setCertType(row.getCertType().trim());
                 }
+                // 从Excel行传递报单机构/颁发日期/级别,保持同一学生多专业证书记录一致
+                certDto.setAgency(row.getAgency());
+                certDto.setIssueDate(row.getIssueDate());
+                certDto.setSkillLevel(row.getSkillLevel());
                 try {
                     certificateService.add(certDto);
                 } catch (Exception e) {
