@@ -30,18 +30,24 @@ public class DashboardController {
     private ExamRecordMapper examRecordMapper;
     @Autowired
     private CertificateUserMapper certificateUserMapper;
+    @Autowired
+    private CertificateMapper certificateMapper;
 
     @GetMapping("/stats")
     public Result<Map<String, Object>> stats() {
         Map<String, Object> data = new HashMap<>();
-        data.put("student", studentMapper.selectCount(null));
+        // 学生总数:按身份证号去重,避免同一人多条记录
+        data.put("student", studentMapper.countDistinctByIdCard());
+        // 证书用户:按身份证号去重,certificate_user按专业维度有多条记录
+        data.put("certificateUser", certificateUserMapper.countDistinctByIdCard());
+        // 已发证书:certificate表中实际已颁发的证书数
+        data.put("certificate", certificateMapper.selectCount(null));
         data.put("course", courseMapper.selectCount(null));
         data.put("exam", examMapper.selectCount(null));
         data.put("question", questionMapper.selectCount(null));
         data.put("paper", paperMapper.selectCount(null));
         data.put("video", videoMapper.selectCount(null));
         data.put("examRecord", examRecordMapper.selectCount(null));
-        data.put("certificateUser", certificateUserMapper.selectCount(null));
         return Result.success(data);
     }
 }

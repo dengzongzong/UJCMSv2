@@ -77,6 +77,7 @@ export default {
       stats: [
         { key: 'student', label: '学生总数', value: '--', icon: 'el-icon-s-custom', color: '#409eff' },
         { key: 'certificateUser', label: '证书用户', value: '--', icon: 'el-icon-s-flag', color: '#9254de' },
+        { key: 'certificate', label: '已发证书', value: '--', icon: 'el-icon-s-order', color: '#36cfc9' },
         { key: 'course', label: '课程总数', value: '--', icon: 'el-icon-reading', color: '#67c23a' },
         { key: 'exam', label: '考试总数', value: '--', icon: 'el-icon-document', color: '#e6a23c' },
         { key: 'question', label: '题目总数', value: '--', icon: 'el-icon-edit', color: '#f56c6c' }
