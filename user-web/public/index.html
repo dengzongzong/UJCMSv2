@@ -17,6 +17,25 @@
   <noscript>
     <strong>很抱歉，本平台需要启用 JavaScript 才能正常运行，请先启用 JavaScript。</strong>
   </noscript>
+  <script>
+    // 证书查询参数跳转:在 Vue 加载前检测 URL 参数,直接跳转到证书查询页
+    // 支持 bh(证书编号)/certNo/name/idCard 参数
+    (function() {
+      var search = window.location.search;
+      var path = window.location.pathname;
+      if (path === '/' || path === '/index.html') {
+        var params = new URLSearchParams(search);
+        var bh = params.get('bh');
+        var certNo = params.get('certNo');
+        var name = params.get('name');
+        var idCard = params.get('idCard');
+        if (bh || certNo || name || (idCard && name)) {
+          window.location.replace('/certificate' + search);
+          return;
+        }
+      }
+    })();
+  </script>
   <div id="app"></div>
 </body>
 
