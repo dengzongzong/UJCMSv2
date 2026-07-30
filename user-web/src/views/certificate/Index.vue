@@ -22,9 +22,9 @@
                     <span>查询条件</span>
                   </div>
                   <div class="card-body">
-                    <van-field v-model="form.idCard" label="身份证号" placeholder="选填,与姓名一起查询" maxlength="20" clearable />
-                    <van-field v-model="form.name" label="姓名" placeholder="选填,与身份证一起查询" maxlength="50" clearable />
-                    <van-field v-model="form.certNo" label="证书编号" placeholder="可单独凭证书编号查询" maxlength="50" clearable />
+                    <van-field v-model="form.idCard" label="身份证号" placeholder="选填,与姓名一起查询" maxlength="20" clearable @clear="form.idCard = ''" />
+                    <van-field v-model="form.name" label="姓名" placeholder="选填,与身份证一起查询" maxlength="50" clearable @clear="form.name = ''" />
+                    <van-field v-model="form.certNo" label="证书编号" placeholder="可单独凭证书编号查询" maxlength="50" clearable @clear="form.certNo = ''" />
                     <div class="btn-group">
                       <van-button type="primary" icon="search" :loading="searching" block @click="onSearch">查询证书</van-button>
                       <van-button icon="replay" block @click="onReset">重 置</van-button>
@@ -351,10 +351,10 @@ export default {
   created() {
     if (this.isLoggedIn && this.activeTab === 'paper') this.fetchMyExams()
     // 支持 URL 参数自动填入查询条件并自动查询:
-    //   ?idCard=xxx&name=xxx  或  ?certNo=xxx  或同时带两者
+    //   ?bh=证书编号&name=姓名  或  ?idCard=xxx&name=xxx  或  ?certNo=xxx
     this.applyUrlQuery()
-    // 已登录用户自动查询自己的证书
-    if (this.isLoggedIn) {
+    // 已登录用户且没有URL查询参数时,自动查询自己的证书
+    if (this.isLoggedIn && !this._fromUrl) {
       this.fetchMyCertificates()
       this.fetchMyBestRecords()
     }
@@ -396,17 +396,25 @@ export default {
       if (s === '' || s === 'null' || s === 'undefined') return '—'
       return s
     },
-    // 从浏览器地址栏读取 idCard / certNo / name,自动填入表单,
-    // 如果参数足以发起查询(certNo 或 idCard+name),则自动查询
+    // 从浏览器地址栏读取查询参数,自动填入表单并自动查询。
+    // 支持两种参数格式:
+    //   1. 原生格式: ?idCard=xxx&name=xxx  或  ?certNo=xxx
+    //   2. 外部链接格式: ?bh=证书编号&name=姓名
+    //      bh → certNo(证书编号), name → name(姓名)
     applyUrlQuery() {
       const query = (this.$route && this.$route.query) || {}
       let touched = false
-      if (query.idCard) { this.form.idCard = String(query.idCard).trim(); touched = true }
+      // 外部链接参数: bh → certNo
+      if (query.bh) { this.form.certNo = String(query.bh).trim(); touched = true }
+      // 原生参数
       if (query.certNo) { this.form.certNo = String(query.certNo).trim(); touched = true }
+      if (query.idCard) { this.form.idCard = String(query.idCard).trim(); touched = true }
       if (query.name) { this.form.name = String(query.name).trim(); touched = true }
       if (!touched) return
       // 自动切换到证书查询 Tab
       this.activeTab = 'cert'
+      // 标记来自URL参数,跳过已登录用户的自动查询(避免覆盖URL查询结果)
+      this._fromUrl = true
       // 参数足以发起查询时,自动查询
       const hasCertNo = !!this.form.certNo
       const hasIdCardAndName = !!this.form.idCard && !!this.form.name
@@ -436,7 +444,7 @@ export default {
         })
         const data = res.data || res
         this.records = Array.isArray(data) ? data : (data.records || data.list || [])
-        this.total = data.total || this.records.length
+        this.total = this.records.length
         this.searched = true
         this.selectedIds = []
         if (this.records.length > 0) Toast.success('找到 ' + this.records.length + ' 张证书')
