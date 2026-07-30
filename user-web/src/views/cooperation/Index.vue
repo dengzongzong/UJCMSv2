@@ -559,9 +559,9 @@ export default {
 .cert-preview-container {
   background: #fff;
   border-radius: 8px;
-  width: 90%;
-  max-width: 800px;
-  max-height: 90vh;
+  width: 96%;
+  max-width: 1400px;
+  height: 92vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -600,11 +600,14 @@ export default {
   transform-origin: center center;
   transition: transform 0.15s ease;
   max-width: 100%;
+  max-height: 100%;
 }
 
 .cert-preview-img {
   max-width: 100%;
+  max-height: calc(92vh - 120px);
   display: block;
+  object-fit: contain;
 }
 
 .cert-preview-text {

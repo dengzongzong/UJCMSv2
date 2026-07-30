@@ -102,7 +102,10 @@
             <div class="content-card">
               <div class="card-header">
                 <span class="card-title">个人资料</span>
-                <van-icon name="edit" size="18" color="#1989fa" @click="handleEditProfile" />
+                <span class="edit-btn-wrap" @click="handleEditProfile">
+                  <van-icon name="edit" size="18" color="#1989fa" />
+                  <span class="edit-btn-text">修改</span>
+                </span>
               </div>
               <div class="info-grid">
                 <div class="info-item">
@@ -647,6 +650,25 @@ export default {
       font-size: 18px;
       font-weight: bold;
       color: #333;
+    }
+
+    .edit-btn-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+
+      &:hover {
+        background: #f0f8ff;
+      }
+
+      .edit-btn-text {
+        font-size: 14px;
+        color: #1989fa;
+      }
     }
   }
 }
