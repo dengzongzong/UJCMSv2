@@ -487,3 +487,14 @@ SET @sql = IF(@idx_exists > 0,
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- cooperation_cert_content 表(授权培育基地证书图片+富文本,单条记录)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `cooperation_cert_content` (
+  `id` bigint NOT NULL DEFAULT 1,
+  `image_url` varchar(500) DEFAULT NULL COMMENT '证书背景图片URL',
+  `rich_text` longtext COMMENT '覆盖在图片上的富文本HTML内容',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='授权培育基地证书内容(单条)';

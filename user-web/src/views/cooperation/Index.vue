@@ -36,25 +36,34 @@
               <span v-if="item.status !== 1" :class="['result-status', 'status-' + item.status]">{{ statusText(item.status) }}</span>
             </div>
             <div class="result-card-body">
-              <div class="result-item">
-                <span class="result-label">授权编号：</span>
-                <span class="result-value">{{ item.authCode || '—' }}</span>
+              <div class="result-info-left">
+                <div class="result-item">
+                  <span class="result-label">授权编号：</span>
+                  <span class="result-value">{{ item.authCode || '—' }}</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">主营业务：</span>
+                  <span class="result-value">{{ item.mainBusiness || '—' }}</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">联系人：</span>
+                  <span class="result-value">{{ item.contactName || '—' }}</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">联系电话：</span>
+                  <span class="result-value">{{ item.contactPhone || '—' }}</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">授权日期：</span>
+                  <span class="result-value">{{ authDateText(item) }}</span>
+                </div>
               </div>
-              <div class="result-item">
-                <span class="result-label">主营业务：</span>
-                <span class="result-value">{{ item.mainBusiness || '—' }}</span>
-              </div>
-              <div class="result-item">
-                <span class="result-label">联系人：</span>
-                <span class="result-value">{{ item.contactName || '—' }}</span>
-              </div>
-              <div class="result-item">
-                <span class="result-label">联系电话：</span>
-                <span class="result-value">{{ item.contactPhone || '—' }}</span>
-              </div>
-              <div class="result-item">
-                <span class="result-label">授权日期：</span>
-                <span class="result-value">{{ authDateText(item) }}</span>
+              <!-- 证书图片+富文本覆盖展示 -->
+              <div v-if="certContent.imageUrl" class="result-cert-right" @click.stop>
+                <div class="cert-image-overlay">
+                  <img :src="resolveCertImg(certContent.imageUrl)" alt="授权证书" class="cert-bg-img" />
+                  <div class="cert-rich-text" v-html="certContent.richText"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -87,6 +96,7 @@
 <script>
 import request from '@/utils/request'
 import Header from '@/components/Header.vue'
+import { resolveImg } from '@/utils/apiBase'
 
 export default {
   name: 'CooperationUnit',
@@ -98,10 +108,29 @@ export default {
       loading: false,
       queried: false,
       detailVisible: false,
-      detail: {}
+      detail: {},
+      certContent: { imageUrl: '', richText: '' },
+      certLoaded: false
     }
   },
   methods: {
+    async fetchCertContent() {
+      if (this.certLoaded) return
+      try {
+        const res = await request({ url: '/public/cooperation-cert-content', method: 'get' })
+        const data = res.data || res
+        if (data) {
+          this.certContent.imageUrl = data.imageUrl || ''
+          this.certContent.richText = data.richText || ''
+        }
+        this.certLoaded = true
+      } catch (e) {
+        // 无数据时静默处理
+      }
+    },
+    resolveCertImg(url) {
+      return resolveImg(url)
+    },
     async handleQuery() {
       if (!this.query.unitName.trim()) {
         this.$toast('请输入单位名称')
@@ -121,6 +150,10 @@ export default {
         const data = res.data || res
         this.resultList = Array.isArray(data) ? data : (data.list || data.records || [])
         this.queried = true
+        // 查到数据后加载证书内容
+        if (this.resultList.length > 0) {
+          this.fetchCertContent()
+        }
       } catch (e) {
         this.$toast('查询失败，请稍后重试')
         this.resultList = []
@@ -395,6 +428,45 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 40px;
+}
+
+.result-info-left {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-cert-right {
+  flex-shrink: 0;
+  width: 280px;
+}
+
+.cert-image-overlay {
+  position: relative;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+
+.cert-bg-img {
+  width: 100%;
+  display: block;
+}
+
+.cert-rich-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px;
+  overflow: hidden;
+  pointer-events: none;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .result-item {

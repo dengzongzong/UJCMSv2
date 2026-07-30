@@ -30,7 +30,7 @@
 
           <div class="profession-grid">
             <div
-              v-for="prof in filteredProfessions"
+              v-for="prof in displayedProfessions"
               :key="prof.id"
               class="profession-item"
               :class="{ active: selectedProfessionId === prof.id }"
@@ -43,6 +43,13 @@
               </div>
               <van-icon v-if="selectedProfessionId === prof.id" name="success" color="#1989fa" size="20" />
             </div>
+          </div>
+
+          <!-- 展开/收缩按钮:专业超过默认显示数量时显示 -->
+          <div v-if="filteredProfessions.length > defaultShowCount && !searchKeyword" class="expand-btn-wrap">
+            <van-button plain type="info" size="small" @click="showAll = !showAll">
+              {{ showAll ? '收起专业 ▲' : '展开全部专业 (' + filteredProfessions.length + ') ▼' }}
+            </van-button>
           </div>
 
           <div v-if="filteredProfessions.length === 0 && !loading" class="empty-tip">
@@ -81,7 +88,9 @@ export default {
       selectedProfessionId: null,
       selectedProfession: null,
       loading: false,
-      searchKeyword: ''
+      searchKeyword: '',
+      showAll: false,
+      defaultShowCount: 8
     }
   },
   computed: {
@@ -89,6 +98,11 @@ export default {
       if (!this.searchKeyword) return this.professionList
       const kw = this.searchKeyword.toLowerCase()
       return this.professionList.filter(p => p.name && p.name.toLowerCase().includes(kw))
+    },
+    displayedProfessions() {
+      // 搜索时不限制显示数量;未搜索时默认只显示4行(双列=8项),展开后显示全部
+      if (this.searchKeyword || this.showAll) return this.filteredProfessions
+      return this.filteredProfessions.slice(0, this.defaultShowCount)
     }
   },
   created() {
@@ -268,6 +282,12 @@ export default {
     font-size: 16px;
     font-weight: 500;
   }
+}
+
+.expand-btn-wrap {
+  text-align: center;
+  margin-top: 16px;
+  padding-bottom: 4px;
 }
 
 .empty-tip {

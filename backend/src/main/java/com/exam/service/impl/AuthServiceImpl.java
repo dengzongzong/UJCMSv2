@@ -186,29 +186,23 @@ public class AuthServiceImpl implements AuthService {
         if (!dto.getPassword().equals(dto.getConfirmPassword())) {
             throw new BusinessException("两次输入的密码不一致");
         }
-        // 校验手机号是否已注册
-        Long count = studentMapper.selectCount(new LambdaQueryWrapper<Student>()
-                .eq(Student::getPhone, dto.getPhone()));
-        if (count > 0) {
-            throw new BusinessException("该手机号已注册");
-        }
-        // 校验身份证号是否已注册(身份证号唯一)
-        // 如果身份证号已存在但手机号为空,则更新该学员的手机号等信息(不拦截注册)
+        // 优先校验身份证号:如果身份证号已存在,更新该学员信息(手机号等),注册成功
+        // 这与导入/新增不同——导入/新增遇到身份证重复要报错,注册遇到身份证重复要更新
         if (StringUtils.hasText(dto.getIdCard())) {
             String idCard = dto.getIdCard().trim();
-            // 身份证号格式校验已去除,允许任意格式身份证号注册
-            Long idCardCount = studentMapper.selectCount(new LambdaQueryWrapper<Student>()
+            Student existing = studentMapper.selectOne(new LambdaQueryWrapper<Student>()
                     .eq(Student::getIdCard, idCard));
-            if (idCardCount > 0) {
-                // 身份证号已存在: 手机号已被其他学员占用 → 拦截; 否则更新现有学员信息
-                Long phoneConflict = studentMapper.selectCount(new LambdaQueryWrapper<Student>()
-                        .eq(Student::getPhone, dto.getPhone())
-                        .ne(Student::getIdCard, idCard));
-                if (phoneConflict > 0) {
-                    throw new BusinessException("该手机号已被其他学员使用");
+            if (existing != null) {
+                // 身份证号已存在:检查手机号是否被其他学员占用
+                if (StringUtils.hasText(dto.getPhone())) {
+                    Long phoneConflict = studentMapper.selectCount(new LambdaQueryWrapper<Student>()
+                            .eq(Student::getPhone, dto.getPhone())
+                            .ne(Student::getIdCard, idCard));
+                    if (phoneConflict > 0) {
+                        throw new BusinessException("该手机号已被其他学员使用");
+                    }
                 }
-                Student existing = studentMapper.selectOne(new LambdaQueryWrapper<Student>()
-                        .eq(Student::getIdCard, idCard));
+                // 更新现有学员信息(手机号、姓名、密码、昵称等用注册数据覆盖)
                 existing.setPhone(dto.getPhone());
                 existing.setName(dto.getName());
                 existing.setPassword(BCrypt.hashpw(dto.getPassword()));
@@ -221,6 +215,12 @@ public class AuthServiceImpl implements AuthService {
                 certificateUserSyncService.syncStudent(existing);
                 return;
             }
+        }
+        // 身份证号不存在时,校验手机号是否已被注册
+        Long count = studentMapper.selectCount(new LambdaQueryWrapper<Student>()
+                .eq(Student::getPhone, dto.getPhone()));
+        if (count > 0) {
+            throw new BusinessException("该手机号已注册");
         }
         // 注意:图形验证码校验放在 Controller 层统一拦截,这里不再重复校验
         // (CaptchaService.verify 是一次性消费,二次调用必然失败)

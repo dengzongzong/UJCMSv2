@@ -19,3 +19,12 @@ export function deleteCooperationApply(id) {
 export function batchDeleteCooperationApply(ids) {
   return request({ url: '/admin/cooperation-apply/batch', method: 'delete', data: ids })
 }
+
+// 授权培育基地证书内容(单条)
+export function getCertContent() {
+  return request({ url: '/admin/cooperation-cert-content', method: 'get' })
+}
+
+export function saveCertContent(data) {
+  return request({ url: '/admin/cooperation-cert-content', method: 'put', data })
+}

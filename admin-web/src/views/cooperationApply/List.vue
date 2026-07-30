@@ -39,6 +39,7 @@
         :disabled="selection.length === 0"
         @click="onBatchDelete"
       >批量删除</el-button>
+      <el-button type="warning" icon="el-icon-picture-outline" class="filter-item" @click="openCertEditor">编辑授权证书</el-button>
     </div>
 
     <!-- 列表 -->
@@ -366,6 +367,44 @@
     <el-dialog :visible.sync="previewVisible" append-to-body title="图片预览">
       <img :src="previewUrl" style="max-width: 100%; max-height: 70vh; display: block; margin: 0 auto" />
     </el-dialog>
+
+    <!-- 授权证书编辑弹窗 -->
+    <el-dialog title="编辑授权证书" :visible.sync="certDialogVisible" width="850px" append-to-body @opened="onCertDialogOpen">
+      <div class="cert-editor-wrap">
+        <!-- 上传证书背景图片 -->
+        <div class="cert-upload-section">
+          <el-upload
+            v-if="!certForm.imageUrl"
+            class="cert-uploader"
+            action="#"
+            :show-file-list="false"
+            :before-upload="beforeCertUpload"
+            :http-request="onCertImageUpload"
+            accept="image/*"
+          >
+            <div class="cert-upload-placeholder">
+              <i class="el-icon-plus"></i>
+              <span>上传证书背景图片</span>
+            </div>
+          </el-upload>
+          <div v-else class="cert-image-preview">
+            <img :src="resolveCertImg(certForm.imageUrl)" alt="证书背景" />
+            <el-button type="text" class="cert-change-btn" @click="certForm.imageUrl = ''">更换图片</el-button>
+          </div>
+        </div>
+
+        <!-- 富文本编辑器(覆盖在图片上的文字) -->
+        <div v-if="certForm.imageUrl" class="cert-text-section">
+          <div class="cert-text-label">编辑覆盖在图片上的文字内容(支持富文本):</div>
+          <RichEditor ref="certRichEditor" v-model="certForm.richText" :height="300" placeholder="请输入要覆盖在证书图片上的文字内容..." />
+        </div>
+      </div>
+
+      <div slot="footer">
+        <el-button @click="certDialogVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="certSaving" @click="saveCertContent">保 存</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -375,15 +414,19 @@ import {
   addCooperationApply,
   updateCooperationApply,
   deleteCooperationApply,
-  batchDeleteCooperationApply
+  batchDeleteCooperationApply,
+  getCertContent,
+  saveCertContent as saveCertContentApi
 } from '@/api/cooperationApply'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
 import tableMaxHeight from '@/mixins/tableMaxHeight'
+import RichEditor from '@/components/RichEditor/index.vue'
 
 export default {
   name: 'CooperationApplyList',
   mixins: [tableMaxHeight],
+  components: { RichEditor },
   data() {
     return {
       // 列表相关
@@ -412,7 +455,11 @@ export default {
       },
       // 图片预览
       previewVisible: false,
-      previewUrl: ''
+      previewUrl: '',
+      // 授权证书编辑
+      certDialogVisible: false,
+      certSaving: false,
+      certForm: { imageUrl: '', richText: '' }
     }
   },
   computed: {
@@ -659,6 +706,76 @@ export default {
     handlePreview(file) {
       this.previewUrl = file.url
       this.previewVisible = true
+    },
+
+    // ===== 授权证书编辑相关 =====
+    async openCertEditor() {
+      this.certDialogVisible = true
+      this.certForm = { imageUrl: '', richText: '' }
+      try {
+        const res = await getCertContent()
+        const data = res.data || res
+        if (data) {
+          this.certForm.imageUrl = data.imageUrl || ''
+          this.certForm.richText = data.richText || ''
+        }
+      } catch (e) {
+        // 首次编辑,无数据,正常
+      }
+    },
+    onCertDialogOpen() {
+      // 弹窗打开后,等富文本编辑器渲染完毕再设置内容
+      this.$nextTick(() => {
+        if (this.$refs.certRichEditor && this.certForm.richText) {
+          this.$refs.certRichEditor.setHtml(this.certForm.richText)
+        }
+      })
+    },
+    beforeCertUpload(file) {
+      if (file.size > 10 * 1024 * 1024) {
+        this.$message.error('图片大小不能超过10MB')
+        return false
+      }
+      return true
+    },
+    async onCertImageUpload(opt) {
+      try {
+        const fd = new FormData()
+        fd.append('file', opt.file)
+        const res = await uploadRequest(fd)
+        this.certForm.imageUrl = res.data
+        this.$message.success('证书图片上传成功')
+      } catch (e) {
+        this.$message.error('上传失败: ' + (e.message || '未知错误'))
+      }
+    },
+    resolveCertImg(url) {
+      if (!url) return ''
+      if (url.startsWith('http')) return url
+      return apiUrl + url
+    },
+    async saveCertContent() {
+      if (!this.certForm.imageUrl) {
+        this.$message.warning('请先上传证书背景图片')
+        return
+      }
+      this.certSaving = true
+      try {
+        // 如果编辑器实例存在,获取最新HTML
+        if (this.$refs.certRichEditor) {
+          this.certForm.richText = this.$refs.certRichEditor.getHtml()
+        }
+        await saveCertContentApi({
+          imageUrl: this.certForm.imageUrl,
+          richText: this.certForm.richText || ''
+        })
+        this.$message.success('保存成功')
+        this.certDialogVisible = false
+      } catch (e) {
+        this.$message.error('保存失败: ' + (e.message || '未知错误'))
+      } finally {
+        this.certSaving = false
+      }
     }
   }
 }
@@ -677,5 +794,57 @@ export default {
 }
 .danger-text {
   color: #f56c6c;
+}
+
+/* 授权证书编辑 */
+.cert-editor-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cert-upload-section {
+  text-align: center;
+}
+.cert-uploader {
+  display: inline-block;
+}
+.cert-upload-placeholder {
+  width: 300px;
+  height: 180px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #999;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  &:hover { border-color: #409eff; color: #409eff; }
+  i { font-size: 32px; }
+  span { font-size: 14px; }
+}
+.cert-image-preview {
+  position: relative;
+  display: inline-block;
+  img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+  }
+  .cert-change-btn {
+    display: block;
+    margin-top: 8px;
+  }
+}
+.cert-text-section {
+  .cert-text-label {
+    font-size: 14px;
+    color: #606266;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
 }
 </style>
