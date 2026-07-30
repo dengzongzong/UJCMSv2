@@ -20,7 +20,7 @@
                 </div>
               </div>
               <div class="user-info">
-                <div class="user-name" @click="handleEditName">{{ userInfo.nickname || '未设置昵称' }}</div>
+                <div class="user-name" @click="handleEditProfile">{{ userInfo.nickname || '未设置昵称' }}</div>
                 <div class="user-phone">{{ formatPhone(userInfo.phone) }}</div>
                 <div class="user-subject" v-if="currentSubject">
                   <van-icon name="bookmark-o" size="12" />
@@ -162,30 +162,29 @@
       </div>
     </div>
 
-    <!-- 编辑个人资料弹窗(昵称+手机号) -->
-    <van-dialog
-      v-model="showProfileDialog"
-      title="编辑个人资料"
-      show-cancel-button
-      confirm-button-color="#1989fa"
-      :before-close="beforeProfileDialogClose"
-    >
-      <van-field
-        v-model="editName"
-        label="昵称"
-        placeholder="请输入昵称"
-        maxlength="20"
-        style="margin: 16px 0 0;"
-      />
-      <van-field
-        v-model="editPhone"
-        type="tel"
-        label="手机号"
-        placeholder="请输入新手机号(不修改则留空)"
-        maxlength="11"
-        style="margin-bottom: 16px;"
-      />
-    </van-dialog>
+    <!-- 编辑个人资料弹窗(纯HTML实现,避免 van-dialog 的 _wrapper 错误) -->
+    <div v-if="showProfileDialog" class="custom-modal-overlay" @click="closeProfileDialog">
+      <div class="custom-modal" @click.stop>
+        <div class="custom-modal-header">
+          <span class="custom-modal-title">编辑个人资料</span>
+          <span class="custom-modal-close" @click="closeProfileDialog">×</span>
+        </div>
+        <div class="custom-modal-body">
+          <div class="custom-field">
+            <label class="custom-field-label">昵称</label>
+            <input v-model="editName" type="text" placeholder="请输入昵称" maxlength="20" class="custom-field-input" />
+          </div>
+          <div class="custom-field">
+            <label class="custom-field-label">手机号</label>
+            <input v-model="editPhone" type="tel" placeholder="请输入新手机号(不修改则留空)" maxlength="11" class="custom-field-input" />
+          </div>
+        </div>
+        <div class="custom-modal-footer">
+          <button type="button" class="custom-btn custom-btn-cancel" @click="closeProfileDialog">取 消</button>
+          <button type="button" class="custom-btn custom-btn-confirm" @click="confirmEditProfile">确 定</button>
+        </div>
+      </div>
+    </div>
 
     <!--
       修改密码 dialog (已登录态, 必须输入原密码)
@@ -297,29 +296,20 @@ export default {
       this.editPhone = ''
       this.showProfileDialog = true
     },
-    // 同步校验,通过后才关闭弹窗并异步保存(避免 before-close 异步导致 _wrapper 错误)
-    beforeProfileDialogClose(action, done) {
-      if (action !== 'confirm') {
-        done()
-        return
-      }
+    closeProfileDialog() {
+      this.showProfileDialog = false
+    },
+    async confirmEditProfile() {
       const nickname = this.editName.trim()
+      const phone = this.editPhone.trim()
       if (!nickname) {
         Toast('昵称不能为空')
-        done(false)
         return
       }
-      const phone = this.editPhone.trim()
       if (phone && !/^1\d{10}$/.test(phone)) {
         Toast('手机号格式不正确')
-        done(false)
         return
       }
-      // 校验通过,先关闭弹窗,再异步保存
-      done()
-      this.saveProfile(nickname, phone)
-    },
-    async saveProfile(nickname, phone) {
       try {
         const payload = { nickname: nickname }
         if (phone && phone !== this.userInfo.phone) {
@@ -331,6 +321,7 @@ export default {
           this.userInfo.phone = payload.phone
         }
         this.$store.dispatch('setUserInfo', this.userInfo)
+        this.showProfileDialog = false
         Toast.success('修改成功')
       } catch (error) {
         Toast.fail(error.message || '修改失败，请稍后重试')
@@ -764,5 +755,127 @@ export default {
   .menu-section .menu-item { padding: 14px 12px; min-height: 48px; }
   .user-card { padding: 16px 12px; }
   .user-card .user-info .user-name { font-size: 16px; }
+}
+
+/* ===== 自定义弹窗(替代 van-dialog, 规避 _wrapper 错误) ===== */
+.custom-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.custom-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+
+  .custom-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .custom-modal-close {
+    cursor: pointer;
+    font-size: 24px;
+    color: #999;
+    line-height: 1;
+    padding: 0 4px;
+
+    &:hover {
+      color: #333;
+    }
+  }
+}
+
+.custom-modal-body {
+  padding: 20px;
+}
+
+.custom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .custom-field-label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+  }
+
+  .custom-field-input {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: #1989fa;
+    }
+  }
+}
+
+.custom-modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 12px 20px 20px;
+  justify-content: flex-end;
+}
+
+.custom-btn {
+  height: 36px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+
+  &.custom-btn-cancel {
+    background: #fff;
+    border: 1px solid #dcdfe6;
+    color: #666;
+
+    &:hover {
+      border-color: #c0c4cc;
+      color: #333;
+    }
+  }
+
+  &.custom-btn-confirm {
+    background: #1989fa;
+    color: #fff;
+
+    &:hover {
+      background: #1577d8;
+    }
+  }
 }
 </style>
