@@ -371,10 +371,9 @@
     <!-- 授权证书编辑弹窗 -->
     <el-dialog title="编辑授权证书" :visible.sync="certDialogVisible" width="850px" append-to-body @opened="onCertDialogOpen">
       <div class="cert-editor-wrap">
-        <!-- 上传证书背景图片 -->
-        <div class="cert-upload-section">
+        <!-- 上传证书背景图片(仅无图时显示上传入口) -->
+        <div v-if="!certForm.imageUrl" class="cert-upload-section">
           <el-upload
-            v-if="!certForm.imageUrl"
             class="cert-uploader"
             action="#"
             :show-file-list="false"
@@ -387,15 +386,14 @@
               <span>上传证书背景图片</span>
             </div>
           </el-upload>
-          <div v-else class="cert-image-preview">
-            <img :src="resolveCertImg(certForm.imageUrl)" alt="证书背景" />
-            <el-button type="text" class="cert-change-btn" @click="certForm.imageUrl = ''">更换图片</el-button>
-          </div>
         </div>
 
-        <!-- 富文本编辑器(覆盖在图片上的文字) -->
+        <!-- 富文本编辑器(背景图即证书图片,文字覆盖在上方) -->
         <div v-if="certForm.imageUrl" class="cert-text-section">
-          <div class="cert-text-label">编辑覆盖在图片上的文字内容(支持富文本):</div>
+          <div class="cert-text-label">
+            <span>编辑覆盖在图片上的文字内容(支持富文本):</span>
+            <el-button type="text" @click="certForm.imageUrl = ''">更换图片</el-button>
+          </div>
           <RichEditor ref="certRichEditor" v-model="certForm.richText" :height="300" :background-image="resolveCertImg(certForm.imageUrl)" placeholder="请输入要覆盖在证书图片上的文字内容..." />
         </div>
       </div>

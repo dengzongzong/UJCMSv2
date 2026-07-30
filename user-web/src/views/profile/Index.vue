@@ -102,7 +102,7 @@
             <div class="content-card">
               <div class="card-header">
                 <span class="card-title">个人资料</span>
-                <van-icon name="edit" size="18" color="#1989fa" @click="handleEditName" />
+                <van-icon name="edit" size="18" color="#1989fa" @click="handleEditProfile" />
               </div>
               <div class="info-grid">
                 <div class="info-item">
@@ -111,22 +111,11 @@
                 </div>
                 <div class="info-item">
                   <div class="info-label">手机号</div>
-                  <div class="info-value phone-value">
-                    <span>{{ formatPhone(userInfo.phone) }}</span>
-                    <van-icon name="edit" size="14" color="#1989fa" @click="handleEditPhone" />
-                  </div>
+                  <div class="info-value">{{ formatPhone(userInfo.phone) }}</div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">当前专业</div>
                   <div class="info-value">{{ currentSubject ? (currentSubject.name || currentSubject.professionName || '未选择') : '未选择' }}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">头像</div>
-                  <div class="info-value avatar-value">
-                    <img v-if="userInfo.avatar" :src="resolveImg(userInfo.avatar)" alt="头像" @click="handleEditAvatar" />
-                    <img v-else-if="certAvatarUrl" :src="resolveImg(certAvatarUrl)" alt="证书照片" @click="handleEditAvatar" />
-                    <span v-else class="no-avatar-text" @click="handleEditAvatar">未上传</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -167,37 +156,28 @@
       </div>
     </div>
 
-    <!-- 编辑昵称弹窗 -->
+    <!-- 编辑个人资料弹窗(昵称+手机号) -->
     <van-dialog
-      v-model="showNameDialog"
-      title="修改昵称"
+      v-model="showProfileDialog"
+      title="编辑个人资料"
       show-cancel-button
       confirm-button-color="#1989fa"
-      @confirm="confirmEditName"
+      :before-close="beforeProfileDialogClose"
     >
       <van-field
         v-model="editName"
+        label="昵称"
         placeholder="请输入昵称"
         maxlength="20"
-        style="margin: 16px;"
+        style="margin: 16px 0 0;"
       />
-    </van-dialog>
-
-    <!-- 编辑手机号弹窗 -->
-    <van-dialog
-      v-model="showPhoneDialog"
-      title="修改手机号"
-      show-cancel-button
-      confirm-button-color="#1989fa"
-      :before-close="beforePhoneDialogClose"
-    >
       <van-field
         v-model="editPhone"
         type="tel"
-        label="新手机号"
-        placeholder="请输入新手机号"
+        label="手机号"
+        placeholder="请输入新手机号(不修改则留空)"
         maxlength="11"
-        style="margin: 16px 0;"
+        style="margin-bottom: 16px;"
       />
     </van-dialog>
 
@@ -257,9 +237,8 @@ export default {
       // 当前右侧内容区视图：profile(个人资料) / my-exams(我的考试) / records(考试记录)
       activeView: 'profile',
       userInfo: {},
-      showNameDialog: false,
+      showProfileDialog: false,
       editName: '',
-      showPhoneDialog: false,
       editPhone: '',
       // 证书照片作为头像(有多个只取第一个)
       certAvatarUrl: '',
@@ -306,58 +285,50 @@ export default {
       if (!phone || phone.length < 11) return phone || '未绑定手机号'
       return phone.slice(0, 3) + '****' + phone.slice(7)
     },
-    handleEditName() {
+    // ===== 编辑个人资料(昵称+手机号合并) =====
+    handleEditProfile() {
       this.editName = this.userInfo.nickname || ''
-      this.showNameDialog = true
-    },
-    async confirmEditName() {
-      if (!this.editName.trim()) {
-        Toast('昵称不能为空')
-        return
-      }
-      try {
-        await updateProfile({ nickname: this.editName })
-        this.userInfo.nickname = this.editName
-        this.$store.dispatch('setUserInfo', this.userInfo)
-        Toast.success('修改成功')
-      } catch (error) {
-        Toast.fail('修改失败，请稍后重试')
-      }
-    },
-    // ===== 手机号修改 =====
-    handleEditPhone() {
       this.editPhone = ''
-      this.showPhoneDialog = true
+      this.showProfileDialog = true
     },
-    async beforePhoneDialogClose(action, done) {
+    async beforeProfileDialogClose(action, done) {
       if (action !== 'confirm') {
         done()
         return
       }
       try {
-        await this.confirmEditPhone()
+        await this.confirmEditProfile()
         done()
       } catch (error) {
         done(false)
       }
     },
-    async confirmEditPhone() {
+    async confirmEditProfile() {
+      const nickname = this.editName.trim()
       const phone = this.editPhone.trim()
-      if (!phone) {
-        Toast('请输入新手机号')
-        throw new Error('请输入新手机号')
+      if (!nickname) {
+        Toast('昵称不能为空')
+        throw new Error('昵称不能为空')
       }
-      if (!/^1\d{10}$/.test(phone)) {
+      // 手机号留空表示不修改; 填了则校验格式
+      if (phone && !/^1\d{10}$/.test(phone)) {
         Toast('手机号格式不正确')
         throw new Error('手机号格式不正确')
       }
       try {
-        await updateProfile({ phone: phone })
-        this.userInfo.phone = phone
+        const payload = { nickname: nickname }
+        if (phone && phone !== this.userInfo.phone) {
+          payload.phone = phone
+        }
+        await updateProfile(payload)
+        this.userInfo.nickname = nickname
+        if (payload.phone) {
+          this.userInfo.phone = payload.phone
+        }
         this.$store.dispatch('setUserInfo', this.userInfo)
-        Toast.success('手机号修改成功')
+        Toast.success('修改成功')
       } catch (error) {
-        Toast.fail(error.message || '手机号修改失败，请稍后重试')
+        Toast.fail(error.message || '修改失败，请稍后重试')
         throw error
       }
     },
@@ -696,26 +667,6 @@ export default {
     .info-value {
       font-size: 15px;
       color: #333;
-
-      &.phone-value {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-
-        span {
-          flex: 1;
-        }
-      }
-
-      &.avatar-value {
-        img {
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          object-fit: cover;
-          cursor: pointer;
-        }
-      }
     }
   }
 }
