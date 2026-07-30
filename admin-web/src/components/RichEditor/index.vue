@@ -24,7 +24,8 @@ export default {
   props: {
     value: { type: String, default: '' },
     height: { type: Number, default: 360 },
-    placeholder: { type: String, default: '请输入内容...' }
+    placeholder: { type: String, default: '请输入内容...' },
+    backgroundImage: { type: String, default: '' }
   },
   data() {
     return {
@@ -39,6 +40,9 @@ export default {
       if (this.editor && !this.isUserInput) {
         this.editor.txt.html(v || '')
       }
+    },
+    backgroundImage(v) {
+      this.applyBackgroundImage(v)
     }
   },
   mounted() {
@@ -127,6 +131,25 @@ export default {
         this.editor.txt.html(this.value)
       }
       this.editorReady = true
+      // 初始化背景图
+      if (this.backgroundImage) {
+        this.applyBackgroundImage(this.backgroundImage)
+      }
+    },
+    applyBackgroundImage(url) {
+      if (!this.$refs.editorContainer) return
+      var textArea = this.$refs.editorContainer.querySelector('.w-e-text')
+      if (!textArea) return
+      if (url) {
+        textArea.style.backgroundImage = 'url("' + url + '")'
+        textArea.style.backgroundSize = '100% 100%'
+        textArea.style.backgroundRepeat = 'no-repeat'
+        textArea.style.minHeight = this.height + 'px'
+      } else {
+        textArea.style.backgroundImage = ''
+        textArea.style.backgroundSize = ''
+        textArea.style.backgroundRepeat = ''
+      }
     },
     /**
      * 对外暴露: 主动同步最新 HTML

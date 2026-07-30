@@ -60,10 +60,11 @@
               </div>
               <!-- 证书图片+富文本覆盖展示 -->
               <div v-if="certContent.imageUrl" class="result-cert-right" @click.stop>
-                <div class="cert-image-overlay">
+                <div class="cert-image-overlay" @dblclick="openCertPreview">
                   <img :src="resolveCertImg(certContent.imageUrl)" alt="授权证书" class="cert-bg-img" />
                   <div class="cert-rich-text" v-html="certContent.richText"></div>
                 </div>
+                <div class="cert-preview-hint">双击预览证书</div>
               </div>
             </div>
           </div>
@@ -90,6 +91,28 @@
         </div>
       </div>
     </div>
+
+    <!-- 证书图片预览弹窗 -->
+    <div v-if="certPreviewVisible" class="cert-preview-overlay" @click="closeCertPreview">
+      <div class="cert-preview-container" @click.stop>
+        <div class="cert-preview-header">
+          <span>授权证书预览</span>
+          <span class="cert-preview-close" @click="closeCertPreview">×</span>
+        </div>
+        <div class="cert-preview-body" @wheel.prevent="onCertWheel" @touchstart.prevent="onCertTouchStart" @touchmove.prevent="onCertTouchMove" @touchend="onCertTouchEnd">
+          <div class="cert-preview-content" :style="{ transform: 'scale(' + certPreviewScale + ')' }">
+            <img :src="resolveCertImg(certContent.imageUrl)" alt="授权证书" class="cert-preview-img" />
+            <div class="cert-preview-text" v-html="certContent.richText"></div>
+          </div>
+          <div class="cert-preview-controls">
+            <span class="cert-zoom-btn" @click="certZoomIn">+</span>
+            <span class="cert-zoom-info">{{ Math.round(certPreviewScale * 100) }}%</span>
+            <span class="cert-zoom-btn" @click="certZoomOut">−</span>
+            <span class="cert-zoom-btn" @click="certZoomReset">↺</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -110,7 +133,10 @@ export default {
       detailVisible: false,
       detail: {},
       certContent: { imageUrl: '', richText: '' },
-      certLoaded: false
+      certLoaded: false,
+      certPreviewVisible: false,
+      certPreviewScale: 1,
+      certTouchStart: null
     }
   },
   methods: {
@@ -204,6 +230,49 @@ export default {
     },
     formatDate(dateStr) {
       return this.formatDateCN(dateStr)
+    },
+    // ===== 证书预览相关 =====
+    openCertPreview() {
+      this.certPreviewVisible = true
+      this.certPreviewScale = 1
+    },
+    closeCertPreview() {
+      this.certPreviewVisible = false
+      this.certPreviewScale = 1
+    },
+    certZoomIn() {
+      this.certPreviewScale = Math.min(this.certPreviewScale + 0.2, 5)
+    },
+    certZoomOut() {
+      this.certPreviewScale = Math.max(this.certPreviewScale - 0.2, 0.2)
+    },
+    certZoomReset() {
+      this.certPreviewScale = 1
+    },
+    onCertWheel(e) {
+      if (e.deltaY < 0) this.certZoomIn()
+      else this.certZoomOut()
+    },
+    onCertTouchStart(e) {
+      if (e.touches.length === 2) {
+        this.certTouchStart = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        )
+      }
+    },
+    onCertTouchMove(e) {
+      if (e.touches.length === 2 && this.certTouchStart) {
+        var dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        )
+        var scale = dist / this.certTouchStart
+        this.certPreviewScale = Math.max(0.2, Math.min(5, scale))
+      }
+    },
+    onCertTouchEnd() {
+      this.certTouchStart = null
     }
   }
 }
@@ -467,6 +536,122 @@ export default {
   pointer-events: none;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.cert-preview-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin-top: 6px;
+}
+
+/* 证书预览弹窗 */
+.cert-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cert-preview-container {
+  background: #fff;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cert-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+  font-weight: 600;
+
+  .cert-preview-close {
+    cursor: pointer;
+    font-size: 24px;
+    color: #999;
+    line-height: 1;
+    &:hover { color: #333; }
+  }
+}
+
+.cert-preview-body {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.cert-preview-content {
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.15s ease;
+  max-width: 100%;
+}
+
+.cert-preview-img {
+  max-width: 100%;
+  display: block;
+}
+
+.cert-preview-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20px;
+  overflow: hidden;
+  pointer-events: none;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cert-preview-controls {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid #eee;
+}
+
+.cert-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #c41e3a;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  user-select: none;
+  &:active { background: #a01530; }
+}
+
+.cert-zoom-info {
+  font-size: 13px;
+  color: #666;
+  min-width: 48px;
+  text-align: center;
 }
 
 .result-item {

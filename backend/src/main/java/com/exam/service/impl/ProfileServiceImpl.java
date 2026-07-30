@@ -73,6 +73,26 @@ public class ProfileServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         update.setId(studentId);
         update.setNickname(dto.getNickname());
         update.setAvatar(dto.getAvatar());
+        // 修改手机号: 校验格式 + 唯一性
+        if (dto.getPhone() != null && !dto.getPhone().trim().isEmpty()) {
+            String newPhone = dto.getPhone().trim();
+            // 简单格式校验: 11位数字
+            if (!newPhone.matches("^1\\d{10}$")) {
+                throw new BusinessException("手机号格式不正确");
+            }
+            // 与原手机号相同时跳过
+            if (!newPhone.equals(student.getPhone())) {
+                // 检查手机号是否已被其他用户使用
+                LambdaQueryWrapper<Student> checkWrapper = new LambdaQueryWrapper<Student>()
+                        .eq(Student::getPhone, newPhone)
+                        .ne(Student::getId, studentId);
+                Long count = baseMapper.selectCount(checkWrapper);
+                if (count != null && count > 0) {
+                    throw new BusinessException("该手机号已被其他账号使用");
+                }
+                update.setPhone(newPhone);
+            }
+        }
         updateById(update);
     }
 

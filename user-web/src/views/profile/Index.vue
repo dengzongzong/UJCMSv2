@@ -11,6 +11,7 @@
             <div class="user-card">
               <div class="user-avatar" @click="handleEditAvatar">
                 <img v-if="userInfo.avatar" :src="resolveImg(userInfo.avatar)" alt="头像" />
+                <img v-else-if="certAvatarUrl" :src="resolveImg(certAvatarUrl)" alt="头像" />
                 <div v-else class="avatar-placeholder">
                   <van-icon name="user-circle-o" size="48" color="#ccc" />
                 </div>
@@ -110,7 +111,10 @@
                 </div>
                 <div class="info-item">
                   <div class="info-label">手机号</div>
-                  <div class="info-value">{{ formatPhone(userInfo.phone) }}</div>
+                  <div class="info-value phone-value">
+                    <span>{{ formatPhone(userInfo.phone) }}</span>
+                    <van-icon name="edit" size="14" color="#1989fa" @click="handleEditPhone" />
+                  </div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">当前专业</div>
@@ -120,7 +124,8 @@
                   <div class="info-label">头像</div>
                   <div class="info-value avatar-value">
                     <img v-if="userInfo.avatar" :src="resolveImg(userInfo.avatar)" alt="头像" @click="handleEditAvatar" />
-                    <span v-else class="no-avatar-text">未上传</span>
+                    <img v-else-if="certAvatarUrl" :src="resolveImg(certAvatarUrl)" alt="证书照片" @click="handleEditAvatar" />
+                    <span v-else class="no-avatar-text" @click="handleEditAvatar">未上传</span>
                   </div>
                 </div>
               </div>
@@ -178,6 +183,24 @@
       />
     </van-dialog>
 
+    <!-- 编辑手机号弹窗 -->
+    <van-dialog
+      v-model="showPhoneDialog"
+      title="修改手机号"
+      show-cancel-button
+      confirm-button-color="#1989fa"
+      :before-close="beforePhoneDialogClose"
+    >
+      <van-field
+        v-model="editPhone"
+        type="tel"
+        label="新手机号"
+        placeholder="请输入新手机号"
+        maxlength="11"
+        style="margin: 16px 0;"
+      />
+    </van-dialog>
+
     <!--
       修改密码 dialog (已登录态, 必须输入原密码)
       后端 POST /auth/change-password
@@ -222,6 +245,7 @@ import MyExams from '@/views/exam/MyExams.vue'
 import Records from '@/views/exam/Records.vue'
 import { getProfile, updateProfile, uploadFile } from '@/api/profile'
 import { changePassword } from '@/api/auth'
+import { getMyCertificates } from '@/api/certificate'
 import { resolveImg } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
 
@@ -235,6 +259,10 @@ export default {
       userInfo: {},
       showNameDialog: false,
       editName: '',
+      showPhoneDialog: false,
+      editPhone: '',
+      // 证书照片作为头像(有多个只取第一个)
+      certAvatarUrl: '',
       showPasswordDialog: false,
       avatarFile: [],
       // 修改密码表单(已登录态, 必须输入原密码, 走 POST /auth/change-password)
@@ -253,6 +281,7 @@ export default {
   },
   created() {
     this.fetchProfile()
+    this.fetchCertAvatar()
   },
   methods: {
     async fetchProfile() {
@@ -293,6 +322,60 @@ export default {
         Toast.success('修改成功')
       } catch (error) {
         Toast.fail('修改失败，请稍后重试')
+      }
+    },
+    // ===== 手机号修改 =====
+    handleEditPhone() {
+      this.editPhone = ''
+      this.showPhoneDialog = true
+    },
+    async beforePhoneDialogClose(action, done) {
+      if (action !== 'confirm') {
+        done()
+        return
+      }
+      try {
+        await this.confirmEditPhone()
+        done()
+      } catch (error) {
+        done(false)
+      }
+    },
+    async confirmEditPhone() {
+      const phone = this.editPhone.trim()
+      if (!phone) {
+        Toast('请输入新手机号')
+        throw new Error('请输入新手机号')
+      }
+      if (!/^1\d{10}$/.test(phone)) {
+        Toast('手机号格式不正确')
+        throw new Error('手机号格式不正确')
+      }
+      try {
+        await updateProfile({ phone: phone })
+        this.userInfo.phone = phone
+        this.$store.dispatch('setUserInfo', this.userInfo)
+        Toast.success('手机号修改成功')
+      } catch (error) {
+        Toast.fail(error.message || '手机号修改失败，请稍后重试')
+        throw error
+      }
+    },
+    // ===== 证书照片作为头像 =====
+    async fetchCertAvatar() {
+      try {
+        const res = await getMyCertificates()
+        const data = res.data || res
+        const list = Array.isArray(data) ? data : (data.records || [])
+        // 找到第一张有照片的证书
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].photoUrl) {
+            this.certAvatarUrl = list[i].photoUrl
+            break
+          }
+        }
+      } catch (e) {
+        // 获取失败时静默处理
       }
     },
     handleEditAvatar() {
@@ -613,6 +696,16 @@ export default {
     .info-value {
       font-size: 15px;
       color: #333;
+
+      &.phone-value {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        span {
+          flex: 1;
+        }
+      }
 
       &.avatar-value {
         img {

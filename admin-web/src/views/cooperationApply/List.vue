@@ -396,7 +396,7 @@
         <!-- 富文本编辑器(覆盖在图片上的文字) -->
         <div v-if="certForm.imageUrl" class="cert-text-section">
           <div class="cert-text-label">编辑覆盖在图片上的文字内容(支持富文本):</div>
-          <RichEditor ref="certRichEditor" v-model="certForm.richText" :height="300" placeholder="请输入要覆盖在证书图片上的文字内容..." />
+          <RichEditor ref="certRichEditor" v-model="certForm.richText" :height="300" :background-image="resolveCertImg(certForm.imageUrl)" placeholder="请输入要覆盖在证书图片上的文字内容..." />
         </div>
       </div>
 
@@ -752,7 +752,7 @@ export default {
     resolveCertImg(url) {
       if (!url) return ''
       if (url.startsWith('http')) return url
-      return apiUrl + url
+      return apiUrl(url)
     },
     async saveCertContent() {
       if (!this.certForm.imageUrl) {
