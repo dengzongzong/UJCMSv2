@@ -39,7 +39,6 @@
         :disabled="selection.length === 0"
         @click="onBatchDelete"
       >批量删除</el-button>
-      <el-button type="warning" icon="el-icon-picture-outline" class="filter-item" @click="openCertEditor">编辑授权证书</el-button>
     </div>
 
     <!-- 列表 -->
@@ -72,9 +71,10 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-      <el-table-column label="操作" width="150" align="center">
+      <el-table-column label="操作" width="200" align="center">
         <template slot-scope="s">
           <el-button type="text" @click="openEdit(s.row)">编辑</el-button>
+          <el-button type="text" @click="openCertEditor(s.row)">证书</el-button>
           <el-button type="text" class="danger-text" @click="onDeleteOne(s.row.id)">删除</el-button>
         </template>
       </el-table-column>
@@ -369,7 +369,7 @@
     </el-dialog>
 
     <!-- 授权证书编辑弹窗 -->
-    <el-dialog title="编辑授权证书" :visible.sync="certDialogVisible" width="850px" append-to-body @opened="onCertDialogOpen">
+    <el-dialog :title="'编辑授权证书 - ' + (certEditRow.unitName || '')" :visible.sync="certDialogVisible" width="850px" append-to-body @opened="onCertDialogOpen">
       <div class="cert-editor-wrap">
         <!-- 上传证书背景图片(仅无图时显示上传入口) -->
         <div v-if="!certForm.imageUrl" class="cert-upload-section">
@@ -418,8 +418,8 @@ import {
   updateCooperationApply,
   deleteCooperationApply,
   batchDeleteCooperationApply,
-  getCertContent,
-  saveCertContent as saveCertContentApi
+  getCertContentById,
+  saveCertContentById
 } from '@/api/cooperationApply'
 import { uploadFile as uploadRequest } from '@/api/upload'
 import { apiUrl } from '@/utils/apiBase'
@@ -463,7 +463,8 @@ export default {
       certDialogVisible: false,
       certSaving: false,
       certForm: { imageUrl: '', richText: '' },
-      certBgScale: 100
+      certBgScale: 100,
+      certEditRow: {}
     }
   },
   computed: {
@@ -713,15 +714,18 @@ export default {
     },
 
     // ===== 授权证书编辑相关 =====
-    async openCertEditor() {
+    async openCertEditor(row) {
+      this.certEditRow = row
       this.certDialogVisible = true
       this.certForm = { imageUrl: '', richText: '' }
+      this.certBgScale = 100
       try {
-        const res = await getCertContent()
+        const res = await getCertContentById(row.id)
         const data = res.data || res
         if (data) {
-          this.certForm.imageUrl = data.imageUrl || ''
-          this.certForm.richText = data.richText || ''
+          this.certForm.imageUrl = data.certImageUrl || data.imageUrl || ''
+          this.certForm.richText = data.certRichText || data.richText || ''
+          this.certBgScale = data.certBgScale || 100
         }
       } catch (e) {
         // 首次编辑,无数据,正常
@@ -769,9 +773,13 @@ export default {
         if (this.$refs.certRichEditor) {
           this.certForm.richText = this.$refs.certRichEditor.getHtml()
         }
-        await saveCertContentApi({
-          imageUrl: this.certForm.imageUrl,
-          richText: this.certForm.richText || ''
+        // 获取编辑器当前图片显示宽度,用户端按此宽度等比缩放渲染
+        var editorWidth = this.$refs.certRichEditor ? this.$refs.certRichEditor.getDisplayWidth() : 0
+        await saveCertContentById(this.certEditRow.id, {
+          certImageUrl: this.certForm.imageUrl,
+          certRichText: this.certForm.richText || '',
+          certBgScale: this.certBgScale,
+          certEditorWidth: editorWidth
         })
         this.$message.success('保存成功')
         this.certDialogVisible = false

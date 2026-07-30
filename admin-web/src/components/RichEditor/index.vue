@@ -152,7 +152,9 @@ export default {
         textArea.style.backgroundRepeat = ''
         textArea.style.minHeight = ''
         textArea.style.width = ''
+        textArea.style.margin = ''
         if (container) container.style.height = ''
+        self._lastDisplayW = 0
         return
       }
       // 加载图片获取原始尺寸,按长宽比设置编辑区高度,避免变形
@@ -167,11 +169,16 @@ export default {
         var scale = self.bgScale / 100
         var displayW = Math.round(containerW * scale)
         var displayH = Math.round(displayW * (naturalH / naturalW))
+        // 记录当前图片显示宽度,供外部获取(用户端等比渲染用)
+        self._lastDisplayW = displayW
         // 设置背景图,保持原始长宽比
         textArea.style.backgroundImage = 'url("' + url + '")'
         textArea.style.backgroundSize = displayW + 'px ' + displayH + 'px'
         textArea.style.backgroundRepeat = 'no-repeat'
-        textArea.style.backgroundPosition = 'top center'
+        textArea.style.backgroundPosition = 'top left'
+        // 将文本区域宽度约束为图片显示宽度,使文字位置与图片对齐
+        textArea.style.width = displayW + 'px'
+        textArea.style.margin = '0 auto'
         // 编辑区高度至少能完整显示背景图
         var minH = Math.max(displayH + 20, self.height)
         textArea.style.minHeight = minH + 'px'
@@ -182,7 +189,7 @@ export default {
         textArea.style.backgroundImage = 'url("' + url + '")'
         textArea.style.backgroundSize = 'contain'
         textArea.style.backgroundRepeat = 'no-repeat'
-        textArea.style.backgroundPosition = 'top center'
+        textArea.style.backgroundPosition = 'top left'
         textArea.style.minHeight = self.height + 'px'
       }
       img.src = url
@@ -192,6 +199,13 @@ export default {
      */
     getHtml() {
       return this.editor ? this.editor.txt.html() : ''
+    },
+    /**
+     * 对外暴露: 获取当前背景图显示宽度(像素)
+     * 用户端按此宽度等比缩放渲染,确保文字位置一致
+     */
+    getDisplayWidth() {
+      return this._lastDisplayW || 0
     },
     setHtml(html) {
       if (this.editor) this.editor.txt.html(html || '')

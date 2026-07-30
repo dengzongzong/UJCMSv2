@@ -49,6 +49,11 @@ public class CooperationApplyPublicController {
             m.put("createTime", item.getCreateTime());
             m.put("authStartDate", item.getAuthStartDate());
             m.put("authExpireDate", item.getAuthExpireDate());
+            // 证书内容(每个合作单位各自维护)
+            m.put("certImageUrl", item.getCertImageUrl());
+            m.put("certRichText", item.getCertRichText());
+            m.put("certBgScale", item.getCertBgScale());
+            m.put("certEditorWidth", item.getCertEditorWidth());
             return m;
         }).collect(Collectors.toList());
         return Result.success(result);

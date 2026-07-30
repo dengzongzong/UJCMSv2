@@ -68,4 +68,42 @@ public class CooperationApplyController {
         cooperationApplyService.batchDelete(ids);
         return Result.success(null);
     }
+
+    /**
+     * 获取指定合作单位的证书内容
+     */
+    @GetMapping("/{id}/cert-content")
+    public Result<CooperationApply> getCertContent(@PathVariable Long id) {
+        CooperationApply item = cooperationApplyService.getById(id);
+        if (item == null) {
+            return Result.error(404, "合作单位不存在");
+        }
+        // 只返回证书相关字段,避免泄露其他数据
+        CooperationApply vo = new CooperationApply();
+        vo.setId(item.getId());
+        vo.setCertImageUrl(item.getCertImageUrl());
+        vo.setCertRichText(item.getCertRichText());
+        vo.setCertBgScale(item.getCertBgScale());
+        vo.setCertEditorWidth(item.getCertEditorWidth());
+        return Result.success(vo);
+    }
+
+    /**
+     * 保存指定合作单位的证书内容
+     */
+    @PutMapping("/{id}/cert-content")
+    public Result<Void> saveCertContent(@PathVariable Long id, @RequestBody CooperationApply body) {
+        CooperationApply item = cooperationApplyService.getById(id);
+        if (item == null) {
+            return Result.error(404, "合作单位不存在");
+        }
+        CooperationApply update = new CooperationApply();
+        update.setId(id);
+        update.setCertImageUrl(body.getCertImageUrl());
+        update.setCertRichText(body.getCertRichText());
+        update.setCertBgScale(body.getCertBgScale());
+        update.setCertEditorWidth(body.getCertEditorWidth());
+        cooperationApplyService.update(update);
+        return Result.success(null);
+    }
 }

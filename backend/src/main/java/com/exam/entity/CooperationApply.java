@@ -115,6 +115,20 @@ public class CooperationApply {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate authExpireDate;
 
+    // ========== 证书相关字段(每个合作单位各自维护) ==========
+
+    /** 证书背景图片URL */
+    private String certImageUrl;
+
+    /** 覆盖在证书图片上的富文本HTML */
+    private String certRichText;
+
+    /** 证书背景图缩放比例(30-100),用户端按此比例等比渲染 */
+    private Integer certBgScale;
+
+    /** 编辑证书时编辑区文本宽度(像素),用户端按此宽度等比缩放渲染 */
+    private Integer certEditorWidth;
+
     // ========== 审计字段 ==========
 
     @TableField(fill = FieldFill.INSERT)

@@ -996,6 +996,11 @@ CREATE TABLE IF NOT EXISTS `cooperation_apply` (
   `remark` text DEFAULT NULL COMMENT '备注',
   `status` int DEFAULT 0 COMMENT '状态: 0-待审核 1-已通过 2-已拒绝',
   `auth_expire_date` date DEFAULT NULL COMMENT '授权有效期截止日期',
+  -- 证书相关字段
+  `cert_image_url` varchar(500) DEFAULT NULL COMMENT '证书背景图片URL',
+  `cert_rich_text` longtext COMMENT '覆盖在证书图片上的富文本HTML',
+  `cert_bg_scale` int DEFAULT 100 COMMENT '证书背景图缩放比例(30-100)',
+  `cert_editor_width` int DEFAULT NULL COMMENT '编辑证书时编辑区文本宽度(像素)',
   -- 审计字段
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

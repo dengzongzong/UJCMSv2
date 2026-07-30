@@ -498,3 +498,34 @@ CREATE TABLE IF NOT EXISTS `cooperation_cert_content` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='授权培育基地证书内容(单条)';
+
+-- ============================================================
+-- cooperation_apply 表增加证书相关字段(每行数据各自维护证书)
+-- ============================================================
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cooperation_apply' AND COLUMN_NAME = 'cert_image_url');
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE cooperation_apply ADD COLUMN cert_image_url VARCHAR(500) DEFAULT NULL COMMENT ''证书背景图片URL''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cooperation_apply' AND COLUMN_NAME = 'cert_rich_text');
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE cooperation_apply ADD COLUMN cert_rich_text LONGTEXT COMMENT ''覆盖在证书图片上的富文本HTML''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cooperation_apply' AND COLUMN_NAME = 'cert_bg_scale');
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE cooperation_apply ADD COLUMN cert_bg_scale INT DEFAULT 100 COMMENT ''证书背景图缩放比例(30-100)''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cooperation_apply' AND COLUMN_NAME = 'cert_editor_width');
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE cooperation_apply ADD COLUMN cert_editor_width INT DEFAULT NULL COMMENT ''编辑证书时编辑区文本宽度(像素)''',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

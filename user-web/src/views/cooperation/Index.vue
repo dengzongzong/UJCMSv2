@@ -58,11 +58,13 @@
                   <span class="result-value">{{ authDateText(item) }}</span>
                 </div>
               </div>
-              <!-- 证书图片+富文本覆盖展示 -->
-              <div v-if="certContent.imageUrl" class="result-cert-right" @click.stop>
-                <div class="cert-image-overlay" @dblclick="openCertPreview">
-                  <img :src="resolveCertImg(certContent.imageUrl)" alt="授权证书" class="cert-bg-img" />
-                  <div class="cert-rich-text" v-html="certContent.richText"></div>
+              <!-- 证书图片+富文本覆盖展示(等比缩放,与管理端编辑器渲染一致) -->
+              <div v-if="item.certImageUrl" class="result-cert-right" @click.stop>
+                <div class="cert-image-overlay" @dblclick="openCertPreview(item)">
+                  <img :src="resolveCertImg(item.certImageUrl)" alt="授权证书" class="cert-bg-img" />
+                  <div class="cert-rich-text-scale" :style="certScaleStyle(item)">
+                    <div class="cert-rich-text-content" v-html="item.certRichText"></div>
+                  </div>
                 </div>
                 <div class="cert-preview-hint">双击预览证书</div>
               </div>
@@ -100,9 +102,11 @@
           <span class="cert-preview-close" @click="closeCertPreview">×</span>
         </div>
         <div class="cert-preview-body" @wheel.prevent="onCertWheel" @touchstart.prevent="onCertTouchStart" @touchmove.prevent="onCertTouchMove" @touchend="onCertTouchEnd">
-          <div class="cert-preview-content" :style="{ transform: 'scale(' + certPreviewScale + ')' }">
-            <img :src="resolveCertImg(certContent.imageUrl)" alt="授权证书" class="cert-preview-img" />
-            <div class="cert-preview-text" v-html="certContent.richText"></div>
+          <div class="cert-preview-content" :style="certPreviewContentStyle">
+            <img :src="resolveCertImg(previewItem.certImageUrl)" alt="授权证书" class="cert-preview-img" />
+            <div class="cert-preview-text-overlay">
+              <div class="cert-rich-text-content" v-html="previewItem.certRichText"></div>
+            </div>
           </div>
           <div class="cert-preview-controls">
             <span class="cert-zoom-btn" @click="certZoomIn">+</span>
@@ -132,28 +136,24 @@ export default {
       queried: false,
       detailVisible: false,
       detail: {},
-      certContent: { imageUrl: '', richText: '' },
-      certLoaded: false,
       certPreviewVisible: false,
       certPreviewScale: 1,
-      certTouchStart: null
+      certTouchStart: null,
+      previewItem: {},
+      certPreviewFitScale: 1
+    }
+  },
+  computed: {
+    certPreviewContentStyle() {
+      var refW = this.previewItem.certEditorWidth || 810
+      return {
+        width: refW + 'px',
+        transformOrigin: 'center center',
+        transform: 'scale(' + this.certPreviewScale + ')'
+      }
     }
   },
   methods: {
-    async fetchCertContent() {
-      if (this.certLoaded) return
-      try {
-        const res = await request({ url: '/public/cooperation-cert-content', method: 'get' })
-        const data = res.data || res
-        if (data) {
-          this.certContent.imageUrl = data.imageUrl || ''
-          this.certContent.richText = data.richText || ''
-        }
-        this.certLoaded = true
-      } catch (e) {
-        // 无数据时静默处理
-      }
-    },
     resolveCertImg(url) {
       return resolveImg(url)
     },
@@ -176,10 +176,6 @@ export default {
         const data = res.data || res
         this.resultList = Array.isArray(data) ? data : (data.list || data.records || [])
         this.queried = true
-        // 查到数据后加载证书内容
-        if (this.resultList.length > 0) {
-          this.fetchCertContent()
-        }
       } catch (e) {
         this.$toast('查询失败，请稍后重试')
         this.resultList = []
@@ -232,9 +228,30 @@ export default {
       return this.formatDateCN(dateStr)
     },
     // ===== 证书预览相关 =====
-    openCertPreview() {
+    /**
+     * 计算结果卡片中证书文字的缩放样式
+     * 在管理端编辑器宽度下渲染文字,再用 CSS transform 等比缩小到卡片宽度
+     * 确保文字在图片上的位置与管理端完全一致
+     */
+    certScaleStyle(item) {
+      var refW = item.certEditorWidth || 810
+      var containerW = 280
+      var scale = containerW / refW
+      return {
+        width: refW + 'px',
+        transform: 'scale(' + scale + ')',
+        transformOrigin: 'top left'
+      }
+    },
+    openCertPreview(item) {
+      this.previewItem = item
       this.certPreviewVisible = true
-      this.certPreviewScale = 1
+      // 计算适合视口的初始缩放比例
+      var refW = item.certEditorWidth || 810
+      var availW = window.innerWidth * 0.92 - 40
+      var fitScale = Math.min(1, availW / refW)
+      this.certPreviewFitScale = fitScale
+      this.certPreviewScale = fitScale
     },
     closeCertPreview() {
       this.certPreviewVisible = false
@@ -247,7 +264,7 @@ export default {
       this.certPreviewScale = Math.max(this.certPreviewScale - 0.2, 0.2)
     },
     certZoomReset() {
-      this.certPreviewScale = 1
+      this.certPreviewScale = this.certPreviewFitScale
     },
     onCertWheel(e) {
       if (e.deltaY < 0) this.certZoomIn()
@@ -259,6 +276,7 @@ export default {
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         )
+        this._touchStartScale = this.certPreviewScale
       }
     },
     onCertTouchMove(e) {
@@ -267,8 +285,9 @@ export default {
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         )
-        var scale = dist / this.certTouchStart
-        this.certPreviewScale = Math.max(0.2, Math.min(5, scale))
+        var ratio = dist / this.certTouchStart
+        var base = this._touchStartScale || this.certPreviewFitScale
+        this.certPreviewScale = Math.max(0.2, Math.min(5, base * ratio))
       }
     },
     onCertTouchEnd() {
@@ -525,18 +544,38 @@ export default {
   display: block;
 }
 
-.cert-rich-text {
+/* 缩放容器:在管理端编辑器宽度下渲染,再用 transform 等比缩小 */
+.cert-rich-text-scale {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 12px;
-  overflow: hidden;
+  transform-origin: top left;
   pointer-events: none;
-  font-size: 13px;
-  line-height: 1.6;
+  overflow: hidden;
 }
+
+/* 文字内容: padding/font-size/margin 与管理端 wangEditor .w-e-text 默认值完全一致 */
+.cert-rich-text-content {
+  padding: 0 10px;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+::v-deep .cert-rich-text-content p,
+::v-deep .cert-rich-text-content h1,
+::v-deep .cert-rich-text-content h2,
+::v-deep .cert-rich-text-content h3,
+::v-deep .cert-rich-text-content h4,
+::v-deep .cert-rich-text-content h5 {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+::v-deep .cert-rich-text-content p { font-size: 16px; }
+::v-deep .cert-rich-text-content h1 { font-size: 32px; }
+::v-deep .cert-rich-text-content h2 { font-size: 24px; }
+::v-deep .cert-rich-text-content h3 { font-size: 18.72px; }
+::v-deep .cert-rich-text-content h4 { font-size: 16px; }
+::v-deep .cert-rich-text-content h5 { font-size: 13.28px; }
 
 .cert-preview-hint {
   text-align: center;
@@ -597,30 +636,23 @@ export default {
 
 .cert-preview-content {
   position: relative;
-  transform-origin: center center;
   transition: transform 0.15s ease;
-  max-width: 100%;
-  max-height: 100%;
+  flex-shrink: 0;
 }
 
 .cert-preview-img {
-  max-width: 100%;
-  max-height: calc(92vh - 120px);
+  width: 100%;
   display: block;
-  object-fit: contain;
 }
 
-.cert-preview-text {
+.cert-preview-text-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 20px;
   overflow: hidden;
   pointer-events: none;
-  font-size: 14px;
-  line-height: 1.6;
 }
 
 .cert-preview-controls {
