@@ -102,10 +102,13 @@
             <div class="content-card">
               <div class="card-header">
                 <span class="card-title">个人资料</span>
-                <span class="edit-btn-wrap" @click="handleEditProfile">
-                  <van-icon name="edit" size="18" color="#1989fa" />
+                <button type="button" class="edit-btn-wrap" @click="handleEditProfile">
+                  <svg class="edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
                   <span class="edit-btn-text">修改</span>
-                </span>
+                </button>
               </div>
               <div class="info-grid">
                 <div class="info-item">
@@ -294,30 +297,29 @@ export default {
       this.editPhone = ''
       this.showProfileDialog = true
     },
-    async beforeProfileDialogClose(action, done) {
+    // 同步校验,通过后才关闭弹窗并异步保存(避免 before-close 异步导致 _wrapper 错误)
+    beforeProfileDialogClose(action, done) {
       if (action !== 'confirm') {
         done()
         return
       }
-      try {
-        await this.confirmEditProfile()
-        done()
-      } catch (error) {
-        done(false)
-      }
-    },
-    async confirmEditProfile() {
       const nickname = this.editName.trim()
-      const phone = this.editPhone.trim()
       if (!nickname) {
         Toast('昵称不能为空')
-        throw new Error('昵称不能为空')
+        done(false)
+        return
       }
-      // 手机号留空表示不修改; 填了则校验格式
+      const phone = this.editPhone.trim()
       if (phone && !/^1\d{10}$/.test(phone)) {
         Toast('手机号格式不正确')
-        throw new Error('手机号格式不正确')
+        done(false)
+        return
       }
+      // 校验通过,先关闭弹窗,再异步保存
+      done()
+      this.saveProfile(nickname, phone)
+    },
+    async saveProfile(nickname, phone) {
       try {
         const payload = { nickname: nickname }
         if (phone && phone !== this.userInfo.phone) {
@@ -332,7 +334,6 @@ export default {
         Toast.success('修改成功')
       } catch (error) {
         Toast.fail(error.message || '修改失败，请稍后重试')
-        throw error
       }
     },
     // ===== 证书照片作为头像 =====
@@ -658,11 +659,25 @@ export default {
       gap: 4px;
       padding: 6px 12px;
       cursor: pointer;
+      border: 1px solid #dcdfe6;
       border-radius: 4px;
-      transition: background 0.2s;
+      background: #fff;
+      color: #1989fa;
+      font-size: 14px;
+      transition: all 0.2s;
+      outline: none;
 
       &:hover {
         background: #f0f8ff;
+        border-color: #1989fa;
+      }
+
+      &:active {
+        background: #e0efff;
+      }
+
+      .edit-icon {
+        flex-shrink: 0;
       }
 
       .edit-btn-text {
