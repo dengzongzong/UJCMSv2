@@ -529,18 +529,3 @@ SET @sql = IF(@col_exists = 0,
   'ALTER TABLE cooperation_apply ADD COLUMN cert_editor_width INT DEFAULT NULL COMMENT ''编辑证书时编辑区文本宽度(像素)''',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- ============================================================
--- 将旧的全局证书内容(cooperation_cert_content表)迁移到每条合作单位记录
--- 旧架构: cooperation_cert_content 单条记录(id=1)存储全局共享的证书模板
--- 新架构: cooperation_apply 每行各自有 cert_image_url / cert_rich_text
--- 迁移逻辑: 把旧表数据应用到所有 cert_image_url 为空的记录(幂等,不覆盖已编辑的)
--- ============================================================
-SET @tbl_exists = (SELECT COUNT(*) FROM information_schema.TABLES
-  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cooperation_cert_content');
-SET @migrate_sql = IF(@tbl_exists > 0,
-  'UPDATE cooperation_apply ca INNER JOIN cooperation_cert_content ccc ON ccc.id = 1 SET ca.cert_image_url = ccc.image_url, ca.cert_rich_text = ccc.rich_text, ca.cert_bg_scale = 100, ca.cert_editor_width = 810 WHERE (ca.cert_image_url IS NULL OR ca.cert_image_url = '''') AND ccc.image_url IS NOT NULL AND ccc.image_url != ''''',
-  'SELECT 1');
-PREPARE stmt FROM @migrate_sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
