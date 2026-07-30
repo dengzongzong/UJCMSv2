@@ -394,7 +394,12 @@
             <span>编辑覆盖在图片上的文字内容(支持富文本):</span>
             <el-button type="text" @click="certForm.imageUrl = ''">更换图片</el-button>
           </div>
-          <RichEditor ref="certRichEditor" v-model="certForm.richText" :height="300" :background-image="resolveCertImg(certForm.imageUrl)" placeholder="请输入要覆盖在证书图片上的文字内容..." />
+          <div class="cert-scale-row">
+            <span class="cert-scale-label">图片大小:</span>
+            <el-slider v-model="certBgScale" :min="30" :max="100" :step="5" :format-tooltip="v => v + '%'" style="flex: 1; margin: 0 12px;" />
+            <span class="cert-scale-value">{{ certBgScale }}%</span>
+          </div>
+          <RichEditor ref="certRichEditor" v-model="certForm.richText" :height="300" :background-image="resolveCertImg(certForm.imageUrl)" :bg-scale="certBgScale" placeholder="请输入要覆盖在证书图片上的文字内容..." />
         </div>
       </div>
 
@@ -457,7 +462,8 @@ export default {
       // 授权证书编辑
       certDialogVisible: false,
       certSaving: false,
-      certForm: { imageUrl: '', richText: '' }
+      certForm: { imageUrl: '', richText: '' },
+      certBgScale: 100
     }
   },
   computed: {
@@ -843,6 +849,32 @@ export default {
     color: #606266;
     margin-bottom: 8px;
     font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .cert-scale-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: #f5f7fa;
+    border-radius: 4px;
+
+    .cert-scale-label {
+      font-size: 13px;
+      color: #909399;
+      white-space: nowrap;
+    }
+
+    .cert-scale-value {
+      font-size: 13px;
+      color: #1989fa;
+      font-weight: 600;
+      min-width: 40px;
+      text-align: right;
+    }
   }
 }
 </style>

@@ -25,7 +25,9 @@ export default {
     value: { type: String, default: '' },
     height: { type: Number, default: 360 },
     placeholder: { type: String, default: '请输入内容...' },
-    backgroundImage: { type: String, default: '' }
+    backgroundImage: { type: String, default: '' },
+    /** 背景图显示宽度百分比(0-100),控制证书图片缩放大小 */
+    bgScale: { type: Number, default: 100 }
   },
   data() {
     return {
@@ -43,6 +45,9 @@ export default {
     },
     backgroundImage(v) {
       this.applyBackgroundImage(v)
+    },
+    bgScale() {
+      this.applyBackgroundImage(this.backgroundImage)
     }
   },
   mounted() {
@@ -139,17 +144,48 @@ export default {
     applyBackgroundImage(url) {
       if (!this.$refs.editorContainer) return
       var textArea = this.$refs.editorContainer.querySelector('.w-e-text')
+      var container = this.$refs.editorContainer.querySelector('.w-e-text-container')
       if (!textArea) return
-      if (url) {
-        textArea.style.backgroundImage = 'url("' + url + '")'
-        textArea.style.backgroundSize = '100% 100%'
-        textArea.style.backgroundRepeat = 'no-repeat'
-        textArea.style.minHeight = this.height + 'px'
-      } else {
+      if (!url) {
         textArea.style.backgroundImage = ''
         textArea.style.backgroundSize = ''
         textArea.style.backgroundRepeat = ''
+        textArea.style.minHeight = ''
+        textArea.style.width = ''
+        if (container) container.style.height = ''
+        return
       }
+      // 加载图片获取原始尺寸,按长宽比设置编辑区高度,避免变形
+      var img = new Image()
+      var self = this
+      img.onload = function () {
+        var naturalW = img.naturalWidth || img.width
+        var naturalH = img.naturalHeight || img.height
+        if (!naturalW || !naturalH) return
+        // 计算编辑区实际可用宽度(容器宽度 × 缩放比例)
+        var containerW = self.$refs.editorContainer.clientWidth || 800
+        var scale = self.bgScale / 100
+        var displayW = Math.round(containerW * scale)
+        var displayH = Math.round(displayW * (naturalH / naturalW))
+        // 设置背景图,保持原始长宽比
+        textArea.style.backgroundImage = 'url("' + url + '")'
+        textArea.style.backgroundSize = displayW + 'px ' + displayH + 'px'
+        textArea.style.backgroundRepeat = 'no-repeat'
+        textArea.style.backgroundPosition = 'top center'
+        // 编辑区高度至少能完整显示背景图
+        var minH = Math.max(displayH + 20, self.height)
+        textArea.style.minHeight = minH + 'px'
+        if (container) container.style.height = minH + 'px'
+      }
+      img.onerror = function () {
+        // 图片加载失败时用 contain 兜底,至少不变形
+        textArea.style.backgroundImage = 'url("' + url + '")'
+        textArea.style.backgroundSize = 'contain'
+        textArea.style.backgroundRepeat = 'no-repeat'
+        textArea.style.backgroundPosition = 'top center'
+        textArea.style.minHeight = self.height + 'px'
+      }
+      img.src = url
     },
     /**
      * 对外暴露: 主动同步最新 HTML
