@@ -23,18 +23,18 @@
                   </div>
                   <div class="card-body">
                     <van-field v-model="form.idCard" label="身份证号" placeholder="选填,与姓名一起查询" maxlength="20">
-                      <template #right-icon v-if="form.idCard">
-                        <van-icon name="clear" class="clear-icon" @click="onClearField('idCard')" />
+                      <template #right-icon>
+                        <van-icon v-if="form.idCard" name="clear" class="clear-icon" @click="onClearField('idCard')" />
                       </template>
                     </van-field>
                     <van-field v-model="form.name" label="姓名" placeholder="选填,与身份证一起查询" maxlength="50">
-                      <template #right-icon v-if="form.name">
-                        <van-icon name="clear" class="clear-icon" @click="onClearField('name')" />
+                      <template #right-icon>
+                        <van-icon v-if="form.name" name="clear" class="clear-icon" @click="onClearField('name')" />
                       </template>
                     </van-field>
                     <van-field v-model="form.certNo" label="证书编号" placeholder="可单独凭证书编号查询" maxlength="50">
-                      <template #right-icon v-if="form.certNo">
-                        <van-icon name="clear" class="clear-icon" @click="onClearField('certNo')" />
+                      <template #right-icon>
+                        <van-icon v-if="form.certNo" name="clear" class="clear-icon" @click="onClearField('certNo')" />
                       </template>
                     </van-field>
                     <div class="btn-group">
@@ -414,14 +414,19 @@ export default {
     //   2. 外部链接格式: ?bh=证书编号&name=姓名
     //      bh → certNo(证书编号), name → name(姓名)
     applyUrlQuery() {
+      // 同时从 Vue Router query 和浏览器 URLSearchParams 读取,确保参数一定能拿到
       const query = (this.$route && this.$route.query) || {}
+      const params = new URLSearchParams(window.location.search)
       let touched = false
-      // 外部链接参数: bh → certNo
-      if (query.bh) { this.form.certNo = String(query.bh).trim(); touched = true }
-      // 原生参数
-      if (query.certNo) { this.form.certNo = String(query.certNo).trim(); touched = true }
-      if (query.idCard) { this.form.idCard = String(query.idCard).trim(); touched = true }
-      if (query.name) { this.form.name = String(query.name).trim(); touched = true }
+      // 外部链接参数: bh → certNo(证书编号)
+      const bh = query.bh || params.get('bh')
+      const certNo = query.certNo || params.get('certNo')
+      const idCard = query.idCard || params.get('idCard')
+      const name = query.name || params.get('name')
+      if (bh) { this.form.certNo = String(bh).trim(); touched = true }
+      if (certNo) { this.form.certNo = String(certNo).trim(); touched = true }
+      if (idCard) { this.form.idCard = String(idCard).trim(); touched = true }
+      if (name) { this.form.name = String(name).trim(); touched = true }
       if (!touched) return
       // 自动切换到证书查询 Tab
       this.activeTab = 'cert'

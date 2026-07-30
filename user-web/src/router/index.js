@@ -195,6 +195,13 @@ router.beforeEach((to, from, next) => {
     document.title = to.meta.title
   }
 
+  // 检测首页 URL 中的证书查询参数(bh/name/certNo),
+  // 如果有则跳转到证书查询页,在组件创建前完成重定向
+  if (to.path === '/' && to.query && (to.query.bh || to.query.certNo || to.query.name)) {
+    next({ path: '/certificate', query: to.query })
+    return
+  }
+
   const token = store.getters.token
 
   // 已登录访问登录/注册页，跳转首页（忘记密码入口已关闭）
