@@ -22,9 +22,9 @@
                     <span>查询条件</span>
                   </div>
                   <div class="card-body">
-                    <van-field v-model="form.idCard" label="身份证号" placeholder="选填,与姓名一起查询" maxlength="20" clearable @clear="form.idCard = ''" />
-                    <van-field v-model="form.name" label="姓名" placeholder="选填,与身份证一起查询" maxlength="50" clearable @clear="form.name = ''" />
-                    <van-field v-model="form.certNo" label="证书编号" placeholder="可单独凭证书编号查询" maxlength="50" clearable @clear="form.certNo = ''" />
+                    <van-field v-model="form.idCard" label="身份证号" placeholder="选填,与姓名一起查询" maxlength="20" clearable @clear="onClearField('idCard')" />
+                    <van-field v-model="form.name" label="姓名" placeholder="选填,与身份证一起查询" maxlength="50" clearable @clear="onClearField('name')" />
+                    <van-field v-model="form.certNo" label="证书编号" placeholder="可单独凭证书编号查询" maxlength="50" clearable @clear="onClearField('certNo')" />
                     <div class="btn-group">
                       <van-button type="primary" icon="search" :loading="searching" block @click="onSearch">查询证书</van-button>
                       <van-button icon="replay" block @click="onReset">重 置</van-button>
@@ -423,38 +423,39 @@ export default {
       }
     },
     async onSearch() {
-      // 已登录用户直接查询自己的证书(通过token关联),无需输入信息
+      // 如果有证书编号或身份证+姓名,优先走公开查询接口(支持URL参数和手动输入)
+      var hasCertNo = (this.form.certNo || '').trim()
+      var hasIdCard = (this.form.idCard || '').trim()
+      var hasName = (this.form.name || '').trim()
+      if (hasCertNo || (hasIdCard && hasName)) {
+        this.searching = true
+        try {
+          const res = await searchMyCertificates({
+            idCard: hasIdCard || undefined,
+            name: hasName || undefined,
+            certNo: hasCertNo || undefined
+          })
+          const data = res.data || res
+          this.records = Array.isArray(data) ? data : (data.records || data.list || [])
+          this.total = this.records.length
+          this.searched = true
+          this.selectedIds = []
+          if (this.records.length > 0) Toast.success('找到 ' + this.records.length + ' 张证书')
+        } catch (error) {
+          this.records = []
+          this.total = 0
+          this.searched = true
+        } finally {
+          this.searching = false
+        }
+        return
+      }
+      // 已登录用户且没有输入查询条件,直接查询自己的证书(通过token关联)
       if (this.isLoggedIn) {
         await this.fetchMyCertificates()
         return
       }
-      var hasCertNo = (this.form.certNo || '').trim()
-      var hasIdCard = (this.form.idCard || '').trim()
-      var hasName = (this.form.name || '').trim()
-      if (!hasCertNo && !(hasIdCard && hasName)) {
-        Toast('请输入身份证号和姓名,或输入证书编号')
-        return
-      }
-      this.searching = true
-      try {
-        const res = await searchMyCertificates({
-          idCard: hasIdCard || undefined,
-          name: hasName || undefined,
-          certNo: hasCertNo || undefined
-        })
-        const data = res.data || res
-        this.records = Array.isArray(data) ? data : (data.records || data.list || [])
-        this.total = this.records.length
-        this.searched = true
-        this.selectedIds = []
-        if (this.records.length > 0) Toast.success('找到 ' + this.records.length + ' 张证书')
-      } catch (error) {
-        this.records = []
-        this.total = 0
-        this.searched = true
-      } finally {
-        this.searching = false
-      }
+      Toast('请输入身份证号和姓名,或输入证书编号')
     },
     onReset() {
       this.form = { idCard: '', name: '', certNo: '' }
@@ -462,6 +463,10 @@ export default {
       this.total = 0
       this.searched = false
       this.selectedIds = []
+    },
+    // 清除输入框内容(Vant 2 clearable 的 @clear 事件兜底,确保值一定被清空)
+    onClearField(field) {
+      this.$set(this.form, field, '')
     },
     // 判断某条证书是否正在下载(任一格式)
     isCertDownloading(cert) {
