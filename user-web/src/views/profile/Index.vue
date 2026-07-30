@@ -186,41 +186,37 @@
       </div>
     </div>
 
-    <!--
-      修改密码 dialog (已登录态, 必须输入原密码)
-      后端 POST /auth/change-password
-    -->
-    <van-dialog
-      v-model="showPasswordDialog"
-      title="修改密码"
-      show-cancel-button
-      confirm-button-color="#1989fa"
-      :before-close="beforePasswordDialogClose"
-    >
-      <van-field
-        :value="formatPhone(userInfo.phone)"
-        label="手机号"
-        readonly
-      />
-      <van-field
-        v-model="passwordForm.oldPassword"
-        type="password"
-        label="原密码"
-        placeholder="请输入原密码"
-      />
-      <van-field
-        v-model="passwordForm.newPassword"
-        type="password"
-        label="新密码"
-        placeholder="请输入新密码（6-20位）"
-      />
-      <van-field
-        v-model="passwordForm.confirmPassword"
-        type="password"
-        label="确认密码"
-        placeholder="请再次输入新密码"
-      />
-    </van-dialog>
+    <!-- 修改密码弹窗(纯HTML实现,避免 van-dialog before-close 的 _wrapper 错误) -->
+    <div v-if="showPasswordDialog" class="custom-modal-overlay" @click="closePasswordDialog">
+      <div class="custom-modal" @click.stop>
+        <div class="custom-modal-header">
+          <span class="custom-modal-title">修改密码</span>
+          <span class="custom-modal-close" @click="closePasswordDialog">×</span>
+        </div>
+        <div class="custom-modal-body">
+          <div class="custom-field">
+            <label class="custom-field-label">手机号</label>
+            <input :value="formatPhone(userInfo.phone)" type="text" readonly class="custom-field-input custom-field-readonly" />
+          </div>
+          <div class="custom-field">
+            <label class="custom-field-label">原密码</label>
+            <input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码" class="custom-field-input" />
+          </div>
+          <div class="custom-field">
+            <label class="custom-field-label">新密码</label>
+            <input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码（6-20位）" class="custom-field-input" />
+          </div>
+          <div class="custom-field">
+            <label class="custom-field-label">确认密码</label>
+            <input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" class="custom-field-input" />
+          </div>
+        </div>
+        <div class="custom-modal-footer">
+          <button type="button" class="custom-btn custom-btn-cancel" @click="closePasswordDialog">取 消</button>
+          <button type="button" class="custom-btn custom-btn-confirm" @click="confirmChangePassword">确 定</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -383,41 +379,31 @@ export default {
         this.avatarFile = []
       }
     },
-    // confirmChangePassword 已重写: 学员端已登录态改密, 需要原密码
-    // 后端 POST /auth/change-password
-    async beforePasswordDialogClose(action, done) {
-      if (action !== 'confirm') {
-        done()
-        return
-      }
-      try {
-        await this.confirmChangePassword()
-        done()
-      } catch (error) {
-        // 校验失败时保持弹窗打开
-        done(false)
-      }
+    // ===== 修改密码(纯HTML弹窗,不再用 van-dialog before-close) =====
+    closePasswordDialog() {
+      this.showPasswordDialog = false
     },
     async confirmChangePassword() {
       const { oldPassword, newPassword, confirmPassword } = this.passwordForm
       if (!oldPassword) {
         Toast('请输入原密码')
-        throw new Error('请输入原密码')
+        return
       }
       if (!newPassword || newPassword.length < 6 || newPassword.length > 20) {
         Toast('新密码长度为6-20位')
-        throw new Error('新密码长度为6-20位')
+        return
       }
       if (newPassword !== confirmPassword) {
         Toast('两次输入的密码不一致')
-        throw new Error('两次输入的密码不一致')
+        return
       }
       if (oldPassword === newPassword) {
         Toast('新密码不能与原密码相同')
-        throw new Error('新密码不能与原密码相同')
+        return
       }
       try {
         await changePassword({ oldPassword, newPassword })
+        this.showPasswordDialog = false
         Toast.success('密码修改成功,请重新登录')
         // 清空表单
         this.passwordForm = { oldPassword: '', newPassword: '', confirmPassword: '' }
@@ -428,7 +414,6 @@ export default {
         }, 1500)
       } catch (error) {
         Toast.fail(error.message || '密码修改失败,请稍后重试')
-        throw error
       }
     },
     openPasswordDialog() {
@@ -837,6 +822,11 @@ export default {
 
     &:focus {
       border-color: #1989fa;
+    }
+
+    &.custom-field-readonly {
+      background: #f5f5f5;
+      color: #999;
     }
   }
 }
