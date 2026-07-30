@@ -391,6 +391,12 @@ export default {
     }
   },
   created() {
+    // 检测URL中的证书查询参数(bh/name),如果有则跳转到证书查询页
+    const query = (this.$route && this.$route.query) || {}
+    if (query.bh || query.certNo || (query.idCard && query.name)) {
+      this.$router.replace({ path: '/certificate', query: query })
+      return
+    }
     this.fetchBanners()
     this.fetchBannerImages()
     this.fetchCourses()

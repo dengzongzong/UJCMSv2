@@ -22,9 +22,21 @@
                     <span>查询条件</span>
                   </div>
                   <div class="card-body">
-                    <van-field v-model="form.idCard" label="身份证号" placeholder="选填,与姓名一起查询" maxlength="20" clearable @clear="onClearField('idCard')" />
-                    <van-field v-model="form.name" label="姓名" placeholder="选填,与身份证一起查询" maxlength="50" clearable @clear="onClearField('name')" />
-                    <van-field v-model="form.certNo" label="证书编号" placeholder="可单独凭证书编号查询" maxlength="50" clearable @clear="onClearField('certNo')" />
+                    <van-field v-model="form.idCard" label="身份证号" placeholder="选填,与姓名一起查询" maxlength="20">
+                      <template #right-icon v-if="form.idCard">
+                        <van-icon name="clear" class="clear-icon" @click="onClearField('idCard')" />
+                      </template>
+                    </van-field>
+                    <van-field v-model="form.name" label="姓名" placeholder="选填,与身份证一起查询" maxlength="50">
+                      <template #right-icon v-if="form.name">
+                        <van-icon name="clear" class="clear-icon" @click="onClearField('name')" />
+                      </template>
+                    </van-field>
+                    <van-field v-model="form.certNo" label="证书编号" placeholder="可单独凭证书编号查询" maxlength="50">
+                      <template #right-icon v-if="form.certNo">
+                        <van-icon name="clear" class="clear-icon" @click="onClearField('certNo')" />
+                      </template>
+                    </van-field>
                     <div class="btn-group">
                       <van-button type="primary" icon="search" :loading="searching" block @click="onSearch">查询证书</van-button>
                       <van-button icon="replay" block @click="onReset">重 置</van-button>
@@ -845,6 +857,13 @@ export default {
   color: #303133; background: #fafbfc;
 }
 .card-body { padding: 20px; }
+
+.clear-icon {
+  color: #c0c4cc;
+  font-size: 16px;
+  cursor: pointer;
+  &:active { color: #969799; }
+}
 
 .btn-group {
   display: flex; flex-direction: column; gap: 8px; padding: 12px 16px;
