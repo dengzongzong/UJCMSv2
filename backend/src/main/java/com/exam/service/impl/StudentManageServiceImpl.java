@@ -344,6 +344,60 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         return professions.stream().collect(Collectors.toMap(Profession::getId, Profession::getName, (a, b) -> a));
     }
 
+    /**
+     * 从 Excel 导入行更新已有证书的成绩字段
+     * 当学生已存在且专业相同时,虽然不新增证书记录,但应更新成绩
+     */
+    private void updateCertificateScoresFromRow(com.exam.dto.CertificateImportRow row, String idCard, String profession) {
+        String theoryScore = row.getTheoryScore();
+        String practicalScore = row.getPracticalScore();
+        String comprehensiveEval = row.getComprehensiveEvaluation();
+        // 至少有一个成绩字段有值才更新
+        if (!StringUtils.hasText(theoryScore) && !StringUtils.hasText(practicalScore) && !StringUtils.hasText(comprehensiveEval)) {
+            return;
+        }
+        try {
+            List<Certificate> certs = certificateMapper.selectList(
+                    new LambdaQueryWrapper<Certificate>()
+                            .eq(Certificate::getIdCard, idCard)
+                            .eq(Certificate::getProfession, profession));
+            for (Certificate cert : certs) {
+                boolean changed = false;
+                if (StringUtils.hasText(theoryScore)) {
+                    cert.setTheoryScore(theoryScore.trim());
+                    changed = true;
+                }
+                if (StringUtils.hasText(practicalScore)) {
+                    cert.setPracticalScore(practicalScore.trim());
+                    changed = true;
+                }
+                if (StringUtils.hasText(comprehensiveEval)) {
+                    cert.setComprehensiveEvaluation(comprehensiveEval.trim());
+                    changed = true;
+                }
+                if (changed) {
+                    // 同时更新 extra_json 中的成绩字段
+                    if (StringUtils.hasText(cert.getExtraJson())) {
+                        try {
+                            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                            @SuppressWarnings("unchecked")
+                            java.util.Map<String, Object> extra = mapper.readValue(cert.getExtraJson(), java.util.Map.class);
+                            if (StringUtils.hasText(theoryScore)) extra.put("theoryScore", theoryScore.trim());
+                            if (StringUtils.hasText(practicalScore)) extra.put("practicalScore", practicalScore.trim());
+                            if (StringUtils.hasText(comprehensiveEval)) extra.put("comprehensiveEvaluation", comprehensiveEval.trim());
+                            cert.setExtraJson(mapper.writeValueAsString(extra));
+                        } catch (Exception e) {
+                            // extra_json 解析失败,不影响主表成绩更新
+                        }
+                    }
+                    certificateMapper.updateById(cert);
+                }
+            }
+        } catch (Exception e) {
+            // 成绩更新失败不影响导入主流程
+        }
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStudent(Student student) {
@@ -897,8 +951,10 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                     failList.add(fail(name, idCard, "导入失败：身份证号码「" + idCard + "」与已有学生数据重复,且未指定专业"));
                     continue;
                 }
-                // 专业相同 → 报重复
+                // 专业相同 → 报重复,但更新已有证书的成绩(如果Excel中有成绩数据)
                 if (existProfIds.contains(professionIdForCheck)) {
+                    // 尝试更新已有证书的成绩字段
+                    updateCertificateScoresFromRow(row, idCard, pName);
                     failList.add(fail(name, idCard, "导入失败：身份证号码「" + idCard + "」+专业「" + pName + "」与已有学生数据重复"));
                     continue;
                 }
@@ -907,8 +963,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                 newSp.setStudentId(existStudent.getId());
                 newSp.setProfessionId(professionIdForCheck);
                 studentProfessionMapper.insert(newSp);
-                // 同步创建证书记录
-                com.exam.dto.CertificateDTO certDto = new com.exam.dto.CertificateDTO();
+                // 同步创建证书记录(使用 toImportDto 传递包括成绩在内的所有字段)
+                com.exam.dto.CertificateDTO certDto = certificateService.toImportDto(row);
                 certDto.setName(existStudent.getName());
                 certDto.setIdCard(idCard);
                 certDto.setProfession(pName);
@@ -955,6 +1011,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             if (certificateService.existsByNameIdCardProfessionLevel(name, idCard,
                     StringUtils.hasText(professionName) ? professionName.trim() : null,
                     StringUtils.hasText(skillLevel) ? skillLevel.trim() : null)) {
+                // 尝试更新已有证书的成绩字段(如果Excel中有成绩数据)
+                updateCertificateScoresFromRow(row, idCard, professionName);
                 duplicateCount++;
                 // 记录重复详细信息,方便用户定位
                 Map<String, Object> dup = new LinkedHashMap<>();
@@ -1036,8 +1094,12 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
                 com.exam.dto.CertificateDTO certDto = certificateService.toImportDto(row);
                 certDto.setName(newStudent.getName());
                 certDto.setIdCard(idCard);
-                certificateService.add(certDto);
+                boolean certCreated = certificateService.add(certDto);
                 // add 内部去重:姓名+身份证+专业+级别相同则跳过,不影响学生创建结果
+                if (!certCreated) {
+                    // 证书已存在(去重跳过),更新已有证书的成绩
+                    updateCertificateScoresFromRow(row, idCard, professionName);
+                }
                 successCount++;
             } catch (Exception e) {
                 failList.add(fail(name, idCard, "创建失败: " + e.getMessage()));
