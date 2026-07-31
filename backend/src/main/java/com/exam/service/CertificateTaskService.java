@@ -46,6 +46,22 @@ public interface CertificateTaskService {
     String submitBatchSwitchExamQr(List<Long> ids, int enabled);
 
     /**
+     * 异步导出证书数据(全部)
+     * 生成 Excel/ZIP 文件,完成后可通过任务中心下载
+     *
+     * @param name 姓名筛选
+     * @param idCard 身份证筛选
+     * @param agency 机构筛选
+     * @param profession 专业筛选
+     * @param importTimeStart 导入时间起
+     * @param importTimeEnd 导入时间止
+     * @param certType 证书类型(用于文件命名)
+     * @return 任务 ID
+     */
+    String submitExportAll(String name, String idCard, String agency, String profession,
+                           String importTimeStart, String importTimeEnd, String certType);
+
+    /**
      * 异步提交 dry-run token 入库(由任务中心"确认导入"按钮调用)
      *
      * @param dryRunToken 前端传来的 dryRunToken

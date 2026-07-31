@@ -141,6 +141,28 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
     }
 
     @Override
+    public String submitExportAll(String name, String idCard, String agency, String profession,
+                                  String importTimeStart, String importTimeEnd, String certType) {
+        // 预查询数据量用于进度展示
+        LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
+                .like(com.baomidou.mybatisplus.core.toolkit.StringUtils.isNotBlank(name), Certificate::getName, name)
+                .like(com.baomidou.mybatisplus.core.toolkit.StringUtils.isNotBlank(idCard), Certificate::getIdCard, idCard)
+                .like(com.baomidou.mybatisplus.core.toolkit.StringUtils.isNotBlank(agency), Certificate::getAgency, agency)
+                .like(com.baomidou.mybatisplus.core.toolkit.StringUtils.isNotBlank(profession), Certificate::getProfession, profession);
+        if (com.baomidou.mybatisplus.core.toolkit.StringUtils.isNotBlank(certType)) {
+            w.eq(Certificate::getCertType, certType);
+        }
+        int total = certificateMapper.selectCount(w).intValue();
+        final String fName = name, fIdCard = idCard, fAgency = agency, fProfession = profession;
+        final String fImportTimeStart = importTimeStart, fImportTimeEnd = importTimeEnd, fCertType = certType;
+        return taskService.submit(
+                "certificate-export",
+                "导出证书数据",
+                total,
+                task -> doExportAll(task, fName, fIdCard, fAgency, fProfession, fImportTimeStart, fImportTimeEnd, fCertType));
+    }
+
+    @Override
     public String submitCommitImport(String dryRunToken) {
         return taskService.submit(
                 "certificate-import-commit",
@@ -198,6 +220,10 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
                 // 注意: 这种任务没有持久的 cert 列表(任务结束时 certs 变量已释放)
                 // 兜底: 从 bizType 推断用户意图,要求前端传 ids
                 throw new RuntimeException("批量生成任务暂不支持直接重试,请在证书列表中重新选择并下载");
+            }
+            case "certificate-export": {
+                // 重试导出: 需要原始筛选参数,从 extraJson 读取
+                throw new RuntimeException("导出任务暂不支持直接重试,请在证书列表中重新导出");
             }
             case "exam-qr-batch": {
                 // 重试开关考试二维码: 重新按"全量+原 enabled"再跑一次
@@ -400,11 +426,43 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
         }
         if (AsyncTask.STATUS_RUNNING.equals(task.getStatus())) {
             task.setResultFile(zipFile);
-            task.setResultFileName("certificates_" +
-                    LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".zip");
+            // 使用新命名: 证书_证书类型_月日(次数).zip
+            String certType = certs.stream()
+                    .map(Certificate::getCertType)
+                    .filter(c -> c != null && !c.isEmpty())
+                    .findFirst().orElse(null);
+            String resultName = certificateService.buildDownloadFileName(certType, "batch_download", ".zip");
+            task.setResultFileName(resultName);
         } else {
             // 取消则删除临时文件
             zipFile.delete();
+        }
+    }
+
+    /**
+     * 异步导出证书数据到文件
+     */
+    private void doExportAll(AsyncTask task, String name, String idCard, String agency,
+                             String profession, String importTimeStart, String importTimeEnd,
+                             String certType) {
+        try {
+            task.setProgress(10);
+            // 调用 service 生成导出文件
+            java.io.File exportFile = certificateService.exportCertificatesToFile(
+                    name, idCard, agency, profession, importTimeStart, importTimeEnd, null, certType);
+            task.setProgress(90);
+            if (AsyncTask.STATUS_RUNNING.equals(task.getStatus())) {
+                task.setResultFile(exportFile);
+                // 生成下载文件名(证书类型_月日(次数).xls/zip),buildDownloadFileName 会递增当天计数
+                String ext = exportFile.getName().endsWith(".zip") ? ".zip" : ".xls";
+                String resultName = certificateService.buildDownloadFileName(certType, "export", ext);
+                task.setResultFileName(resultName);
+            } else {
+                exportFile.delete();
+            }
+            task.setProgress(100);
+        } catch (Exception e) {
+            throw new RuntimeException("导出失败: " + e.getMessage(), e);
         }
     }
 

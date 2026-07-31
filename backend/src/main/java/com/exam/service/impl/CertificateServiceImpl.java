@@ -14,6 +14,7 @@ import com.exam.dto.CertificateDTO;
 import com.exam.dto.CertificateImportResult;
 import com.exam.dto.CertificateImportRow;
 import com.exam.entity.Certificate;
+import com.exam.entity.CertificateDownloadCount;
 import com.exam.entity.CertificateField;
 import com.exam.entity.CertificatePhoto;
 import com.exam.entity.CertificateTemplate;
@@ -25,6 +26,7 @@ import com.exam.entity.StudentProfession;
 import com.exam.mapper.CertificateExportColumnMapper;
 import com.exam.mapper.CertificateFieldMapper;
 import com.exam.mapper.CertificateMapper;
+import com.exam.mapper.CertificateDownloadCountMapper;
 import com.exam.mapper.CertificatePhotoMapper;
 import com.exam.mapper.CertificateTemplateMapper;
 import com.exam.mapper.CertificateUrlConfigMapper;
@@ -116,6 +118,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     private com.exam.service.CertificateUserSyncService certificateUserSyncService;
     @Autowired
     private com.exam.service.CertificateTypeService certificateTypeService;
+    @Autowired
+    private CertificateDownloadCountMapper downloadCountMapper;
 
     @Override
     public PageResult<Certificate> page(Integer page, Integer size, String name,
@@ -1122,12 +1126,20 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     @Override
     public List<Long> listFilteredIdsWithTemplate(String name, String idCard, String agency,
                                                   String profession, String issueDateStart, String issueDateEnd) {
+        return listFilteredIdsWithTemplate(name, idCard, agency, profession, issueDateStart, issueDateEnd, null);
+    }
+
+    @Override
+    public List<Long> listFilteredIdsWithTemplate(String name, String idCard, String agency,
+                                                  String profession, String issueDateStart, String issueDateEnd,
+                                                  String certType) {
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                 .isNotNull(Certificate::getTemplateId)
                 .like(StringUtils.hasText(name), Certificate::getName, name)
                 .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
                 .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
                 .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
+                .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getCreateTime)
                 .orderByDesc(Certificate::getId);
         if (StringUtils.hasText(issueDateStart)) {
@@ -1363,7 +1375,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     public void exportCertificates(HttpServletResponse response, String name, String idCard,
                                    String agency, String profession,
                                    String issueDateStart, String issueDateEnd,
-                                   List<Long> ids) {
+                                   List<Long> ids, String certType) {
         // 1. 查询数据
         List<Certificate> certs;
         if (ids != null && !ids.isEmpty()) {
@@ -1384,11 +1396,16 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             }
             certs = this.list(w);
         }
-        exportCertificateList(response, certs);
+        exportCertificateList(response, certs, certType);
     }
 
     @Override
     public void exportCertificateList(HttpServletResponse response, List<Certificate> certs) {
+        exportCertificateList(response, certs, null);
+    }
+
+    @Override
+    public void exportCertificateList(HttpServletResponse response, List<Certificate> certs, String certType) {
         // 过滤掉未绑定模板的证书
         List<Certificate> boundCerts = certs.stream()
                 .filter(c -> c.getTemplateId() != null)
@@ -1470,22 +1487,37 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         }
 
         // 输出: 单个文件直接返回Excel,多个文件打包ZIP
+        // 文件命名: 有 certType 时用 "证书类型_月日(次数)",无 certType 时用旧命名
         try {
             if (excelFiles.size() == 1) {
                 ExcelFileEntry entry = excelFiles.get(0);
-                String fileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
+                String baseName;
+                String ext = ".xls";
+                if (StringUtils.hasText(certType)) {
+                    baseName = buildDownloadFileName(certType, "export", ext);
+                } else {
+                    baseName = "证书用户数据下载.xls";
+                }
+                String fileName = URLEncoder.encode(baseName, StandardCharsets.UTF_8.name())
                         .replaceAll("\\+", "%20");
                 response.setContentType("application/vnd.ms-excel");
                 response.setCharacterEncoding("utf-8");
-                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xls");
+                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName);
                 response.getOutputStream().write(entry.data);
                 response.getOutputStream().flush();
             } else {
-                String zipFileName = URLEncoder.encode("证书用户数据下载", StandardCharsets.UTF_8.name())
+                String baseName;
+                String ext = ".zip";
+                if (StringUtils.hasText(certType)) {
+                    baseName = buildDownloadFileName(certType, "export", ext);
+                } else {
+                    baseName = "证书用户数据下载.zip";
+                }
+                String zipFileName = URLEncoder.encode(baseName, StandardCharsets.UTF_8.name())
                         .replaceAll("\\+", "%20");
                 response.setContentType("application/zip");
                 response.setCharacterEncoding("utf-8");
-                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + zipFileName + ".zip");
+                response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + zipFileName);
                 try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(response.getOutputStream())) {
                     for (ExcelFileEntry entry : excelFiles) {
                         java.util.zip.ZipEntry ze = new java.util.zip.ZipEntry(entry.fileName);
@@ -2488,6 +2520,185 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 student.setProfessionId(null);
                 studentMapper.updateById(student);
             }
+        }
+    }
+
+    // ==================== 下载次数追踪 & 文件命名 ====================
+
+    @Override
+    public int getAndIncrementDownloadCount(String certType, String downloadKind) {
+        String effectiveCertType = StringUtils.hasText(certType) ? certType.trim() : "全部";
+        String kind = StringUtils.hasText(downloadKind) ? downloadKind : "export";
+        LocalDate today = LocalDate.now();
+
+        // 查询当天记录
+        CertificateDownloadCount record = downloadCountMapper.selectOne(
+                new LambdaQueryWrapper<CertificateDownloadCount>()
+                        .eq(CertificateDownloadCount::getCertType, effectiveCertType)
+                        .eq(CertificateDownloadCount::getDownloadDate, today)
+                        .eq(CertificateDownloadCount::getDownloadKind, kind)
+                        .last("LIMIT 1"));
+
+        if (record == null) {
+            // 当天第一次下载
+            record = new CertificateDownloadCount();
+            record.setCertType(effectiveCertType);
+            record.setDownloadDate(today);
+            record.setDownloadKind(kind);
+            record.setCount(1);
+            record.setCreateTime(LocalDateTime.now());
+            record.setUpdateTime(LocalDateTime.now());
+            try {
+                downloadCountMapper.insert(record);
+            } catch (Exception e) {
+                // 并发插入冲突,重新查询并更新
+                record = downloadCountMapper.selectOne(
+                        new LambdaQueryWrapper<CertificateDownloadCount>()
+                                .eq(CertificateDownloadCount::getCertType, effectiveCertType)
+                                .eq(CertificateDownloadCount::getDownloadDate, today)
+                                .eq(CertificateDownloadCount::getDownloadKind, kind)
+                                .last("LIMIT 1"));
+                if (record != null) {
+                    int newCount = (record.getCount() == null ? 0 : record.getCount()) + 1;
+                    record.setCount(newCount);
+                    record.setUpdateTime(LocalDateTime.now());
+                    downloadCountMapper.updateById(record);
+                    return newCount;
+                }
+                return 1;
+            }
+            return 1;
+        } else {
+            int newCount = (record.getCount() == null ? 0 : record.getCount()) + 1;
+            record.setCount(newCount);
+            record.setUpdateTime(LocalDateTime.now());
+            downloadCountMapper.updateById(record);
+            return newCount;
+        }
+    }
+
+    @Override
+    public String buildDownloadFileName(String certType, String downloadKind, String extension) {
+        String effectiveCertType = StringUtils.hasText(certType) ? certType.trim() : "全部";
+        // 日期格式: M月d日 (不补零)
+        LocalDate today = LocalDate.now();
+        String dateStr = today.getMonthValue() + "月" + today.getDayOfMonth() + "日";
+        // 获取当天下载次数
+        int count = getAndIncrementDownloadCount(certType, downloadKind);
+        // 批量下载加 "证书_" 前缀
+        String prefix = "batch_download".equals(downloadKind) ? "证书_" : "";
+        return prefix + effectiveCertType + "_" + dateStr + "(" + count + ")" + extension;
+    }
+
+    @Override
+    public java.io.File exportCertificatesToFile(String name, String idCard,
+                                                  String agency, String profession,
+                                                  String issueDateStart, String issueDateEnd,
+                                                  List<Long> ids, String certType) {
+        // 1. 查询数据
+        List<Certificate> certs;
+        if (ids != null && !ids.isEmpty()) {
+            certs = this.listByIds(ids);
+        } else {
+            LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
+                    .like(StringUtils.hasText(name), Certificate::getName, name)
+                    .like(StringUtils.hasText(idCard), Certificate::getIdCard, idCard)
+                    .like(StringUtils.hasText(agency), Certificate::getAgency, agency)
+                    .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
+                    .orderByDesc(Certificate::getCreateTime)
+                    .orderByDesc(Certificate::getId);
+            if (StringUtils.hasText(issueDateStart)) {
+                w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
+            }
+            if (StringUtils.hasText(issueDateEnd)) {
+                w.le(Certificate::getIssueDate, parseDate(issueDateEnd));
+            }
+            certs = this.list(w);
+        }
+
+        // 2. 过滤掉未绑定模板的证书
+        List<Certificate> boundCerts = certs.stream()
+                .filter(c -> c.getTemplateId() != null)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (boundCerts.isEmpty()) {
+            throw new BusinessException("没有可导出的证书数据(未绑定模板的证书不导出)");
+        }
+
+        // 3. 按templateId分组
+        Map<Long, List<Certificate>> grouped = boundCerts.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Certificate::getTemplateId));
+
+        List<Long> templateIds = new ArrayList<>(grouped.keySet());
+        List<CertificateTemplate> templates = templateMapper.selectBatchIds(templateIds);
+        Map<Long, String> templateNameMap = new HashMap<>();
+        for (CertificateTemplate t : templates) {
+            templateNameMap.put(t.getId(), t.getName());
+        }
+
+        CertificateUrlConfig urlConfig = getUrlConfigForExport();
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy年M月d日");
+
+        List<ExcelFileEntry> excelFiles = new ArrayList<>();
+        for (Map.Entry<Long, List<Certificate>> entry : grouped.entrySet()) {
+            Long tplId = entry.getKey();
+            List<Certificate> groupCerts = entry.getValue();
+            String tplName = templateNameMap.getOrDefault(tplId, "模板" + tplId);
+            List<ExportColumnDef> columnDefs = resolveExportColumns(tplId);
+            List<List<String>> head = new ArrayList<>();
+            for (ExportColumnDef col : columnDefs) {
+                head.add(java.util.Arrays.asList(col.getColumnName()));
+            }
+            List<List<Object>> dataList = new ArrayList<>();
+            int idx = 1;
+            for (Certificate c : groupCerts) {
+                Map<String, Object> extra = parseExtraJsonToMap(c.getExtraJson());
+                Map<String, String> qrValueMap = buildQrValueMap(c, extra);
+                String qr1 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr1Template(), qrValueMap, c.getQrUrl1());
+                String qr2 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr2Template(), qrValueMap, c.getQrUrl2());
+                String qr3 = resolveQrUrlForExport(urlConfig == null ? null : urlConfig.getQr3Template(), qrValueMap, c.getQrUrl3());
+                List<Object> row = new ArrayList<>();
+                for (ExportColumnDef col : columnDefs) {
+                    row.add(getFieldValue(col.getFieldKey(), c, extra, qr1, qr2, qr3, idx, dateFmt));
+                }
+                idx++;
+                dataList.add(row);
+            }
+            try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+                EasyExcel.write(baos).excelType(ExcelTypeEnum.XLS).head(head).sheet("证书数据").doWrite(dataList);
+                String safeName = tplName.replaceAll("[\\\\/:*?\"<>|]", "_");
+                excelFiles.add(new ExcelFileEntry(safeName + ".xls", baos.toByteArray()));
+            } catch (Exception e) {
+                throw new BusinessException("生成Excel失败: " + e.getMessage());
+            }
+        }
+
+        // 4. 写入临时文件(文件名由调用方通过 buildDownloadFileName 生成)
+        try {
+            String ext = excelFiles.size() == 1 ? ".xls" : ".zip";
+            java.io.File tempFile = new java.io.File(System.getProperty("java.io.tmpdir"),
+                    "cert_export_" + System.currentTimeMillis() + ext);
+            if (excelFiles.size() == 1) {
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile)) {
+                    fos.write(excelFiles.get(0).data);
+                }
+            } else {
+                try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(tempFile))) {
+                    for (ExcelFileEntry entry : excelFiles) {
+                        java.util.zip.ZipEntry ze = new java.util.zip.ZipEntry(entry.fileName);
+                        zos.putNextEntry(ze);
+                        zos.write(entry.data);
+                        zos.closeEntry();
+                    }
+                }
+            }
+            // 用文件名作为 resultFileName 的载体: 把文件名存到临时文件的可访问位置
+            // 这里返回 File, 文件名由调用方通过 buildDownloadFileName 重新生成或通过参数传递
+            // 为了让调用方能获取文件名,我们将文件名写入一个临时变量
+            // 实际上调用方(CertificateTaskServiceImpl)会自己设置 resultFileName
+            return tempFile;
+        } catch (Exception e) {
+            throw new BusinessException("导出文件生成失败: " + e.getMessage());
         }
     }
 }

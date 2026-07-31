@@ -146,9 +146,10 @@ public class CertificateController {
                                      @RequestParam(required = false) String agency,
                                      @RequestParam(required = false) String profession,
                                      @RequestParam(required = false) String issueDateStart,
-                                     @RequestParam(required = false) String issueDateEnd) {
+                                     @RequestParam(required = false) String issueDateEnd,
+                                     @RequestParam(required = false) String certType) {
         return Result.success(certificateService.listFilteredIdsWithTemplate(
-                name, idCard, agency, profession, issueDateStart, issueDateEnd));
+                name, idCard, agency, profession, issueDateStart, issueDateEnd, certType));
     }
 
     @PostMapping
@@ -319,6 +320,7 @@ public class CertificateController {
     /**
      * 导出证书数据(Excel,按证书绑定的模板分组导出)
      * 支持按筛选条件导出全部,或按选中ID导出
+     * 同步导出(选中数据量少时使用)
      */
     @GetMapping("/export")
     public void export(@RequestParam(required = false) String name,
@@ -328,9 +330,32 @@ public class CertificateController {
                        @RequestParam(required = false) String issueDateStart,
                        @RequestParam(required = false) String issueDateEnd,
                        @RequestParam(required = false) List<Long> ids,
+                       @RequestParam(required = false) String certType,
                        HttpServletResponse response) {
         certificateService.exportCertificates(response, name, idCard, agency, profession,
-                issueDateStart, issueDateEnd, ids);
+                issueDateStart, issueDateEnd, ids, certType);
+    }
+
+    /**
+     * 异步导出证书数据(全部)
+     * 用于数据量大时的异步导出,返回 taskId,前端轮询进度后下载结果文件
+     */
+    @PostMapping("/export/async")
+    public Result<?> exportAsync(@RequestBody Map<String, Object> body) {
+        String name = body.get("name") == null ? null : body.get("name").toString();
+        String idCard = body.get("idCard") == null ? null : body.get("idCard").toString();
+        String agency = body.get("agency") == null ? null : body.get("agency").toString();
+        String profession = body.get("profession") == null ? null : body.get("profession").toString();
+        String importTimeStart = body.get("importTimeStart") == null ? null : body.get("importTimeStart").toString();
+        String importTimeEnd = body.get("importTimeEnd") == null ? null : body.get("importTimeEnd").toString();
+        String certType = body.get("certType") == null ? null : body.get("certType").toString();
+
+        String taskId = certificateTaskService.submitExportAll(
+                name, idCard, agency, profession, importTimeStart, importTimeEnd, certType);
+        Map<String, Object> data = new HashMap<>();
+        data.put("taskId", taskId);
+        data.put("async", true);
+        return Result.success("已提交异步导出任务,请到任务中心查看进度", data);
     }
 
     /**

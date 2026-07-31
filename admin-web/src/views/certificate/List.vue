@@ -73,6 +73,7 @@
       @selection-change="rows => (selection = rows)"
     >
       <el-table-column type="selection" width="50" />
+      <el-table-column prop="id" label="序号" width="70" align="center" />
       <el-table-column label="照片" width="80" align="center">
         <template slot-scope="s">
           <img v-if="s.row.photoUrl" :src="apiUrl(s.row.photoUrl)" class="table-thumb" />
@@ -278,6 +279,48 @@
           v-if="syncDialog.status !== 'running'"
           type="primary"
           @click="closeSyncDialog"
+        >关闭</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 异步导出/下载进度弹窗 -->
+    <el-dialog
+      title="处理进度"
+      :visible.sync="asyncExportDialog.visible"
+      width="500px"
+      :close-on-click-modal="false"
+      :show-close="asyncExportDialog.status !== 'running'"
+      @close="closeAsyncExportDialog"
+    >
+      <div style="text-align: center; padding: 20px 0;">
+        <el-progress
+          v-if="asyncExportDialog.status === 'running'"
+          :percentage="asyncExportDialog.progress"
+          :format="() => asyncExportDialog.progress + '%'"
+          :stroke-width="20"
+          :text-inside="true"
+          status="success"
+        />
+        <div v-if="asyncExportDialog.status === 'running'" style="margin-top: 12px; color: #909399; font-size: 13px;">
+          正在处理... {{ asyncExportDialog.processed }} / {{ asyncExportDialog.total }}
+        </div>
+        <div v-if="asyncExportDialog.status === 'success'" style="color: #67c23a; font-size: 16px;">
+          <i class="el-icon-success" style="font-size: 48px; display: block; margin-bottom: 12px;"></i>
+          {{ asyncExportDialog.result }}
+          <div v-if="asyncExportDialog.downloadUrl" style="margin-top: 16px;">
+            <el-button type="primary" icon="el-icon-download" @click="downloadAsyncResult">下载文件</el-button>
+          </div>
+        </div>
+        <div v-if="asyncExportDialog.status === 'failed'" style="color: #f56c6c; font-size: 16px;">
+          <i class="el-icon-error" style="font-size: 48px; display: block; margin-bottom: 12px;"></i>
+          {{ asyncExportDialog.result }}
+        </div>
+      </div>
+      <div slot="footer">
+        <el-button
+          v-if="asyncExportDialog.status !== 'running'"
+          type="primary"
+          @click="closeAsyncExportDialog"
         >关闭</el-button>
       </div>
     </el-dialog>
@@ -492,6 +535,7 @@ import {
   certificateAllIds,
   downloadSingleCertificate,
   exportCertificates,
+  exportCertificatesAsync,
   addPhoto,
   uploadPhotoForCertificate,
   issueCertificates,
@@ -518,6 +562,8 @@ export default {
       exporting: false,
       syncingUsers: false,
       syncDialog: { visible: false, progress: 0, processed: 0, total: 0, status: '', taskId: null, result: null, timer: null },
+      // 异步导出/下载进度弹窗(复用同步弹窗的模式)
+      asyncExportDialog: { visible: false, progress: 0, processed: 0, total: 0, status: '', taskId: null, result: null, timer: null, downloadUrl: null },
       unboundTemplateFilter: false,
       importDialog: false,
       importLoading: false,
@@ -774,6 +820,53 @@ export default {
       }
       this.syncDialog.visible = false
     },
+    // ===== 异步导出/下载任务轮询 =====
+    pollAsyncExportTask(taskId) {
+      if (this.asyncExportDialog.timer) clearTimeout(this.asyncExportDialog.timer)
+      getTask(taskId).then((res) => {
+        const task = (res && res.data) || {}
+        this.asyncExportDialog.progress = task.progress || 0
+        this.asyncExportDialog.processed = task.processed || 0
+        this.asyncExportDialog.total = task.total || 0
+        this.asyncExportDialog.status = task.status || 'running'
+        if (task.status === 'success') {
+          this.exporting = false
+          this.batchDownloading = null
+          this.asyncExportDialog.result = '处理完成'
+          // 如果有结果文件,提供下载链接
+          if (task.resultFileName || task.resultFilePath) {
+            this.asyncExportDialog.downloadUrl = '/admin/task/' + taskId + '/download'
+          }
+          this.$message.success('处理完成,可下载结果文件')
+          this.loadList()
+        } else if (task.status === 'failed') {
+          this.exporting = false
+          this.batchDownloading = null
+          this.asyncExportDialog.result = '处理失败: ' + (task.errorMessage || '未知错误')
+          this.$message.error(this.asyncExportDialog.result)
+        } else {
+          // 继续轮询
+          this.asyncExportDialog.timer = setTimeout(() => this.pollAsyncExportTask(taskId), 1500)
+        }
+      }).catch(() => {
+        // 网络错误,继续重试
+        this.asyncExportDialog.timer = setTimeout(() => this.pollAsyncExportTask(taskId), 2000)
+      })
+    },
+    closeAsyncExportDialog() {
+      if (this.asyncExportDialog.timer) {
+        clearTimeout(this.asyncExportDialog.timer)
+        this.asyncExportDialog.timer = null
+      }
+      this.asyncExportDialog.visible = false
+    },
+    downloadAsyncResult() {
+      if (!this.asyncExportDialog.taskId) return
+      // 使用 downloadFile 下载结果文件(自动带 JWT)
+      downloadFile('/admin/task/' + this.asyncExportDialog.taskId + '/download')
+        .then(({ blob, fileName }) => triggerDownload(blob, fileName || '导出结果文件'))
+        .catch(err => this.$message.error('下载失败: ' + (err.message || '未知错误')))
+    },
     async loadList() {
       if (this.dateRange && this.dateRange.length === 2) {
         this.query.importTimeStart = this.dateRange[0]
@@ -854,7 +947,7 @@ export default {
         this.batchDownloading = null
       }
     },
-    // 批量下载全部证书(按当前筛选条件): 先拉取所有已绑定模板的证书 ID,再走批量下载
+    // 批量下载全部证书(按当前筛选条件): 先拉取所有已绑定模板的证书 ID,再走异步批量下载
     async onDownloadAllBatch(format) {
       this.batchDownloading = 'all-' + format
       try {
@@ -875,9 +968,19 @@ export default {
           this.$message.warning('当前筛选条件下没有可下载的证书(仅已绑定模板的证书可下载)')
           return
         }
-        const res = await downloadCertificateBatch(ids, format)
+        // 全部下载强制走异步(forceAsync=true)
+        const res = await downloadCertificateBatch(ids, format, true)
         if (res && res.async) {
-          this.$message.success(res.message || ('已提交批量生成任务(共 ' + ids.length + ' 张),请在右下角"任务中心"查看进度'))
+          // 打开进度弹窗,开始轮询
+          this.asyncExportDialog.visible = true
+          this.asyncExportDialog.progress = 0
+          this.asyncExportDialog.processed = 0
+          this.asyncExportDialog.total = ids.length
+          this.asyncExportDialog.status = 'running'
+          this.asyncExportDialog.taskId = res.taskId
+          this.asyncExportDialog.result = null
+          this.asyncExportDialog.downloadUrl = null
+          this.pollAsyncExportTask(res.taskId)
         } else if (res && res.blob) {
           triggerDownload(res.blob, res.fileName || ('certificates_all_' + format + '.zip'))
           this.$message.success('证书已打包下载(共 ' + ids.length + ' 张)')
@@ -919,7 +1022,7 @@ export default {
       const ids = this.selection.filter(s => s.templateId).map(s => s.id)
       this.exporting = true
       try {
-        const { blob, fileName } = await exportCertificates({ ids })
+        const { blob, fileName } = await exportCertificates({ ids, certType: this.currentCertType })
         triggerDownload(blob, fileName)
         this.$message.success('导出成功')
       } catch (e) {
@@ -928,7 +1031,7 @@ export default {
         this.exporting = false
       }
     },
-    // 导出全部数据(按当前筛选条件,按证书绑定的模板自动分组)
+    // 导出全部数据(异步,按当前筛选条件,按证书绑定的模板自动分组)
     async onExportAll() {
       this.exporting = true
       try {
@@ -938,14 +1041,29 @@ export default {
           agency: this.query.agency,
           profession: this.query.profession,
           importTimeStart: this.query.importTimeStart,
-          importTimeEnd: this.query.importTimeEnd
+          importTimeEnd: this.query.importTimeEnd,
+          certType: this.currentCertType
         }
-        const { blob, fileName } = await exportCertificates(params)
-        triggerDownload(blob, fileName)
-        this.$message.success('导出成功')
+        const res = await exportCertificatesAsync(params)
+        const data = (res && res.data) || {}
+        const taskId = data.taskId
+        if (!taskId) {
+          this.$message.error('导出任务创建失败')
+          this.exporting = false
+          return
+        }
+        // 打开进度弹窗,开始轮询
+        this.asyncExportDialog.visible = true
+        this.asyncExportDialog.progress = 0
+        this.asyncExportDialog.processed = 0
+        this.asyncExportDialog.total = 0
+        this.asyncExportDialog.status = 'running'
+        this.asyncExportDialog.taskId = taskId
+        this.asyncExportDialog.result = null
+        this.asyncExportDialog.downloadUrl = null
+        this.pollAsyncExportTask(taskId)
       } catch (e) {
         this.$message.error('导出失败: ' + (e.message || '未知错误'))
-      } finally {
         this.exporting = false
       }
     },

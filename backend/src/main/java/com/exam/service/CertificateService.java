@@ -160,14 +160,22 @@ public interface CertificateService extends IService<Certificate> {
                                            String profession, String issueDateStart, String issueDateEnd);
 
     /**
+     * 按列表筛选条件查询所有"已绑定模板"的证书 ID(带 certType 过滤)
+     */
+    List<Long> listFilteredIdsWithTemplate(String name, String idCard, String agency,
+                                           String profession, String issueDateStart, String issueDateEnd,
+                                           String certType);
+
+    /**
      * 导出证书数据(Excel,按证书绑定的模板分组导出)
      * 多个模板时导出ZIP(一个模板一个Excel文件),未绑定模板的证书自动过滤
      * @param ids 选中的证书ID列表(为空则按筛选条件导出全部)
+     * @param certType 证书类型(用于文件命名)
      */
     void exportCertificates(HttpServletResponse response, String name, String idCard,
                             String agency, String profession,
                             String issueDateStart, String issueDateEnd,
-                            List<Long> ids);
+                            List<Long> ids, String certType);
 
     /**
      * 按证书列表导出(Excel,按证书绑定的模板分组导出)
@@ -175,6 +183,11 @@ public interface CertificateService extends IService<Certificate> {
      * 未绑定模板的证书自动过滤;多个模板时导出ZIP。
      */
     void exportCertificateList(HttpServletResponse response, List<Certificate> certs);
+
+    /**
+     * 按证书列表导出(带证书类型,用于文件命名)
+     */
+    void exportCertificateList(HttpServletResponse response, List<Certificate> certs, String certType);
 
     /**
      * 从学生管理同步数据到证书表(certificate)。
@@ -208,4 +221,38 @@ public interface CertificateService extends IService<Certificate> {
      * 返回 pendingRows(供学生管理直接使用),不执行 dry-run / 入库
      */
     CertificateImportResult parseStudentExcel(MultipartFile file);
+
+    /**
+     * 获取并递增当天下载次数(按证书类型+下载类型维度)
+     * @param certType 证书类型(为空时用"全部")
+     * @param downloadKind 下载类型: export / batch_download
+     * @return 当天第几次下载(从1开始)
+     */
+    int getAndIncrementDownloadCount(String certType, String downloadKind);
+
+    /**
+     * 生成下载文件名(证书类型_月日(次数) 或 证书_证书类型_月日(次数))
+     * @param certType 证书类型
+     * @param downloadKind 下载类型: export / batch_download
+     * @param extension 文件扩展名(如 .xls / .zip)
+     * @return 文件名
+     */
+    String buildDownloadFileName(String certType, String downloadKind, String extension);
+
+    /**
+     * 导出证书数据到文件(用于异步任务,不写 HttpServletResponse)
+     * @param name 姓名筛选
+     * @param idCard 身份证筛选
+     * @param agency 机构筛选
+     * @param profession 专业筛选
+     * @param issueDateStart 颁发日期起
+     * @param issueDateEnd 颁发日期止
+     * @param ids 选中的ID(为空则按筛选条件导出全部)
+     * @param certType 证书类型(用于文件命名)
+     * @return 导出文件和文件名
+     */
+    java.io.File exportCertificatesToFile(String name, String idCard,
+                                          String agency, String profession,
+                                          String issueDateStart, String issueDateEnd,
+                                          List<Long> ids, String certType);
 }

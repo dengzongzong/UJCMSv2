@@ -152,14 +152,16 @@ export async function downloadSingleCertificate(id, format) {
 /**
  * 批量下载证书(后台) - 一个人可有多张证书,选中多条后打包下载。
  * POST /admin/certificate/generate/batch
- * - < 50 张: 后端同步返回 ZIP,直接触发浏览器下载
- * - >= 50 张: 后端返回 { taskId, async: true },交给任务中心
+ * - forceAsync=true: 强制异步(用于"批量下载全部")
+ * - < 50 张 且非强制: 后端同步返回 ZIP,直接触发浏览器下载
+ * - >= 50 张 或 forceAsync: 后端返回 { taskId, async: true },交给任务中心
  *
  * @param {number[]} ids 证书ID列表
  * @param {string} format 'image' | 'pdf'
+ * @param {boolean} [forceAsync] 强制异步(用于全部下载)
  * @returns {Promise<{async?:boolean, taskId?:string, message?:string, blob?:Blob, fileName?:string}>}
  */
-export function downloadCertificateBatch(ids, format) {
+export function downloadCertificateBatch(ids, format, forceAsync) {
   const fullUrl = apiUrl('/admin/certificate/generate/batch')
   const headers = { Accept: '*/*', 'Content-Type': 'application/json' }
   let token = ''
@@ -174,11 +176,13 @@ export function downloadCertificateBatch(ids, format) {
     }
   } catch (e) { /* ignore */ }
   if (token) headers['Authorization'] = 'Bearer ' + token
+  const body = { ids, format }
+  if (forceAsync) body.forceAsync = true
   return fetch(fullUrl, {
     method: 'post',
     headers,
     credentials: 'include',
-    body: JSON.stringify({ ids, format })
+    body: JSON.stringify(body)
   }).then(r => {
     if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 401 ? ' (未登录)' : ''))
     const ct = r.headers.get('Content-Type') || ''
@@ -286,8 +290,9 @@ export function deleteCertificateUser(id) {
 /**
  * 导出证书数据(Excel,按证书绑定的模板自动分组导出)
  * 多个模板时后端返回ZIP(一个模板一个Excel文件),单个模板返回Excel
- * @param {object} params - { name, idCard, agency, profession, issueDateStart, issueDateEnd, ids }
+ * @param {object} params - { name, idCard, agency, profession, issueDateStart, issueDateEnd, ids, certType }
  *   ids 为空时按筛选条件导出全部;ids 非空时导出选中数据
+ *   certType 证书类型(用于文件命名)
  * @returns {Promise<{blob:Blob, fileName:string}>}
  */
 export async function exportCertificates(params) {
@@ -307,6 +312,7 @@ export async function exportCertificates(params) {
   if (params.profession) queryParts.push('profession=' + encodeURIComponent(params.profession))
   if (params.issueDateStart) queryParts.push('issueDateStart=' + encodeURIComponent(params.issueDateStart))
   if (params.issueDateEnd) queryParts.push('issueDateEnd=' + encodeURIComponent(params.issueDateEnd))
+  if (params.certType) queryParts.push('certType=' + encodeURIComponent(params.certType))
   if (params.ids && params.ids.length > 0) {
     params.ids.forEach(id => queryParts.push('ids=' + id))
   }
@@ -323,4 +329,19 @@ export async function exportCertificates(params) {
     defaultName = '证书数据导出.zip'
   }
   return { blob, fileName: parseFileName(cd) || defaultName }
+}
+
+/**
+ * 异步导出证书数据(全部)
+ * POST /admin/certificate/export/async
+ * 返回 { taskId, async: true },前端轮询 /admin/task/{taskId} 查询进度
+ * @param {object} params - { name, idCard, agency, profession, importTimeStart, importTimeEnd, certType }
+ * @returns {Promise<{taskId:string, async:boolean, message:string}>}
+ */
+export function exportCertificatesAsync(params) {
+  return request({
+    url: '/admin/certificate/export/async',
+    method: 'post',
+    data: params
+  })
 }

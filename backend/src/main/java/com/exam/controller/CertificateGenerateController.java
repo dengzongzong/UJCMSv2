@@ -80,15 +80,18 @@ public class CertificateGenerateController {
 
     /**
      * 批量下载
-     * - 数量 < 50: 同步流式下载(直接走 /batch-sync 的实现,避免前端再多一次跳转)
+     * - forceAsync=true: 强制异步(用于"批量下载全部")
      * - 数量 >= 50: 异步任务,返回 { taskId, async: true }
+     * - 数量 < 50: 同步流式下载
      */
     @PostMapping("/batch")
     public Object batch(@RequestBody BatchRequest body, HttpServletResponse response) throws Exception {
         if (body.getIds() == null || body.getIds().isEmpty()) {
             throw new BusinessException("请选择证书");
         }
-        if (body.getIds().size() >= CertificateTaskServiceImpl.ASYNC_THRESHOLD) {
+        // forceAsync 或 数量 >= 阈值 -> 走异步
+        boolean forceAsync = Boolean.TRUE.equals(body.getForceAsync());
+        if (forceAsync || body.getIds().size() >= CertificateTaskServiceImpl.ASYNC_THRESHOLD) {
             // 预解析模板和证书
             List<Certificate> certs = certificateService.listByIds(body.getIds());
             if (certs == null || certs.isEmpty()) {
@@ -105,7 +108,7 @@ public class CertificateGenerateController {
             data.put("async", true);
             return Result.success("已提交批量生成任务,请到任务中心查看进度", data);
         }
-        // 同步路径(< 50):直接走流式返回(等价于 /batch-sync)
+        // 同步路径(< 50):直接走流式返回
         List<Certificate> certs = certificateService.listByIds(body.getIds());
         if (certs == null || certs.isEmpty()) {
             throw new BusinessException("未找到证书");
@@ -117,7 +120,12 @@ public class CertificateGenerateController {
         }
         CertificateTemplate template = resolveTemplate(body.getTemplateId());
         boolean pdf = FORMAT_PDF.equalsIgnoreCase(body.getFormat());
-        String fileName = "certificates_" + (pdf ? "pdf_" : "img_") + System.currentTimeMillis() + ".zip";
+        // 使用新命名: 证书_证书类型_月日(次数).zip
+        String certType = certs.stream()
+                .map(Certificate::getCertType)
+                .filter(c -> c != null && !c.isEmpty())
+                .findFirst().orElse(null);
+        String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".zip");
         prepareDownload(response, fileName, "application/zip");
         try (OutputStream os = response.getOutputStream()) {
             if (pdf) {
@@ -148,7 +156,12 @@ public class CertificateGenerateController {
         }
         CertificateTemplate template = resolveTemplate(body.getTemplateId());
         boolean pdf = FORMAT_PDF.equalsIgnoreCase(body.getFormat());
-        String fileName = "certificates_" + (pdf ? "pdf_" : "img_") + System.currentTimeMillis() + ".zip";
+        // 使用新命名: 证书_证书类型_月日(次数).zip
+        String certType = certs.stream()
+                .map(Certificate::getCertType)
+                .filter(c -> c != null && !c.isEmpty())
+                .findFirst().orElse(null);
+        String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".zip");
         prepareDownload(response, fileName, "application/zip");
         try (OutputStream os = response.getOutputStream()) {
             if (pdf) {
@@ -199,11 +212,14 @@ public class CertificateGenerateController {
         private List<Long> ids;
         private Long templateId;
         private String format;
+        private Boolean forceAsync;
         public List<Long> getIds() { return ids; }
         public void setIds(List<Long> ids) { this.ids = ids; }
         public Long getTemplateId() { return templateId; }
         public void setTemplateId(Long templateId) { this.templateId = templateId; }
         public String getFormat() { return format; }
         public void setFormat(String format) { this.format = format; }
+        public Boolean getForceAsync() { return forceAsync; }
+        public void setForceAsync(Boolean forceAsync) { this.forceAsync = forceAsync; }
     }
 }

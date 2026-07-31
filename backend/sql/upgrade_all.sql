@@ -213,6 +213,22 @@ SET @sql = IF(@idx_exists = 0 AND @has_dup = 0,
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ============================================================
+-- certificate_download_count 表(证书下载次数追踪,按证书类型+日期+下载类型统计)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `certificate_download_count` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `cert_type` varchar(100) DEFAULT NULL COMMENT '证书类型(如:专业技能、专项职业;为空时用全部)',
+  `download_date` date NOT NULL COMMENT '下载日期(仅日期)',
+  `download_kind` varchar(20) NOT NULL DEFAULT 'export' COMMENT '下载类型: export=导出数据, batch_download=批量下载',
+  `count` int NOT NULL DEFAULT 0 COMMENT '当天已下载次数',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_type_date_kind` (`cert_type`, `download_date`, `download_kind`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书下载次数追踪';
+
+
+-- ============================================================
 -- 8. 清理存储过程(必须放在所有 CALL 之后)
 -- ============================================================
 DROP PROCEDURE IF EXISTS `safe_add_column`;
