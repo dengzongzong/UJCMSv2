@@ -186,7 +186,7 @@ public class CertificateGenerateController {
                         .last("LIMIT 1"));
             }
         }
-        if (template == null) throw new BusinessException("请先在模板管理中创建证书模板");
+        // 不再抛异常: 如果没有系统默认模板,返回 null,各证书使用自己绑定的模板
         return template;
     }
 

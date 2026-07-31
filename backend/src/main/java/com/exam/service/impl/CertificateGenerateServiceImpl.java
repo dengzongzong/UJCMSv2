@@ -166,12 +166,17 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
     public void renderBatchToZip(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception {
         try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
             for (Certificate c : certs) {
-                CertificateTemplate t = resolveTemplate(c, template);
-                byte[] bytes = renderSingleBytes(c, t);
-                String name = fileNameOf(c);
-                zip.putNextEntry(new ZipEntry(name + ".jpg"));
-                zip.write(bytes);
-                zip.closeEntry();
+                try {
+                    CertificateTemplate t = resolveTemplate(c, template);
+                    byte[] bytes = renderSingleBytes(c, t);
+                    String name = fileNameOf(c);
+                    zip.putNextEntry(new ZipEntry(name + ".jpg"));
+                    zip.write(bytes);
+                    zip.closeEntry();
+                } catch (Exception e) {
+                    // 跳过未绑定模板或渲染失败的证书,不中断整个批次
+                    System.err.println("[批量生成] 跳过证书 certId=" + c.getId() + ": " + e.getMessage());
+                }
             }
         }
     }
@@ -186,14 +191,19 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
     public void renderBatchPdfToZip(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception {
         try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
             for (Certificate c : certs) {
-                CertificateTemplate t = resolveTemplate(c, template);
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                BufferedImage image = renderImage(c, t);
-                writeImageAsPdf(image, baos);
-                String name = fileNameOf(c);
-                zip.putNextEntry(new ZipEntry(name + ".pdf"));
-                zip.write(baos.toByteArray());
-                zip.closeEntry();
+                try {
+                    CertificateTemplate t = resolveTemplate(c, template);
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    BufferedImage image = renderImage(c, t);
+                    writeImageAsPdf(image, baos);
+                    String name = fileNameOf(c);
+                    zip.putNextEntry(new ZipEntry(name + ".pdf"));
+                    zip.write(baos.toByteArray());
+                    zip.closeEntry();
+                } catch (Exception e) {
+                    // 跳过未绑定模板或渲染失败的证书,不中断整个批次
+                    System.err.println("[批量生成PDF] 跳过证书 certId=" + c.getId() + ": " + e.getMessage());
+                }
             }
         }
     }

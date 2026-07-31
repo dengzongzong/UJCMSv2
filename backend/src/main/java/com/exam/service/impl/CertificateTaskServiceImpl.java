@@ -381,11 +381,9 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
             task.setProgress(100);
             return;
         }
-        // 批量共用系统默认模板(templateId 由 controller 解析后传入,这里只是兜底)
-        CertificateTemplate template = pickDefaultTemplate(certs);
-        if (template == null) {
-            throw new RuntimeException("未找到可用的证书模板,请先在模板管理中创建或设置默认模板");
-        }
+        // 尝试获取系统默认模板作为兜底(如果证书没有绑定自己的模板)
+        // 如果没有系统默认模板,不报错,各证书使用自己绑定的模板,未绑定的跳过
+        CertificateTemplate defaultTemplate = pickDefaultTemplate(certs);
         int total = certs.size();
         int ok = 0, fail = 0;
         File zipFile = new File(System.getProperty("java.io.tmpdir"),
@@ -399,18 +397,32 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
                 }
                 Certificate c = certs.get(i);
                 try {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    if ("pdf".equalsIgnoreCase(format)) {
-                        generateService.renderSinglePdf(c, template, baos);
-                    } else {
-                        generateService.renderSingle(c, template, baos);
+                    // 优先使用证书自己绑定的模板,没有则用默认模板
+                    CertificateTemplate tpl = defaultTemplate;
+                    if (c.getTemplateId() != null) {
+                        CertificateTemplate ownTpl = templateMapper.selectById(c.getTemplateId());
+                        if (ownTpl != null) {
+                            tpl = ownTpl;
+                        }
                     }
-                    String name = fileNameOf(c);
-                    String ext = "pdf".equalsIgnoreCase(format) ? "pdf" : "png";
-                    zip.putNextEntry(new ZipEntry(name + "." + ext));
-                    zip.write(baos.toByteArray());
-                    zip.closeEntry();
-                    ok++;
+                    if (tpl == null) {
+                        // 证书未绑定模板且没有系统默认模板,跳过
+                        fail++;
+                        log.warn("证书 {} 跳过: 未绑定模板且无系统默认模板", c.getId());
+                    } else {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        if ("pdf".equalsIgnoreCase(format)) {
+                            generateService.renderSinglePdf(c, tpl, baos);
+                        } else {
+                            generateService.renderSingle(c, tpl, baos);
+                        }
+                        String name = fileNameOf(c);
+                        String ext = "pdf".equalsIgnoreCase(format) ? "pdf" : "png";
+                        zip.putNextEntry(new ZipEntry(name + "." + ext));
+                        zip.write(baos.toByteArray());
+                        zip.closeEntry();
+                        ok++;
+                    }
                 } catch (Exception e) {
                     fail++;
                     log.warn("证书 {} 生成失败: {}", c.getId(), e.getMessage());
