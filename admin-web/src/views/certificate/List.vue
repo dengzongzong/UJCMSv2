@@ -73,7 +73,7 @@
       @selection-change="rows => (selection = rows)"
     >
       <el-table-column type="selection" width="50" />
-      <el-table-column prop="id" label="序号" width="70" align="center" />
+      <el-table-column type="index" label="序号" width="70" align="center" :index="indexMethod" />
       <el-table-column label="照片" width="80" align="center">
         <template slot-scope="s">
           <img v-if="s.row.photoUrl" :src="apiUrl(s.row.photoUrl)" class="table-thumb" />
@@ -656,6 +656,10 @@ export default {
   },
   methods: {
     apiUrl,
+    // 序号: 跨页连续自增(第2页第1条 = 上一页size + 1)
+    indexMethod(index) {
+      return (this.query.page - 1) * this.query.size + index + 1
+    },
     // 身份证号 18 位校验(含校验位算法 GB 11643)
     validateIdCard(idCard) {
       if (!idCard) return true
