@@ -240,7 +240,7 @@ server {
         index index.html;
     }
 
-    # 入口 html 不缓存(部署后学员端立即拿到新版, 避免加载旧 JS)
+    # entry html no-cache (always load latest js after deploy)
     location = /admin/index.html {
         add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
@@ -295,7 +295,7 @@ server {
         index index.html;
     }
 
-    # 入口 html 不缓存(部署后立即拿到新版, 避免加载旧 JS)
+    # entry html no-cache (always load latest js after deploy)
     location = /admin/index.html {
         add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
@@ -333,9 +333,15 @@ if nginx -t 2>/dev/null; then
     systemctl reload nginx || true
     echo "  Nginx 配置已更新并重新加载"
 else
-    echo "  警告: Nginx 配置测试失败,跳过重载,使用旧配置"
-    # 恢复旧配置以确保 Nginx 正常运行
+    echo "  警告: Nginx 配置测试失败,恢复上次备份并重新加载"
+    # 恢复旧配置并重新校验/加载,确保站点不因配置问题失效
     cp /etc/nginx/conf.d/exam-platform.conf.bak /etc/nginx/conf.d/exam-platform.conf 2>/dev/null || true
+    if nginx -t 2>/dev/null; then
+        systemctl reload nginx || true
+        echo "  已恢复备份配置并重新加载"
+    else
+        echo "  错误: 备份配置也无法通过校验,请人工检查 /etc/nginx/conf.d/exam-platform.conf"
+    fi
 fi
 
 # 8. 创建并启动 systemd 服务
