@@ -52,6 +52,11 @@
                 <span>我的课程</span>
                 <van-icon name="arrow" size="14" class="arrow" />
               </div>
+              <div class="menu-item" @click="$router.push('/profile/orders')">
+                <van-icon name="orders-o" size="18" />
+                <span>我的订单</span>
+                <van-icon name="arrow" size="14" class="arrow" />
+              </div>
               <div class="menu-item" :class="{ active: activeView === 'my-exams' }" @click="activeView = 'my-exams'">
                 <van-icon name="notes-o" size="18" />
                 <span>我的考试</span>

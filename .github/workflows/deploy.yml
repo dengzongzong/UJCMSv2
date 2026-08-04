@@ -13,6 +13,14 @@
 #   SSH_PRIVATE_KEY    - SSH私钥 (服务器上 cat ~/.ssh/id_rsa)
 #   MYSQL_PASS         - 数据库root密码
 #   JWT_SECRET         - JWT密钥 (至少40字符,随意生成)
+#   直播 Secrets (可选,不配则直播鉴权Key为空):
+#   LIVE_PROVIDER / LIVE_PUSH_HOST / LIVE_PLAY_HOST / CALLBACK_SECRET
+#   TENCENT_PUSH_KEY / TENCENT_PLAY_KEY / ALIYUN_AUTH_KEY
+#   支付 Secrets (可选,不配则支付通道为空):
+#   PAY_CHANNEL (wechat/alipay/both)
+#   WECHAT_MCH_ID / WECHAT_APP_ID / WECHAT_API_V3_KEY
+#   WECHAT_MERCHANT_SERIAL_NO / WECHAT_MERCHANT_PRIVATE_KEY / WECHAT_PLATFORM_PUBLIC_KEY
+#   ALIPAY_APP_ID / ALIPAY_PRIVATE_KEY / ALIPAY_PUBLIC_KEY
 # =====================================================================
 
 name: Build and Deploy
@@ -141,6 +149,16 @@ jobs:
              TENCENT_PUSH_KEY='${{ secrets.TENCENT_PUSH_KEY }}' \
              TENCENT_PLAY_KEY='${{ secrets.TENCENT_PLAY_KEY }}' \
              ALIYUN_AUTH_KEY='${{ secrets.ALIYUN_AUTH_KEY }}' \
+             PAY_CHANNEL='${{ secrets.PAY_CHANNEL }}' \
+             WECHAT_MCH_ID='${{ secrets.WECHAT_MCH_ID }}' \
+             WECHAT_APP_ID='${{ secrets.WECHAT_APP_ID }}' \
+             WECHAT_API_V3_KEY='${{ secrets.WECHAT_API_V3_KEY }}' \
+             WECHAT_MERCHANT_SERIAL_NO='${{ secrets.WECHAT_MERCHANT_SERIAL_NO }}' \
+             WECHAT_MERCHANT_PRIVATE_KEY='${{ secrets.WECHAT_MERCHANT_PRIVATE_KEY }}' \
+             WECHAT_PLATFORM_PUBLIC_KEY='${{ secrets.WECHAT_PLATFORM_PUBLIC_KEY }}' \
+             ALIPAY_APP_ID='${{ secrets.ALIPAY_APP_ID }}' \
+             ALIPAY_PRIVATE_KEY='${{ secrets.ALIPAY_PRIVATE_KEY }}' \
+             ALIPAY_PUBLIC_KEY='${{ secrets.ALIPAY_PUBLIC_KEY }}' \
              bash remote-deploy.sh"
 
       # ===== 12. 清理 =====

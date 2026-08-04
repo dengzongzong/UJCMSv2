@@ -70,6 +70,38 @@ live:
     auth-key: ""
     valid-seconds: 86400
 
+# =====================================================================
+# 课程支付配置
+# channel: wechat(微信Native) | alipay(支付宝当面付) | both(双通道)
+# 回调地址固定为: {callback-base}/public/pay/callback/{channel}
+# 生产环境密钥由部署脚本从环境变量注入, 本地开发可在此直接填沙箱密钥
+# =====================================================================
+pay:
+  channel: both
+  callback-base: https://zgrlosta.org.cn/api
+  wechat:
+    # 微信商户号
+    mch-id: ""
+    # 商户关联的 AppID(公众号/小程序)
+    app-id: ""
+    # APIv3 密钥(32位, 微信商户平台-API安全)
+    api-v3-key: ""
+    # 商户API证书序列号(商户平台-API安全-API证书)
+    merchant-serial-no: ""
+    # 商户API私钥(PKCS8 PEM 格式, 多行用 \n 或双引号包裹)
+    merchant-private-key: ""
+    # 微信支付平台证书公钥(PEM, 用于回调验签; 留空则跳过验签, 生产建议配置)
+    platform-public-key: ""
+  alipay:
+    # 支付宝开放平台应用 AppID
+    app-id: ""
+    # 应用私钥(PKCS8 PEM)
+    private-key: ""
+    # 支付宝公钥
+    alipay-public-key: ""
+    # 网关(沙箱: https://openapi.alipaydev.com/gateway.do)
+    gateway: https://openapi.alipay.com/gateway.do
+
 logging:
   level:
     com.exam: debug

@@ -146,6 +146,12 @@ const routes = [
       meta: { requiresAuth: true, requiresSubject: true, title: '错题本' }
     },
     {
+      path: '/profile/orders',
+      name: 'MyOrders',
+      component: () => import('@/views/profile/Orders.vue'),
+      meta: { requiresAuth: true, requiresSubject: false, title: '我的订单' }
+    },
+    {
       path: '/profile/about',
       redirect: '/about'
     },

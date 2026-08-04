@@ -10,13 +10,18 @@
           :left-icon="course.needLogin ? 'info-o' : 'warning-o'"
           :color="course.needLogin ? '#1989fa' : '#ff976a'"
           :background="course.needLogin ? '#ecf5ff' : '#fdf6ec'"
-          :text="course.needLogin ? '请先登录后再学习' : '您尚未开通该课程,请联系管理员开通'"
+          :text="course.needLogin ? '请先登录后再学习' : (canBuy ? '该课程需要购买后学习' : '您尚未开通该课程,请联系管理员开通')"
           style="margin-bottom: 16px"
         >
           <template #right-icon>
-            <div v-if="course.needLogin" style="display: flex; gap: 8px;">
-              <van-button size="small" type="primary" @click="goLogin">去登录</van-button>
-              <van-button size="small" plain @click="goRegister">注册账号</van-button>
+            <div style="display: flex; gap: 8px;">
+              <template v-if="course.needLogin">
+                <van-button size="small" type="primary" @click="goLogin">去登录</van-button>
+                <van-button size="small" plain @click="goRegister">注册账号</van-button>
+              </template>
+              <van-button v-else-if="canBuy" size="small" type="danger" @click="openPayPopup">
+                立即购买 ¥{{ course.price }}
+              </van-button>
             </div>
           </template>
         </van-notice-bar>
@@ -258,12 +263,59 @@
       :actions="qualityActions"
       @select="onQualitySelect"
     />
+
+    <!-- 课程购买支付弹窗 -->
+    <van-popup
+      v-model="showPayPopup"
+      round
+      :close-on-click-overlay="false"
+      :style="{ width: '340px', borderRadius: '12px' }"
+    >
+      <div class="pay-popup">
+        <div class="pay-popup-header">
+          <span class="pay-popup-title">购买课程</span>
+          <van-icon name="cross" size="18" color="#999" @click="closePayPopup" />
+        </div>
+        <div class="pay-popup-body">
+          <div class="pay-course-name">{{ course.name }}</div>
+          <div class="pay-amount-row">
+            <span class="pay-label">应付金额</span>
+            <span class="pay-amount">¥{{ fenToYuan(payData.amount) }}</span>
+          </div>
+
+          <!-- 渠道切换(仅双通道时显示) -->
+          <div v-if="payChannels.length > 1" class="pay-channels">
+            <div
+              v-for="ch in payChannels"
+              :key="ch.key"
+              class="pay-channel-tab"
+              :class="{ active: payChannel === ch.key }"
+              @click="switchChannel(ch.key)"
+            >
+              {{ ch.name }}
+            </div>
+          </div>
+
+          <!-- 二维码 -->
+          <div class="pay-qrcode-wrap">
+            <img v-if="payData.qrImage" :src="payData.qrImage" alt="支付二维码" class="pay-qrcode-img" />
+            <div v-else class="pay-qrcode-loading">
+              <van-loading size="28" color="#1989fa" vertical>正在生成二维码...</van-loading>
+            </div>
+          </div>
+          <div class="pay-tip">
+            请使用{{ payChannelName }}扫码支付<br />支付成功后课程自动开通
+          </div>
+        </div>
+      </div>
+    </van-popup>
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue'
 import { getCourseDetail, reportVideoProgress, getVideoInfo } from '@/api/course'
+import { createOrder, getOrderByNo } from '@/api/order'
 import { getCourseLives } from '@/api/live'
 import { resolveImg } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
@@ -301,6 +353,11 @@ export default {
       lastReportTime: null,
       threeImages: [],
       courseLives: [],
+      // 支付相关
+      showPayPopup: false,
+      payData: {},
+      payChannel: 'wechat',
+      pollTimer: null,
       defaultCover: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect fill="#e8e8e8" width="120" height="80"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#999" font-size="12">课程封面</text></svg>')
     }
   },
@@ -317,6 +374,17 @@ export default {
         name: q,
         color: q === this.currentQuality ? '#1989fa' : '#333'
       }))
+    },
+    /** 是否可在线购买: 已登录 + 未开通 + 价格>0 */
+    canBuy() {
+      return !this.course.needLogin && this.course.purchased === false && Number(this.course.price) > 0
+    },
+    /** 可用支付渠道 */
+    payChannels() {
+      return [{ key: 'wechat', name: '微信支付' }, { key: 'alipay', name: '支付宝' }]
+    },
+    payChannelName() {
+      return this.payChannel === 'alipay' ? '支付宝' : '微信'
     }
   },
   created() {
@@ -326,6 +394,7 @@ export default {
   },
   beforeDestroy() {
     this.stopReportTimer()
+    this.stopPoll()
   },
   methods: {
     resolveImg,
@@ -334,6 +403,72 @@ export default {
     },
     goRegister() {
       this.$router.push({ path: '/register', query: { redirect: this.$route.fullPath } })
+    },
+    // ===== 课程购买支付 =====
+    fenToYuan(fen) {
+      if (fen === null || fen === undefined) return '0.00'
+      return (fen / 100).toFixed(2)
+    },
+    openPayPopup() {
+      this.payData = {}
+      this.payChannel = 'wechat'
+      this.showPayPopup = true
+      this.doCreateOrder('wechat')
+    },
+    closePayPopup() {
+      this.stopPoll()
+      this.showPayPopup = false
+    },
+    switchChannel(channel) {
+      if (this.payChannel === channel) return
+      this.payChannel = channel
+      this.doCreateOrder(channel)
+    },
+    async doCreateOrder(channel) {
+      this.payData = { amount: Math.round(Number(this.course.price) * 100) }
+      try {
+        const res = await createOrder(this.courseId, channel)
+        const data = res.data || res
+        this.payData = data
+        if (data.opened) {
+          // 免费/已开通: 直接提示成功
+          Toast.success('课程已开通')
+          this.closePayPopup()
+          this.fetchCourseDetail()
+          return
+        }
+        this.startPoll()
+      } catch (e) {
+        Toast.fail(e.message || '下单失败,请稍后重试')
+      }
+    },
+    startPoll() {
+      this.stopPoll()
+      this.pollTimer = setInterval(async () => {
+        const orderNo = this.payData.orderNo
+        if (!orderNo) return
+        try {
+          const res = await getOrderByNo(orderNo)
+          const order = res.data || res
+          if (order && order.status === 1) {
+            Toast.success('支付成功,课程已开通')
+            this.closePayPopup()
+            this.fetchCourseDetail()
+          } else if (order && order.status === 2) {
+            this.stopPoll()
+            Toast('订单已关闭,请重新购买')
+            this.showPayPopup = false
+          }
+        } catch (e) {
+          // 轮询失败忽略,继续等待
+        }
+      }, 3000)
+    },
+    stopPoll() {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer)
+        this.pollTimer = null
+      }
     },
     fetchCourseLives() {
       if (!this.courseId) return
@@ -411,11 +546,24 @@ export default {
     async playVideo(video, chapterIndex, videoIndex) {
       // 未开通课程时不允许播放视频
       if (this.course && this.course.purchased === false) {
-        Dialog.alert({
-          title: '提示',
-          message: '您尚未开通该课程,请联系管理员先开通',
-          confirmButtonText: '我知道了'
-        })
+        if (this.canBuy) {
+          // 付费课程: 弹出购买提示
+          Dialog.alert({
+            title: '提示',
+            message: '该课程需要购买后才能学习',
+            confirmButtonText: '去购买',
+            showCancelButton: true,
+            cancelButtonText: '取消'
+          }).then(() => {
+            this.openPayPopup()
+          }).catch(() => {})
+        } else {
+          Dialog.alert({
+            title: '提示',
+            message: this.course.needLogin ? '请先登录后再学习' : '您尚未开通该课程,请联系管理员先开通',
+            confirmButtonText: '我知道了'
+          })
+        }
         return
       }
       // 初始化当前播放视频，后端没有 url 时就保持空字符串，不做假数据兜底
@@ -1273,5 +1421,110 @@ export default {
   .detail-layout { gap: 12px; }
   .section-block { padding: 12px; }
   .evaluate-section { padding: 12px !important; }
+}
+
+/* ===== 课程购买支付弹窗 ===== */
+.pay-popup {
+  .pay-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f0;
+
+    .pay-popup-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+    }
+  }
+
+  .pay-popup-body {
+    padding: 16px;
+    text-align: center;
+
+    .pay-course-name {
+      font-size: 14px;
+      color: #333;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pay-amount-row {
+      margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: baseline;
+      gap: 8px;
+
+      .pay-label {
+        font-size: 13px;
+        color: #999;
+      }
+
+      .pay-amount {
+        font-size: 26px;
+        font-weight: bold;
+        color: #ee0a24;
+      }
+    }
+
+    .pay-channels {
+      margin: 14px auto 0;
+      display: inline-flex;
+      border-radius: 6px;
+      overflow: hidden;
+
+      .pay-channel-tab {
+        padding: 6px 18px;
+        font-size: 13px;
+        background: #f5f6f8;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &.active {
+          background: #1989fa;
+          color: #fff;
+        }
+
+        &.active-alipay.active {
+          background: #1677ff;
+        }
+      }
+    }
+
+    .pay-qrcode-wrap {
+      margin: 16px auto 0;
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #f0f0f0;
+      border-radius: 8px;
+      background: #fff;
+
+      .pay-qrcode-img {
+        width: 200px;
+        height: 200px;
+      }
+
+      .pay-qrcode-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+      }
+    }
+
+    .pay-tip {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #999;
+      line-height: 1.6;
+    }
+  }
 }
 </style>

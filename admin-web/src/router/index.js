@@ -136,6 +136,19 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/order',
+    component: Layout,
+    meta: { title: '订单管理', icon: 'el-icon-s-order' },
+    children: [
+      {
+        path: 'list',
+        name: 'OrderList',
+        component: () => import('@/views/order/List.vue'),
+        meta: { title: '课程订单', icon: 'el-icon-s-order' }
+      }
+    ]
+  },
+  {
     path: '/question',
     component: Layout,
     meta: { title: '题库管理', icon: 'el-icon-edit' },

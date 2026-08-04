@@ -646,3 +646,26 @@ CREATE TABLE IF NOT EXISTS `live_message` (
   PRIMARY KEY (`id`),
   KEY `idx_live_time` (`live_id`, `create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='直播聊天消息表';
+
+-- ============================================================
+-- 16. 课程支付订单表 (微信Native/支付宝当面付)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `course_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `order_no` varchar(40) NOT NULL COMMENT '业务订单号',
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `course_id` bigint NOT NULL COMMENT '课程ID',
+  `course_name` varchar(255) DEFAULT NULL COMMENT '冗余课程名称',
+  `amount` int NOT NULL DEFAULT 0 COMMENT '金额(分)',
+  `channel` varchar(20) NOT NULL DEFAULT 'wechat' COMMENT '支付渠道: wechat/alipay',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '0-待支付 1-已支付 2-已关闭',
+  `transaction_id` varchar(64) DEFAULT NULL COMMENT '第三方交易号',
+  `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_no` (`order_no`),
+  KEY `idx_student` (`student_id`),
+  KEY `idx_course` (`course_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程支付订单表';

@@ -67,6 +67,28 @@ live:
     auth-key: ""
     valid-seconds: 86400
 
+# =====================================================================
+# 课程支付配置(本地开发)
+# channel: wechat | alipay | both
+# =====================================================================
+pay:
+  channel: both
+  # 本地回调地址(需内网穿透或公网可达, 否则回调不进来)
+  # 可用 https://localhost:8080 配置支付平台回调(仅测试下单流程)
+  callback-base: https://zgrlosta.org.cn/api
+  wechat:
+    mch-id: ""
+    app-id: ""
+    api-v3-key: ""
+    merchant-serial-no: ""
+    merchant-private-key: ""
+    platform-public-key: ""
+  alipay:
+    app-id: ""
+    private-key: ""
+    alipay-public-key: ""
+    gateway: https://openapi.alipay.com/gateway.do
+
 logging:
   level:
     com.exam: debug

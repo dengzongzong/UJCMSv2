@@ -149,6 +149,23 @@ live:
     auth-key: "${ALIYUN_AUTH_KEY:-}"
     valid-seconds: 86400
 
+# 课程支付配置(从环境变量注入, 未配置时关闭对应通道)
+pay:
+  channel: ${PAY_CHANNEL:-both}
+  callback-base: https://${SERVER_DOMAIN}/api
+  wechat:
+    mch-id: "${WECHAT_MCH_ID:-}"
+    app-id: "${WECHAT_APP_ID:-}"
+    api-v3-key: "${WECHAT_API_V3_KEY:-}"
+    merchant-serial-no: "${WECHAT_MERCHANT_SERIAL_NO:-}"
+    merchant-private-key: "${WECHAT_MERCHANT_PRIVATE_KEY:-}"
+    platform-public-key: "${WECHAT_PLATFORM_PUBLIC_KEY:-}"
+  alipay:
+    app-id: "${ALIPAY_APP_ID:-}"
+    private-key: "${ALIPAY_PRIVATE_KEY:-}"
+    alipay-public-key: "${ALIPAY_PUBLIC_KEY:-}"
+    gateway: https://openapi.alipay.com/gateway.do
+
 logging:
   level:
     com.exam: info
