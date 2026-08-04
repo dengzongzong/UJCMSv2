@@ -545,3 +545,65 @@ SET @sql = IF(@col_exists = 0,
   'ALTER TABLE cooperation_apply ADD COLUMN cert_editor_width INT DEFAULT NULL COMMENT ''编辑证书时编辑区文本宽度(像素)''',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- 14. 考前人脸识别功能 (exam_record字段 + face_verify_log表 + 系统配置)
+-- ============================================================
+DROP PROCEDURE IF EXISTS `safe_add_column`;
+DELIMITER //
+CREATE PROCEDURE `safe_add_column`(
+  IN tbl VARCHAR(100),
+  IN col VARCHAR(100),
+  IN col_def VARCHAR(500)
+)
+BEGIN
+  SET @col_count = (SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = tbl AND COLUMN_NAME = col);
+  IF @col_count = 0 THEN
+    SET @sql = CONCAT('ALTER TABLE `', tbl, '` ADD COLUMN `', col, '` ', col_def);
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END IF;
+END //
+DELIMITER ;
+
+-- exam_record 表新增人脸验证字段
+CALL safe_add_column('exam_record', 'face_verify_status', 'TINYINT DEFAULT 0 COMMENT ''0-未验证 1-验证通过 2-验证失败 3-无需验证''');
+CALL safe_add_column('exam_record', 'face_verify_time', 'DATETIME DEFAULT NULL COMMENT ''人脸验证时间''');
+CALL safe_add_column('exam_record', 'face_similarity', 'DECIMAL(5,4) DEFAULT NULL COMMENT ''人脸相似度(欧式距离，越小越相似)''');
+DROP PROCEDURE IF EXISTS `safe_add_column`;
+
+-- exam_record 表人脸验证索引(幂等)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'exam_record' AND INDEX_NAME = 'idx_face_verify');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE exam_record ADD INDEX idx_face_verify (face_verify_status)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 人脸验证日志表
+CREATE TABLE IF NOT EXISTS `face_verify_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `exam_id` bigint NOT NULL COMMENT '考试ID',
+  `record_id` bigint DEFAULT NULL COMMENT '考试记录ID',
+  `verify_result` tinyint NOT NULL COMMENT '0-失败 1-成功',
+  `similarity` decimal(5,4) DEFAULT NULL COMMENT '相似度(欧式距离)',
+  `retry_count` int DEFAULT 0 COMMENT '重试次数',
+  `id_photo_url` varchar(500) DEFAULT NULL COMMENT '证件照URL',
+  `error_msg` varchar(500) DEFAULT NULL COMMENT '错误信息',
+  `device_info` varchar(255) DEFAULT NULL COMMENT '设备信息',
+  `ip_address` varchar(50) DEFAULT NULL COMMENT 'IP地址',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_student` (`student_id`),
+  KEY `idx_exam_record` (`exam_id`, `record_id`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人脸验证日志表';
+
+-- 人脸验证系统配置(INSERT IGNORE 幂等)
+INSERT IGNORE INTO `system_setting` (`setting_key`, `setting_value`, `remark`) VALUES
+('face_verify_enabled', '0', '考前人脸识别开关：0-关闭 1-开启'),
+('face_verify_threshold', '0.6', '人脸比对阈值(欧式距离，越小越严格，建议0.4-0.6)'),
+('face_verify_max_retries', '3', '人脸验证最大重试次数');
