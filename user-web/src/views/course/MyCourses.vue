@@ -320,11 +320,9 @@ export default {
             .then(() => this.$store.dispatch('logout').then(() => this.$router.replace('/login')))
             .catch(() => {})
         } else if (code === 1002) {
-          Dialog.alert({
-            title: '未开通该课程',
-            message: (e && (e.message || e.msg)) || '请联系管理员先开通。',
-            confirmButtonText: '我知道了'
-          }).catch(() => {})
+          // 已登录但未开通: 放行进入课程详情页
+          // 详情页会根据课程价格/支付总开关显示"立即购买"或"联系管理员开通"提示
+          this.$router.push(`/course/detail/${course.id}`).catch(() => {})
         } else {
           Toast((e && (e.message || e.msg)) || '访问失败')
         }
