@@ -240,6 +240,14 @@ server {
         index index.html;
     }
 
+    # 入口 html 不缓存(部署后学员端立即拿到新版, 避免加载旧 JS)
+    location = /admin/index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
     # 后端 API
     location /api/ {
         proxy_pass http://127.0.0.1:8080/api/;
@@ -285,6 +293,14 @@ server {
         root /opt/exam-platform/user-web/dist/;
         try_files $uri $uri/ /index.html;
         index index.html;
+    }
+
+    # 入口 html 不缓存(部署后立即拿到新版, 避免加载旧 JS)
+    location = /admin/index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
     location /api/ {
