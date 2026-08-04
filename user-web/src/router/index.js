@@ -68,7 +68,7 @@ const routes = [
       name: 'CourseCenter',
       component: () => import('@/views/course/MyCourses.vue'),
       // 公开:未登录可浏览所有课程,点击具体课程时再校验是否已开通/已登录
-      meta: { requiresAuth: false, requiresSubject: false, title: '课程中心', keepAlive: true }
+      meta: { requiresAuth: false, requiresSubject: false, title: '学习中心', keepAlive: true }
     },
     {
       path: '/course/my-opened',

@@ -5,7 +5,7 @@
     <div class="page-body">
       <div class="container">
         <div class="page-title">
-          <span class="title-text">课程中心</span>
+          <span class="title-text">学习中心</span>
         </div>
 
         <div class="search-bar">
@@ -237,23 +237,26 @@ export default {
      * 重置列表并加载第一页(搜索/初始加载/切换专业时调用)
      */
     async fetchCourses() {
+      // 每次重新加载递增序号, 用于丢弃过期请求(避免并发搜索导致课程重复)
+      this._fetchSeq = (this._fetchSeq || 0) + 1
+      const seq = this._fetchSeq
       this.page = 1
       this.courseList = []
       this.finished = false
       this.loading = true
-      await this.loadData()
+      await this.loadData(seq)
     },
     /**
      * van-list 滚动到底部时加载下一页
      */
     async onLoad() {
       this.page++
-      await this.loadData()
+      await this.loadData(this._fetchSeq)
     },
     /**
      * 实际加载分页数据并追加到 courseList
      */
-    async loadData() {
+    async loadData(seq) {
       try {
         // 未登录时不带专业条件(查所有);登录后按 Header 选的专业过滤;支持关键词搜索
         let professionId
@@ -264,6 +267,8 @@ export default {
           }
         }
         const res = await getPublicCourseList(professionId, this.searchKeyword, this.page, this.pageSize)
+        // 期间发生了新的搜索/切换, 丢弃过期响应, 避免课程重复或错乱
+        if (seq !== undefined && seq !== this._fetchSeq) return
         const data = res.data || res
         const records = Array.isArray(data) ? data : (data.list || data.records || [])
         this.courseList.push(...records)
@@ -273,10 +278,13 @@ export default {
           this.finished = records.length < this.pageSize
         }
       } catch (error) {
+        if (seq !== undefined && seq !== this._fetchSeq) return
         this.courseList = []
         this.finished = true
       } finally {
-        this.loading = false
+        if (seq === undefined || seq === this._fetchSeq) {
+          this.loading = false
+        }
       }
     },
     async goDetail(course) {
