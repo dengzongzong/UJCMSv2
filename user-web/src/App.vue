@@ -1,6 +1,9 @@
 <template>
   <div id="app" :class="{ 'is-mobile': isMobile }">
-    <router-view />
+    <keep-alive :include="cachedViews">
+      <router-view v-if="$route.meta.keepAlive" />
+    </keep-alive>
+    <router-view v-if="!$route.meta.keepAlive" />
     <FloatingQrcode v-if="!isMobile" />
     <TabBar v-if="isMobile" />
   </div>
@@ -15,7 +18,8 @@ export default {
   components: { FloatingQrcode, TabBar },
   data() {
     return {
-      isMobile: window.innerWidth <= 768
+      isMobile: window.innerWidth <= 768,
+      cachedViews: ['HomeIndex', 'CourseCenter', 'ExamCenter', 'CertificatePortal', 'ProfileIndex']
     }
   },
   mounted() {
