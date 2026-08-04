@@ -9,17 +9,13 @@ import com.exam.dto.VideoDTO;
 import com.exam.entity.Course;
 import com.exam.entity.CourseSectionVideo;
 import com.exam.entity.Profession;
-import com.exam.entity.Student;
 import com.exam.entity.StudentVideo;
-import com.exam.entity.StudentProfession;
 import com.exam.entity.Video;
 import com.exam.entity.VideoCategory;
 import com.exam.mapper.CourseMapper;
 import com.exam.mapper.CourseSectionVideoMapper;
 import com.exam.mapper.ProfessionMapper;
-import com.exam.mapper.StudentMapper;
 import com.exam.mapper.StudentVideoMapper;
-import com.exam.mapper.StudentProfessionMapper;
 import com.exam.mapper.VideoCategoryMapper;
 import com.exam.mapper.VideoMapper;
 import com.exam.service.VideoManageService;
@@ -29,11 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -54,12 +47,6 @@ public class VideoManageServiceImpl extends ServiceImpl<VideoMapper, Video> impl
 
     @Autowired
     private StudentVideoMapper studentVideoMapper;
-
-    @Autowired
-    private StudentMapper studentMapper;
-
-    @Autowired
-    private StudentProfessionMapper studentProfessionMapper;
 
     @Override
     public PageResult<AdminVideoVO> page(Integer page, Integer size, String name, Long categoryId, Long professionId) {
@@ -209,123 +196,5 @@ public class VideoManageServiceImpl extends ServiceImpl<VideoMapper, Video> impl
         List<Video> videos = this.list(new LambdaQueryWrapper<Video>()
                 .orderByDesc(Video::getPlayCount));
         return fillJoinNames(videos);
-    }
-
-    @Override
-    public PageResult<Student> studentsPage(Long videoId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened, String profession) {
-        // 查询已开通该视频的学生ID集合
-        List<StudentVideo> studentVideos = studentVideoMapper.selectList(
-                new LambdaQueryWrapper<StudentVideo>().eq(StudentVideo::getVideoId, videoId));
-        Set<Long> openedIds = studentVideos.stream().map(StudentVideo::getStudentId).collect(Collectors.toSet());
-
-        // 显示条数逻辑：当传入 exactCount 时，固定返回最新 N 条
-        if (exactCount != null && exactCount > 0) {
-            page = 1;
-            size = exactCount;
-        }
-
-        // 按专业筛选: 先查 profession 表按名称匹配,再查 student_profession 关联表获取 studentId
-        Set<Long> professionFilteredIds = null;
-        if (StringUtils.hasText(profession)) {
-            List<Profession> matchedProfessions = professionMapper.selectList(
-                    new LambdaQueryWrapper<Profession>().like(Profession::getName, profession));
-            if (matchedProfessions.isEmpty()) {
-                return new PageResult<>(new Page<>(page, size));
-            }
-            Set<Long> profIds = matchedProfessions.stream().map(Profession::getId).collect(Collectors.toSet());
-            List<StudentProfession> sps = studentProfessionMapper.selectList(
-                    new LambdaQueryWrapper<StudentProfession>().in(StudentProfession::getProfessionId, profIds));
-            professionFilteredIds = sps.stream().map(StudentProfession::getStudentId).collect(Collectors.toSet());
-            if (professionFilteredIds.isEmpty()) {
-                return new PageResult<>(new Page<>(page, size));
-            }
-        }
-
-        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
-        wrapper.like(StringUtils.hasText(phone), Student::getPhone, phone);
-        wrapper.like(StringUtils.hasText(idCard), Student::getIdCard, idCard);
-        if (professionFilteredIds != null) {
-            wrapper.in(Student::getId, professionFilteredIds);
-        }
-        if (unopened != null && unopened == 1) {
-            // 未开通：id NOT IN openedIds
-            if (!openedIds.isEmpty()) {
-                wrapper.notIn(Student::getId, openedIds);
-            }
-        } else {
-            // 已开通：id IN openedIds
-            if (openedIds.isEmpty()) {
-                return new PageResult<>(new Page<>(page, size)); // 空分页
-            }
-            wrapper.in(Student::getId, openedIds);
-        }
-        wrapper.orderByDesc(Student::getCreateTime).orderByDesc(Student::getId);
-        Page<Student> p = new Page<>(page, size);
-        Page<Student> result = studentMapper.selectPage(p, wrapper);
-        result.getRecords().forEach(s -> s.setPassword(null));
-        // 填充专业名称
-        fillProfessionNames(result.getRecords());
-        return new PageResult<>(result);
-    }
-
-    /** 批量填充学生的专业名称(通过 student_profession 关联表) */
-    private void fillProfessionNames(List<Student> students) {
-        if (students == null || students.isEmpty()) return;
-        Set<Long> studentIds = students.stream().map(Student::getId).collect(Collectors.toSet());
-        List<StudentProfession> sps = studentProfessionMapper.selectList(
-                new LambdaQueryWrapper<StudentProfession>().in(StudentProfession::getStudentId, studentIds));
-        if (sps.isEmpty()) return;
-        Set<Long> profIds = sps.stream().map(StudentProfession::getProfessionId).filter(Objects::nonNull).collect(Collectors.toSet());
-        Map<Long, String> profNameMap = new HashMap<>();
-        if (!profIds.isEmpty()) {
-            List<Profession> professions = professionMapper.selectBatchIds(profIds);
-            for (Profession p : professions) {
-                profNameMap.put(p.getId(), p.getName());
-            }
-        }
-        Map<Long, List<String>> studentProfNames = new HashMap<>();
-        for (StudentProfession sp : sps) {
-            String pname = profNameMap.get(sp.getProfessionId());
-            if (pname != null) {
-                studentProfNames.computeIfAbsent(sp.getStudentId(), k -> new ArrayList<>()).add(pname);
-            }
-        }
-        for (Student s : students) {
-            List<String> names = studentProfNames.get(s.getId());
-            if (names != null && !names.isEmpty()) {
-                s.setProfessionName(String.join(",", names));
-            }
-        }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void openStudents(Long videoId, List<Long> studentIds) {
-        if (studentIds == null || studentIds.isEmpty()) {
-            return;
-        }
-        // 查询已存在的开通记录
-        List<StudentVideo> existing = studentVideoMapper.selectList(
-                new LambdaQueryWrapper<StudentVideo>()
-                        .eq(StudentVideo::getVideoId, videoId)
-                        .in(StudentVideo::getStudentId, studentIds));
-        Set<Long> existingIds = existing.stream().map(StudentVideo::getStudentId).collect(Collectors.toSet());
-        for (Long studentId : studentIds) {
-            if (existingIds.contains(studentId)) {
-                continue;
-            }
-            StudentVideo sv = new StudentVideo();
-            sv.setStudentId(studentId);
-            sv.setVideoId(videoId);
-            studentVideoMapper.insert(sv);
-        }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void closeStudent(Long videoId, Long studentId) {
-        studentVideoMapper.delete(new LambdaQueryWrapper<StudentVideo>()
-                .eq(StudentVideo::getVideoId, videoId)
-                .eq(StudentVideo::getStudentId, studentId));
     }
 }

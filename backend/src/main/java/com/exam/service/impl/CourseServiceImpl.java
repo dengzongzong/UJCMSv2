@@ -423,11 +423,8 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                 videoVO.setCoverUrl(video.getCoverUrl());
                 videoVO.setDuration(video.getDuration());
                 videoVO.setUpdateTime(video.getUpdateTime());
-                // 视频查看权限：viewPermission=1 时需指定权限，未单独授权则不返回URL
-                Integer viewPermission = csv.getViewPermission();
-                videoVO.setViewPermission(viewPermission);
-                // 未开通课程不返回URL；viewPermission=1（需指定权限）也不返回URL
-                boolean canView = purchased && (viewPermission == null || viewPermission == 0);
+                // 视频观看权限仅由课程开通决定(开通课程即可看该课程下所有视频, 不再校验视频单独开通)
+                boolean canView = purchased;
                 videoVO.setUrl(canView ? video.getUrl() : null);
                 videoVOs.add(videoVO);
             }

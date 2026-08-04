@@ -80,7 +80,6 @@
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-view" @click="handleDetail(row)">详情</el-button>
             <el-button type="text" icon="el-icon-edit" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="text" icon="el-icon-user" @click="handleOpenStudents(row)">开通学生</el-button>
             <el-button type="text" icon="el-icon-delete" class="danger-text" @click="handleDelete(row)">
               删除
             </el-button>
@@ -130,163 +129,11 @@
         <el-button @click="detailDialog.visible = false">关 闭</el-button>
       </div>
     </el-dialog>
-
-    <!-- 开通学生弹窗 -->
-    <el-dialog
-      :title="'开通学生 - ' + openStudentsDialog.videoName"
-      :visible.sync="openStudentsDialog.visible"
-      width="800px"
-      @close="openStudentsDialog.visible = false"
-    >
-      <div v-loading="openStudentsDialog.loading">
-        <el-tabs v-model="openStudentsDialog.activeTab" @tab-change="onTabChange">
-          <el-tab-pane label="已开通" name="opened">
-            <div style="margin-bottom: 10px">
-              <el-input
-                v-model="openStudentsDialog.openedQuery.phone"
-                placeholder="手机号搜索"
-                clearable
-                style="width: 200px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoOpened"
-              />
-              <el-input
-                v-model="openStudentsDialog.openedQuery.idCard"
-                placeholder="搜索身份证号"
-                clearable
-                style="width: 200px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoOpened"
-              />
-              <el-input
-                v-model="openStudentsDialog.openedQuery.exactCount"
-                placeholder="显示最新N条"
-                clearable
-                style="width: 160px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoOpened"
-              >
-                <el-button slot="append" icon="el-icon-search" @click="fetchVideoOpened" />
-              </el-input>
-              <el-select
-                v-model="openStudentsDialog.openedQuery.profession"
-                placeholder="选择专业"
-                clearable
-                filterable
-                style="width: 200px; margin-right: 10px"
-                @change="fetchVideoOpened"
-              >
-                <el-option
-                  v-for="item in professionOptions"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.name"
-                />
-              </el-select>
-              <el-button type="primary" size="small" @click="fetchVideoOpened">搜索</el-button>
-            </div>
-            <el-table :data="openStudentsDialog.opened" border size="small" style="width: 100%">
-              <el-table-column type="index" label="序号" width="50" align="center" />
-              <el-table-column prop="name" label="姓名" width="100" />
-              <el-table-column prop="phone" label="手机号" width="130" />
-              <el-table-column prop="professionName" label="专业" width="120" />
-              <el-table-column label="操作" width="80" align="center">
-                <template slot-scope="{ row }">
-                  <el-button type="text" class="danger-text" @click="closeVideoStudent(row)">取消</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-pagination
-              :current-page="openStudentsDialog.openedQuery.page"
-              :page-sizes="[10, 20, 50, 100]"
-              :page-size="openStudentsDialog.openedQuery.size"
-              :total="openStudentsDialog.openedTotal"
-              layout="total, sizes, prev, pager, next"
-              style="margin-top: 10px; text-align: right"
-              @size-change="(s) => { openStudentsDialog.openedQuery.size = s; openStudentsDialog.openedQuery.page = 1; fetchVideoOpened() }"
-              @current-change="(p) => { openStudentsDialog.openedQuery.page = p; fetchVideoOpened() }"
-            />
-          </el-tab-pane>
-          <el-tab-pane label="新增开通" name="add">
-            <div style="margin-bottom: 10px">
-              <el-input
-                v-model="openStudentsDialog.addQuery.phone"
-                placeholder="手机号搜索"
-                clearable
-                style="width: 200px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoUnopened"
-              />
-              <el-input
-                v-model="openStudentsDialog.addQuery.idCard"
-                placeholder="搜索身份证号"
-                clearable
-                style="width: 200px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoUnopened"
-              />
-              <el-input
-                v-model="openStudentsDialog.addQuery.exactCount"
-                placeholder="显示最新N条"
-                clearable
-                style="width: 160px; margin-right: 10px"
-                @keyup.enter.native="fetchVideoUnopened"
-              >
-                <el-button slot="append" icon="el-icon-search" @click="fetchVideoUnopened" />
-              </el-input>
-              <el-select
-                v-model="openStudentsDialog.addQuery.profession"
-                placeholder="选择专业"
-                clearable
-                filterable
-                style="width: 200px; margin-right: 10px"
-                @change="fetchVideoUnopened"
-              >
-                <el-option
-                  v-for="item in professionOptions"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.name"
-                />
-              </el-select>
-              <el-button type="primary" size="small" @click="fetchVideoUnopened">搜索</el-button>
-              <el-button
-                type="success"
-                size="small"
-                :disabled="openStudentsDialog.selected.length === 0"
-                style="float: right"
-                @click="openVideoStudents"
-              >
-                批量开通 ({{ openStudentsDialog.selected.length }})
-              </el-button>
-            </div>
-            <el-table
-              :data="openStudentsDialog.unopened"
-              border
-              size="small"
-              style="width: 100%"
-              @selection-change="(val) => openStudentsDialog.selected = val"
-            >
-              <el-table-column type="selection" width="45" align="center" />
-              <el-table-column type="index" label="序号" width="50" align="center" />
-              <el-table-column prop="name" label="姓名" width="100" />
-              <el-table-column prop="phone" label="手机号" width="130" />
-              <el-table-column prop="professionName" label="专业" width="120" />
-            </el-table>
-            <el-pagination
-              :current-page="openStudentsDialog.addQuery.page"
-              :page-sizes="[10, 20, 50, 100]"
-              :page-size="openStudentsDialog.addQuery.size"
-              :total="openStudentsDialog.addTotal"
-              layout="total, sizes, prev, pager, next"
-              style="margin-top: 10px; text-align: right"
-              @size-change="(s) => { openStudentsDialog.addQuery.size = s; openStudentsDialog.addQuery.page = 1; fetchVideoUnopened() }"
-              @current-change="(p) => { openStudentsDialog.addQuery.page = p; fetchVideoUnopened() }"
-            />
-          </el-tab-pane>
-        </el-tabs>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { videoPage, videoDetail, deleteVideo, sortVideo, getVideoStudents, openVideoStudents, closeVideoStudent, batchDeleteVideos } from '@/api/video'
+import { videoPage, videoDetail, deleteVideo, sortVideo, batchDeleteVideos } from '@/api/video'
 import { professions } from '@/api/setting'
 import { formatFileSize, formatDuration } from '@/utils'
 import { apiUrl } from '@/utils/apiBase'
@@ -312,20 +159,6 @@ export default {
         visible: false,
         loading: false,
         data: {}
-      },
-      openStudentsDialog: {
-        visible: false,
-        loading: false,
-        videoId: undefined,
-        videoName: '',
-        activeTab: 'opened',
-        opened: [],
-        openedTotal: 0,
-        openedQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' },
-        unopened: [],
-        addTotal: 0,
-        addQuery: { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' },
-        selected: []
       }
     }
   },
@@ -449,94 +282,6 @@ export default {
           this.fetchList()
         }).catch(() => {})
       }).catch(() => {})
-    },
-    handleOpenStudents(row) {
-      this.openStudentsDialog.videoId = row.id
-      this.openStudentsDialog.videoName = row.name
-      this.openStudentsDialog.visible = true
-      this.openStudentsDialog.activeTab = 'opened'
-      this.openStudentsDialog.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
-      this.openStudentsDialog.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
-      this.openStudentsDialog.selected = []
-      this.fetchVideoOpened()
-    },
-    onTabChange(tabName) {
-      if (tabName === 'add') {
-        this.fetchVideoUnopened()
-      }
-    },
-    fetchVideoOpened() {
-      this.openStudentsDialog.loading = true
-      const params = {
-        page: this.openStudentsDialog.openedQuery.page,
-        size: this.openStudentsDialog.openedQuery.size,
-        phone: this.openStudentsDialog.openedQuery.phone,
-        idCard: this.openStudentsDialog.openedQuery.idCard,
-        exactCount: this.openStudentsDialog.openedQuery.exactCount,
-        profession: this.openStudentsDialog.openedQuery.profession
-      }
-      getVideoStudents(this.openStudentsDialog.videoId, params)
-        .then((res) => {
-          const data = res.data || {}
-          this.openStudentsDialog.opened = data.records || data.list || data.rows || []
-          this.openStudentsDialog.openedTotal = data.total || 0
-        })
-        .catch(() => {
-          this.openStudentsDialog.opened = []
-          this.openStudentsDialog.openedTotal = 0
-        })
-        .finally(() => {
-          this.openStudentsDialog.loading = false
-        })
-    },
-    fetchVideoUnopened() {
-      this.openStudentsDialog.loading = true
-      const params = {
-        page: this.openStudentsDialog.addQuery.page,
-        size: this.openStudentsDialog.addQuery.size,
-        phone: this.openStudentsDialog.addQuery.phone,
-        idCard: this.openStudentsDialog.addQuery.idCard,
-        exactCount: this.openStudentsDialog.addQuery.exactCount,
-        profession: this.openStudentsDialog.addQuery.profession,
-        unopened: 1
-      }
-      getVideoStudents(this.openStudentsDialog.videoId, params)
-        .then((res) => {
-          const data = res.data || {}
-          this.openStudentsDialog.unopened = data.records || data.list || data.rows || []
-          this.openStudentsDialog.addTotal = data.total || 0
-        })
-        .catch(() => {
-          this.openStudentsDialog.unopened = []
-          this.openStudentsDialog.addTotal = 0
-        })
-        .finally(() => {
-          this.openStudentsDialog.loading = false
-        })
-    },
-    openVideoStudents() {
-      const ids = this.openStudentsDialog.selected.map((s) => s.id)
-      openVideoStudents(this.openStudentsDialog.videoId, ids)
-        .then(() => {
-          this.$message.success('开通成功')
-          this.openStudentsDialog.selected = []
-          this.openStudentsDialog.addQuery.page = 1
-          this.fetchVideoUnopened()
-          this.fetchVideoOpened()
-        })
-        .catch(() => {
-          this.$message.error('开通失败')
-        })
-    },
-    closeVideoStudent(row) {
-      closeVideoStudent(this.openStudentsDialog.videoId, row.id)
-        .then(() => {
-          this.$message.success('已取消开通')
-          this.fetchVideoOpened()
-        })
-        .catch(() => {
-          this.$message.error('操作失败')
-        })
     }
   }
 }

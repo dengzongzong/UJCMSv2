@@ -3,7 +3,6 @@ package com.exam.controller;
 import com.exam.common.PageResult;
 import com.exam.common.Result;
 import com.exam.dto.VideoDTO;
-import com.exam.entity.Student;
 import com.exam.service.VideoManageService;
 import com.exam.vo.AdminVideoVO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,43 +86,5 @@ public class VideoManageController {
     public Result<List<AdminVideoVO>> sort() {
         List<AdminVideoVO> result = videoManageService.sortByPlayCount();
         return Result.success(result);
-    }
-
-    /**
-     * 分页查询视频已开通/未开通学生
-     * unopened == null 或 0：查询已开通该视频的学生
-     * unopened == 1：查询未开通该视频的学生
-     */
-    @GetMapping("/{id}/students")
-    public Result<PageResult<Student>> students(@PathVariable Long id,
-                                                @RequestParam(defaultValue = "1") Integer page,
-                                                @RequestParam(defaultValue = "10") Integer size,
-                                                @RequestParam(required = false) String phone,
-                                                @RequestParam(required = false) String idCard,
-                                                @RequestParam(required = false) Integer exactCount,
-                                                @RequestParam(required = false) Integer unopened,
-                                                @RequestParam(required = false) String profession) {
-        PageResult<Student> result = videoManageService.studentsPage(id, page, size, phone, idCard, exactCount, unopened, profession);
-        return Result.success(result);
-    }
-
-    /**
-     * 批量开通视频给学生
-     */
-    @PostMapping("/{id}/students")
-    public Result<Void> openStudents(@PathVariable Long id,
-                                     @RequestBody List<Long> studentIds) {
-        videoManageService.openStudents(id, studentIds);
-        return Result.success();
-    }
-
-    /**
-     * 取消开通（删除某学生的视频开通记录）
-     */
-    @DeleteMapping("/{id}/students/{studentId}")
-    public Result<Void> closeStudent(@PathVariable Long id,
-                                     @PathVariable Long studentId) {
-        videoManageService.closeStudent(id, studentId);
-        return Result.success();
     }
 }
