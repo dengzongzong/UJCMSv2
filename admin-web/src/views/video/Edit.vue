@@ -27,30 +27,48 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="视频来源">
+          <el-radio-group v-model="videoSource" @change="handleSourceChange">
+            <el-radio label="upload">本地上传</el-radio>
+            <el-radio label="external">外部链接</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="视频文件" prop="url">
-          <el-upload
-            ref="videoUpload"
-            :action="uploadAction"
-            :headers="uploadHeaders"
-            :data="{ type: 'video' }"
-            :show-file-list="true"
-            :file-list="videoFileList"
-            :limit="1"
-            :on-success="handleVideoSuccess"
-            :on-error="handleVideoError"
-            :on-progress="handleVideoProgress"
-            :on-remove="handleVideoRemove"
-            :on-exceed="handleExceed"
-            :before-upload="beforeVideoUpload"
-            accept="video/*"
-          >
-            <el-button size="small" type="primary" icon="el-icon-upload2" :loading="videoUploading">
-              {{ videoUploading ? `上传中 ${videoProgress}%` : '点击上传视频' }}
-            </el-button>
-            <div slot="tip" class="el-upload__tip">
-              支持 mp4/avi/mov 等格式，单个文件不超过 2GB
+          <template v-if="videoSource === 'upload'">
+            <el-upload
+              ref="videoUpload"
+              :action="uploadAction"
+              :headers="uploadHeaders"
+              :data="{ type: 'video' }"
+              :show-file-list="true"
+              :file-list="videoFileList"
+              :limit="1"
+              :on-success="handleVideoSuccess"
+              :on-error="handleVideoError"
+              :on-progress="handleVideoProgress"
+              :on-remove="handleVideoRemove"
+              :on-exceed="handleExceed"
+              :before-upload="beforeVideoUpload"
+              accept="video/*"
+            >
+              <el-button size="small" type="primary" icon="el-icon-upload2" :loading="videoUploading">
+                {{ videoUploading ? `上传中 ${videoProgress}%` : '点击上传视频' }}
+              </el-button>
+              <div slot="tip" class="el-upload__tip">
+                支持 mp4/avi/mov 等格式，单个文件不超过 2GB
+              </div>
+            </el-upload>
+          </template>
+          <template v-else>
+            <el-input
+              v-model="form.url"
+              placeholder="请输入视频直链地址，如 https://example.com/video.mp4"
+              clearable
+            />
+            <div class="el-upload__tip">
+              支持 mp4/webm 等可直接播放的视频直链地址（原生播放器直接加载）
             </div>
-          </el-upload>
+          </template>
           <video
             v-if="form.url && !videoUploading"
             :src="apiUrl(form.url)"
@@ -125,6 +143,7 @@ export default {
       loading: false,
       submitting: false,
       isEdit: false,
+      videoSource: 'upload',
       courses: [],
       professionOptions: [],
       form: {
@@ -141,7 +160,7 @@ export default {
       },
       rules: {
         name: [{ required: true, message: '请输入视频名称', trigger: 'blur' }],
-        url: [{ required: true, message: '请上传视频文件', trigger: 'change' }]
+        url: [{ required: true, validator: this.validateUrl, trigger: 'change' }]
       },
       videoFileList: [],
       videoUploading: false,
@@ -201,6 +220,10 @@ export default {
             baseStudyCount: data.baseStudyCount || 0,
             remark: data.remark || ''
           }
+          // 回显:http(s)开头的地址视为外部链接
+          if (this.form.url && /^https?:\/\//i.test(this.form.url)) {
+            this.videoSource = 'external'
+          }
           if (data.url) {
             this.videoFileList = [
               { name: data.name || 'video.mp4', url: data.url }
@@ -210,6 +233,28 @@ export default {
         .finally(() => {
           this.loading = false
         })
+    },
+    validateUrl(rule, value, callback) {
+      if (!value) {
+        callback(new Error(this.videoSource === 'upload' ? '请上传视频文件' : '请输入视频链接'))
+        return
+      }
+      if (this.videoSource === 'external' && !/^https?:\/\//i.test(value)) {
+        callback(new Error('请输入以 http:// 或 https:// 开头的视频链接'))
+        return
+      }
+      callback()
+    },
+    handleSourceChange() {
+      this.form.url = ''
+      this.videoFileList = []
+      this.videoUploading = false
+      this.videoProgress = 0
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.clearValidate('url')
+        }
+      })
     },
     beforeVideoUpload(file) {
       const isVideo = file.type.startsWith('video/')
