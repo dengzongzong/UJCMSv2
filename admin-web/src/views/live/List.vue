@@ -159,7 +159,7 @@
     </el-dialog>
 
     <!-- 开通学生弹窗(复用课程开通, 直播权限=绑定课程的开通权限) -->
-    <course-open-students
+    <open-students
       v-if="openStudentsDialog.visible"
       :visible.sync="openStudentsDialog.visible"
       :course-id="openStudentsDialog.courseId"
