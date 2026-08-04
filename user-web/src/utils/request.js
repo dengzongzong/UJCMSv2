@@ -36,16 +36,19 @@ service.interceptors.response.use(
 
     // 业务状态码判断
     if (res.code !== undefined && res.code !== 0 && res.code !== 200) {
+      // 构造带业务 code 的错误(供调用方判断 1001/1002 等)
+      const businessError = new Error(res.message || '请求失败')
+      businessError.code = res.code
       // 401 未授权
       if (res.code === 401) {
         handleUnauthorized(response.config)
-        return Promise.reject(new Error(res.message || '登录已过期'))
+        return Promise.reject(businessError)
       }
       // 静默请求（如断点续考保存答案）失败时不弹 Toast，避免打扰用户答题
       if (!response.config.silent) {
         Toast.fail(res.message || '请求失败')
       }
-      return Promise.reject(new Error(res.message || '请求失败'))
+      return Promise.reject(businessError)
     }
 
     return res
