@@ -221,6 +221,15 @@ export default {
   },
   created() {
     this.fetchList()
+    // 自动刷新: 推流/录制回调会变更状态, 每30秒同步一次
+    this.refreshTimer = setInterval(() => {
+      this.fetchList()
+    }, 30000)
+  },
+  beforeDestroy() {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer)
+    }
   },
   methods: {
     apiUrl,

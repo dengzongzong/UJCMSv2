@@ -245,9 +245,7 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
                 || replayUrl == null || replayUrl.isEmpty()) {
             return false;
         }
-        LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(LiveRoom::getStreamName, streamName).last("LIMIT 1");
-        LiveRoom room = this.getOne(wrapper);
+        LiveRoom room = findByStreamName(streamName);
         if (room == null) {
             log.warn("录制回调未匹配到场次: streamName={}", streamName);
             return false;
@@ -261,6 +259,59 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         this.updateById(room);
         log.info("录制回调自动回填回放: liveId={} streamName={} url={}", room.getId(), streamName, replayUrl);
         return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean onPushStart(String streamName) {
+        if (streamName == null || streamName.isEmpty()) {
+            return false;
+        }
+        LiveRoom room = findByStreamName(streamName);
+        if (room == null) {
+            log.warn("推流开始回调未匹配到场次: streamName={}", streamName);
+            return false;
+        }
+        // 未开始/已结束(重新推流)才自动置为直播中
+        if (room.getStatus() == null || room.getStatus() == 0 || room.getStatus() == 2) {
+            // 重新生成播放地址(延长鉴权有效期)
+            LiveProvider provider = providerFactory.getProvider();
+            if (provider != null) {
+                room.setPlayUrl(provider.buildPlayUrl(room.getStreamName()));
+            }
+            room.setStatus(1);
+            this.updateById(room);
+            log.info("推流回调自动开始直播: liveId={} streamName={}", room.getId(), streamName);
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean onPushEnd(String streamName) {
+        if (streamName == null || streamName.isEmpty()) {
+            return false;
+        }
+        LiveRoom room = findByStreamName(streamName);
+        if (room == null) {
+            log.warn("推流结束回调未匹配到场次: streamName={}", streamName);
+            return false;
+        }
+        if (room.getStatus() != null && room.getStatus() == 1) {
+            room.setStatus(2);
+            room.setEndTime(java.time.LocalDateTime.now());
+            this.updateById(room);
+            liveWebSocketHandler.closeRoom(room.getId());
+            log.info("推流回调自动结束直播: liveId={} streamName={}", room.getId(), streamName);
+        }
+        return true;
+    }
+
+    /** 按流名查询场次 */
+    private LiveRoom findByStreamName(String streamName) {
+        LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LiveRoom::getStreamName, streamName).last("LIMIT 1");
+        return this.getOne(wrapper);
     }
 
     @Override

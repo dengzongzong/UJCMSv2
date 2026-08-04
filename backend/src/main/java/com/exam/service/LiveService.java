@@ -51,4 +51,10 @@ public interface LiveService extends IService<LiveRoom> {
 
     /** 录制回调: 按流名自动回填回放地址(云直播录制完成后调用) */
     boolean autoReplay(String streamName, String replayUrl);
+
+    /** 推流回调: 按流名自动开始直播(状态置为直播中) */
+    boolean onPushStart(String streamName);
+
+    /** 推流回调: 按流名自动结束直播(状态置为已结束并关闭房间) */
+    boolean onPushEnd(String streamName);
 }
