@@ -128,9 +128,7 @@ export default {
       retryCount: 0,
 
       stream: null,
-      detectInterval: null,
-
-      faceapi: null
+      detectInterval: null
     }
   },
 
@@ -196,8 +194,7 @@ export default {
 
     async loadModels() {
       this.loadingMessage = '正在加载AI模型...'
-      const faceapi = await import('face-api.js')
-      this.faceapi = faceapi
+      const faceapi = window.faceapi || (await import('face-api.js'))
       const MODEL_URL = '/models'
 
       await Promise.all([
@@ -216,8 +213,9 @@ export default {
         throw new Error(data.message || '未找到证件照')
       }
 
-      const img = await this.faceapi.fetchImage(data.photoUrl)
-      const detection = await this.faceapi
+      const faceapi = window.faceapi
+      const img = await faceapi.fetchImage(data.photoUrl)
+      const detection = await faceapi
         .detectSingleFace(img)
         .withFaceLandmarks()
         .withFaceDescriptor()
@@ -259,7 +257,7 @@ export default {
 
     startFaceDetection() {
       const video = this.$refs.video
-      const faceapi = this.faceapi
+      const faceapi = window.faceapi
 
       this.detectInterval = setInterval(async () => {
         if (video.readyState !== video.HAVE_ENOUGH_DATA) return
@@ -292,7 +290,8 @@ export default {
       this.verifying = true
 
       try {
-        const distance = this.faceapi.euclideanDistance(
+        const faceapi = window.faceapi
+        const distance = faceapi.euclideanDistance(
           this.faceDescriptor,
           this.idPhotoDescriptor
         )
