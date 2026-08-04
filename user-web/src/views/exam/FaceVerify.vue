@@ -194,7 +194,10 @@ export default {
 
     async loadModels() {
       this.loadingMessage = '正在加载AI模型...'
-      const faceapi = window.faceapi || (await import('face-api.js'))
+      const faceapi = window.faceapi
+      if (!faceapi) {
+        throw new Error('人脸识别组件加载失败，请刷新页面重试')
+      }
       const MODEL_URL = '/models'
 
       await Promise.all([
