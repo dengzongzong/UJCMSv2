@@ -19,7 +19,7 @@ export default {
   data() {
     return {
       isMobile: window.innerWidth <= 768,
-      cachedViews: ['HomeIndex', 'CourseCenter', 'ExamCenter', 'CertificatePortal', 'ProfileIndex']
+      cachedViews: ['HomeIndex', 'CourseCenter', 'LiveCenter', 'ExamCenter', 'CertificatePortal', 'ProfileIndex']
     }
   },
   mounted() {

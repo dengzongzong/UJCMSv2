@@ -48,6 +48,7 @@
           <router-link to="/about" class="nav-item">关于我们</router-link>
           <router-link to="/news/center" class="nav-item" exact>中心动态</router-link>
           <router-link to="/course/my" class="nav-item">学习中心</router-link>
+          <router-link to="/live" class="nav-item">直播中心</router-link>
           <router-link to="/exam" class="nav-item">考试中心</router-link>
           <router-link to="/cooperation" class="nav-item">合作单位</router-link>
           <router-link to="/certificate" class="nav-item">证书查询</router-link>

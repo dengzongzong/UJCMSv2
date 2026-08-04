@@ -77,6 +77,13 @@ const routes = [
       meta: { requiresAuth: true, requiresSubject: false, title: '我的课程' }
     },
     {
+      path: '/live',
+      name: 'LiveCenter',
+      component: () => import('@/views/live/LiveList.vue'),
+      // 公开:未登录也能看直播中心列表
+      meta: { requiresAuth: false, requiresSubject: false, title: '直播中心', keepAlive: true }
+    },
+    {
       path: '/live/:id',
       name: 'LiveRoom',
       component: () => import('@/views/live/LiveRoom.vue'),
