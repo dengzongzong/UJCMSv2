@@ -38,6 +38,12 @@ public class ExamRecord {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime submitTime;
     private Integer hasCertificate;
+    /** 人脸验证状态：0-未验证 1-验证通过 2-验证失败 3-无需验证 */
+    private Integer faceVerifyStatus;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime faceVerifyTime;
+    /** 人脸相似度(欧式距离，越小越相似) */
+    private BigDecimal faceSimilarity;
     @TableField(fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
