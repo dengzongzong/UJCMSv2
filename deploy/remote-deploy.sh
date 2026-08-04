@@ -330,14 +330,20 @@ NGINX_EOF
 fi
 
 if nginx -t 2>/dev/null; then
-    systemctl reload nginx || true
+    # 优先用 nginx -s reload(直接向master进程发信号, CI SSH会话中 systemctl 可能无权限)
+    if ! nginx -s reload; then
+        echo "  警告: nginx -s reload 失败,尝试 systemctl reload"
+        systemctl reload nginx || true
+    fi
     echo "  Nginx 配置已更新并重新加载"
 else
     echo "  警告: Nginx 配置测试失败,恢复上次备份并重新加载"
     # 恢复旧配置并重新校验/加载,确保站点不因配置问题失效
     cp /etc/nginx/conf.d/exam-platform.conf.bak /etc/nginx/conf.d/exam-platform.conf 2>/dev/null || true
     if nginx -t 2>/dev/null; then
-        systemctl reload nginx || true
+        if ! nginx -s reload; then
+            systemctl reload nginx || true
+        fi
         echo "  已恢复备份配置并重新加载"
     else
         echo "  错误: 备份配置也无法通过校验,请人工检查 /etc/nginx/conf.d/exam-platform.conf"
