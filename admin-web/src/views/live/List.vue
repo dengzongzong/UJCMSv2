@@ -66,9 +66,10 @@
         </el-table-column>
         <el-table-column prop="onlineCount" label="在线" width="70" align="center" />
         <el-table-column prop="viewCount" label="观看" width="70" align="center" />
-        <el-table-column label="操作" width="280" align="center">
+        <el-table-column label="操作" width="340" align="center">
           <template slot-scope="{ row }">
             <el-button type="text" icon="el-icon-view" @click="handleDetail(row)">详情</el-button>
+            <el-button type="text" icon="el-icon-user" @click="handleOpenStudents(row)">开通学生</el-button>
             <el-button v-if="row.status !== 1" type="text" icon="el-icon-video-play" @click="handleStart(row)">开始</el-button>
             <el-button v-if="row.status === 1" type="text" icon="el-icon-video-pause" class="warn-text" @click="handleStop(row)">结束</el-button>
             <el-button v-if="row.status === 2" type="text" icon="el-icon-refresh" @click="handleReplay(row)">回放</el-button>
@@ -157,6 +158,14 @@
       </div>
     </el-dialog>
 
+    <!-- 开通学生弹窗(复用课程开通, 直播权限=绑定课程的开通权限) -->
+    <course-open-students
+      v-if="openStudentsDialog.visible"
+      :visible.sync="openStudentsDialog.visible"
+      :course-id="openStudentsDialog.courseId"
+      :course-name="openStudentsDialog.courseName"
+    />
+
     <!-- 回放地址弹窗 -->
     <el-dialog title="设置回放地址" :visible.sync="replayDialog.visible" width="520px">
       <el-input v-model="replayDialog.url" placeholder="请输入回放视频直链地址(m3u8/mp4), 用于直播结束后观看" clearable />
@@ -173,11 +182,13 @@
 
 <script>
 import { livePage, liveDetail, deleteLive, startLive, stopLive, setLiveReplay } from '@/api/live'
+import OpenStudents from '@/views/course/OpenStudents.vue'
 import { apiUrl } from '@/utils/apiBase'
 import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
   name: 'LiveList',
+  components: { OpenStudents },
   mixins: [tableMaxHeight],
   data() {
     return {
@@ -194,6 +205,11 @@ export default {
         visible: false,
         loading: false,
         data: {}
+      },
+      openStudentsDialog: {
+        visible: false,
+        courseId: undefined,
+        courseName: ''
       },
       replayDialog: {
         visible: false,
@@ -252,6 +268,12 @@ export default {
     },
     handleEdit(row) {
       this.$router.push(`/live/edit/${row.id}`).catch(() => {})
+    },
+    handleOpenStudents(row) {
+      // 直播权限=绑定课程的开通权限, 直接对课程开通学生
+      this.openStudentsDialog.courseId = row.courseId
+      this.openStudentsDialog.courseName = row.courseName
+      this.openStudentsDialog.visible = true
     },
     handleDetail(row) {
       this.detailDialog.visible = true

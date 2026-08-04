@@ -32,7 +32,7 @@
             v-for="item in filteredList"
             :key="item.id"
             class="live-card"
-            @click="goLive(item.id)"
+            @click="goLive(item)"
           >
             <div class="live-cover">
               <img v-if="item.coverUrl" :src="resolveImg(item.coverUrl)" :alt="item.title" />
@@ -43,6 +43,9 @@
                 <van-tag :type="statusType(item.status)" size="medium" color="rgba(0,0,0,0.55)">
                   {{ statusText(item.status) }}
                 </van-tag>
+              </div>
+              <div v-if="loggedIn && !item.opened" class="locked-tag">
+                <van-icon name="lock" /> 未开通
               </div>
               <div v-if="item.status === 2 && item.replayUrl" class="replay-badge">
                 <van-icon name="replay" /> 回放
@@ -73,6 +76,7 @@
 import Header from '@/components/Header.vue'
 import { getLiveList } from '@/api/live'
 import { resolveImg } from '@/utils/apiBase'
+import { Dialog } from 'vant'
 
 export default {
   name: 'LiveCenter',
@@ -91,6 +95,9 @@ export default {
     }
   },
   computed: {
+    loggedIn() {
+      return !!this.$store.getters.token
+    },
     filteredList() {
       if (this.activeTab === 'all') return this.list
       return this.list.filter((it) => it.status === this.activeTab)
@@ -123,8 +130,30 @@ export default {
           this.loading = false
         })
     },
-    goLive(id) {
-      this.$router.push({ path: '/live/' + id }).catch(() => {})
+    goLive(item) {
+      // 权限校验: 未登录先提示登录; 已登录未开通提示联系管理员(与学习中心一致)
+      if (!this.loggedIn) {
+        Dialog.confirm({
+          title: '需要先登录',
+          message: '直播中心展示所有直播场次，但您当前未登录。登录后若已开通对应课程即可观看直播与回放。是否现在登录？',
+          confirmButtonText: '去登录',
+          cancelButtonText: '取消'
+        })
+          .then(() => {
+            this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
+          })
+          .catch(() => {})
+        return
+      }
+      if (!item.opened) {
+        Dialog.alert({
+          title: '未开通该课程',
+          message: `您尚未开通课程「${item.courseName || ''}」，请联系管理员开通后再观看直播与回放。`,
+          confirmButtonText: '我知道了'
+        }).catch(() => {})
+        return
+      }
+      this.$router.push({ path: '/live/' + item.id }).catch(() => {})
     }
   }
 }
@@ -251,6 +280,20 @@ export default {
     font-size: 12px;
     padding: 2px 8px;
     border-radius: 10px;
+  }
+
+  .locked-tag {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(245, 108, 108, 0.92);
+    color: #fff;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 }
 

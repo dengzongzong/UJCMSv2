@@ -28,28 +28,29 @@ public class LiveController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    /** 直播大厅 */
+    /** 直播大厅(需登录) */
     @GetMapping("/list")
-    public Result<List<LiveRoom>> list() {
-        return Result.success(liveService.liveList());
+    public Result<List<LiveRoom>> list(@RequestAttribute(value = "userId", required = false) Long userId) {
+        return Result.success(liveService.liveList(userId));
     }
 
-    /** 公开直播大厅(未登录可看列表) */
+    /** 公开直播大厅(未登录可看列表, 已登录则标记是否开通) */
     @GetMapping("/public/list")
-    public Result<List<LiveRoom>> publicList() {
-        return Result.success(liveService.liveList());
+    public Result<List<LiveRoom>> publicList(HttpServletRequest request) {
+        return Result.success(liveService.liveList(resolveUserId(request)));
     }
 
     /** 某课程下的直播场次(需登录) */
     @GetMapping("/course/{courseId}")
-    public Result<List<LiveRoom>> courseLives(@PathVariable Long courseId) {
-        return Result.success(liveService.courseLives(courseId));
+    public Result<List<LiveRoom>> courseLives(@PathVariable Long courseId,
+                                              @RequestAttribute(value = "userId", required = false) Long userId) {
+        return Result.success(liveService.courseLives(courseId, userId));
     }
 
-    /** 某课程下的直播场次(公开, 未登录也可看, 不含播放地址) */
+    /** 某课程下的直播场次(公开, 未登录也可看, 已登录则标记是否开通) */
     @GetMapping("/public/course/{courseId}")
-    public Result<List<LiveRoom>> publicCourseLives(@PathVariable Long courseId) {
-        return Result.success(liveService.courseLives(courseId));
+    public Result<List<LiveRoom>> publicCourseLives(@PathVariable Long courseId, HttpServletRequest request) {
+        return Result.success(liveService.courseLives(courseId, resolveUserId(request)));
     }
 
     /** 直播间详情(已开通课程才返回播放地址) */

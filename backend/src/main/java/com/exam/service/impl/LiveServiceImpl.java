@@ -115,7 +115,7 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
     }
 
     @Override
-    public List<LiveRoom> courseLives(Long courseId) {
+    public List<LiveRoom> courseLives(Long courseId, Long userId) {
         LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LiveRoom::getCourseId, courseId)
                 .ne(LiveRoom::getStatus, 3)
@@ -123,19 +123,21 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         List<LiveRoom> list = this.list(wrapper);
         for (LiveRoom room : list) {
             hideSecret(room);
+            room.setOpened(checkOpened(room.getCourseId(), userId));
             fillExtra(room);
         }
         return list;
     }
 
     @Override
-    public List<LiveRoom> liveList() {
+    public List<LiveRoom> liveList(Long userId) {
         LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
         wrapper.ne(LiveRoom::getStatus, 3)
                 .orderByDesc(LiveRoom::getStartTime);
         List<LiveRoom> list = this.list(wrapper);
         for (LiveRoom room : list) {
             hideSecret(room);
+            room.setOpened(checkOpened(room.getCourseId(), userId));
             fillExtra(room);
         }
         return list;

@@ -18,11 +18,11 @@ public interface LiveService extends IService<LiveRoom> {
     /** 用户端详情: 校验课程开通后返回 playUrl/replayUrl */
     Map<String, Object> publicDetail(Long id, Long userId);
 
-    /** 课程下的直播场次 */
-    List<LiveRoom> courseLives(Long courseId);
+    /** 课程下的直播场次(可传 userId 标记是否已开通) */
+    List<LiveRoom> courseLives(Long courseId, Long userId);
 
-    /** 直播大厅 */
-    List<LiveRoom> liveList();
+    /** 直播大厅(可传 userId 标记是否已开通) */
+    List<LiveRoom> liveList(Long userId);
 
     /** 新增场次: 自动生成 streamName/pushUrl/playUrl */
     LiveRoom add(LiveRoom room);

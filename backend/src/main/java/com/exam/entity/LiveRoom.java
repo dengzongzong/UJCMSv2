@@ -42,4 +42,7 @@ public class LiveRoom {
     /** 在线人数(非数据库字段, WebSocket维护) */
     @TableField(exist = false)
     private Integer onlineCount;
+    /** 当前用户是否已开通该课程(非数据库字段, 用户端列表用) */
+    @TableField(exist = false)
+    private Boolean opened;
 }
