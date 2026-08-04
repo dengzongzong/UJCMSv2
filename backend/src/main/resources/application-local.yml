@@ -56,6 +56,8 @@ live:
   app-name: live
   push-host: push.zgrlosta.org.cn
   play-host: play.zgrlosta.org.cn
+  # 录制回调校验密钥(留空则不校验)
+  callback-secret: ""
   tencent:
     push-key: ""
     play-key: ""

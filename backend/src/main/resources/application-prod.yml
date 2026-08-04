@@ -60,6 +60,8 @@ live:
   app-name: live
   push-host: push.zgrlosta.org.cn
   play-host: play.zgrlosta.org.cn
+  # 录制回调校验密钥(云厂商回调URL中带 ?key=xxx, 与 GitHub Secret CALLBACK_SECRET 一致)
+  callback-secret: "YOUR_CALLBACK_SECRET"
   tencent:
     # 腾讯云直播控制台-推流配置中的 Key
     push-key: "YOUR_TENCENT_PUSH_KEY"

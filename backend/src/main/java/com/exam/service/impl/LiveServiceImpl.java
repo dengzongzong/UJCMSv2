@@ -238,6 +238,31 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
 
     @Override
     @Transactional
+    public boolean autoReplay(String streamName, String replayUrl) {
+        if (streamName == null || streamName.isEmpty()
+                || replayUrl == null || replayUrl.isEmpty()) {
+            return false;
+        }
+        LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LiveRoom::getStreamName, streamName).last("LIMIT 1");
+        LiveRoom room = this.getOne(wrapper);
+        if (room == null) {
+            log.warn("录制回调未匹配到场次: streamName={}", streamName);
+            return false;
+        }
+        room.setReplayUrl(replayUrl);
+        // 录制完成说明直播已结束, 若仍处于直播中则自动置为已结束
+        if (room.getStatus() != null && room.getStatus() == 1) {
+            room.setStatus(2);
+            room.setEndTime(java.time.LocalDateTime.now());
+        }
+        this.updateById(room);
+        log.info("录制回调自动回填回放: liveId={} streamName={} url={}", room.getId(), streamName, replayUrl);
+        return true;
+    }
+
+    @Override
+    @Transactional
     public void enter(Long id, Long userId) {
         LiveRoom room = this.getById(id);
         if (room == null || room.getStatus() == 3) {

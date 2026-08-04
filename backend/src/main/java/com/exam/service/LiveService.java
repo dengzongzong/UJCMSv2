@@ -48,4 +48,7 @@ public interface LiveService extends IService<LiveRoom> {
 
     /** 发送聊天消息(HTTP 兜底) */
     LiveMessage sendMessage(Long id, Long userId, String content);
+
+    /** 录制回调: 按流名自动回填回放地址(云直播录制完成后调用) */
+    boolean autoReplay(String streamName, String replayUrl);
 }

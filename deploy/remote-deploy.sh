@@ -139,6 +139,7 @@ live:
   app-name: live
   push-host: ${LIVE_PUSH_HOST:-push.zgrlosta.org.cn}
   play-host: ${LIVE_PLAY_HOST:-play.zgrlosta.org.cn}
+  callback-secret: "${CALLBACK_SECRET:-}"
   tencent:
     push-key: "${TENCENT_PUSH_KEY:-}"
     play-key: "${TENCENT_PLAY_KEY:-}"

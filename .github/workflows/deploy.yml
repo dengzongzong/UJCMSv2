@@ -137,6 +137,7 @@ jobs:
              LIVE_PROVIDER='${{ secrets.LIVE_PROVIDER }}' \
              LIVE_PUSH_HOST='${{ secrets.LIVE_PUSH_HOST }}' \
              LIVE_PLAY_HOST='${{ secrets.LIVE_PLAY_HOST }}' \
+             CALLBACK_SECRET='${{ secrets.CALLBACK_SECRET }}' \
              TENCENT_PUSH_KEY='${{ secrets.TENCENT_PUSH_KEY }}' \
              TENCENT_PLAY_KEY='${{ secrets.TENCENT_PLAY_KEY }}' \
              ALIYUN_AUTH_KEY='${{ secrets.ALIYUN_AUTH_KEY }}' \

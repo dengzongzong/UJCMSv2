@@ -20,6 +20,8 @@ public class LiveConfig {
     private String pushHost = "push.zgrlosta.org.cn";
     /** 播放域名(建议走CDN) */
     private String playHost = "play.zgrlosta.org.cn";
+    /** 录制回调校验密钥(云厂商回调 URL 中带 ?key=xxx, 为空则不校验) */
+    private String callbackSecret = "";
 
     private Tencent tencent = new Tencent();
     private Aliyun aliyun = new Aliyun();
