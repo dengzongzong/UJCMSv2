@@ -48,11 +48,18 @@ public class OrderServiceImpl extends ServiceImpl<CourseOrderMapper, CourseOrder
     @Autowired
     private PayConfig payConfig;
 
+    @Autowired
+    private com.exam.service.SystemSettingService systemSettingService;
+
     @Override
     @Transactional
     public Map<String, Object> create(Long studentId, Long courseId, String channel) {
         if (studentId == null) {
             throw new BusinessException("请先登录");
+        }
+        // 支付总开关: system_setting.pay_enabled = 1 才允许在线购买
+        if (!"1".equals(systemSettingService.getValueByKey("pay_enabled"))) {
+            throw new BusinessException("暂未开放在线支付功能,请联系管理员");
         }
         Course course = courseMapper.selectById(courseId);
         if (course == null || course.getStatus() == null || course.getStatus() == 0) {

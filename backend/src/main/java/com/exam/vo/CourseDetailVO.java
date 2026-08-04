@@ -26,5 +26,9 @@ public class CourseDetailVO {
      * 是否需要登录(true=当前用户未登录)
      */
     private Boolean needLogin;
+    /**
+     * 是否已开通在线支付(总开关, 关闭时前端不显示购买入口)
+     */
+    private Boolean payEnabled;
     private List<SectionVO> sections;
 }

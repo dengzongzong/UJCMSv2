@@ -2,6 +2,16 @@
   <div class="app-container">
     <el-card shadow="never">
       <div class="filter-container">
+        <div class="pay-switch-box">
+          <span class="pay-switch-label">在线支付</span>
+          <el-switch
+            v-model="payEnabled"
+            active-text="已开启"
+            inactive-text="已关闭"
+            @change="handlePaySwitchChange"
+          />
+          <span class="pay-switch-tip">关闭后学员端不显示支付入口,已生成的待支付订单也无法继续支付</span>
+        </div>
         <el-input
           v-model="query.keyword"
           placeholder="订单号 / 课程名"
@@ -89,7 +99,8 @@
 </template>
 
 <script>
-import { orderPage } from '@/api/order'
+import { orderPage, getPaySwitch, setPaySwitch } from '@/api/order'
+import { Message } from 'element-ui'
 
 export default {
   name: 'OrderList',
@@ -98,6 +109,7 @@ export default {
       loading: false,
       list: [],
       total: 0,
+      payEnabled: false,
       query: {
         page: 1,
         size: 10,
@@ -109,8 +121,27 @@ export default {
   },
   created() {
     this.fetchList()
+    this.fetchPaySwitch()
   },
   methods: {
+    fetchPaySwitch() {
+      getPaySwitch()
+        .then((res) => {
+          const data = res.data || res
+          this.payEnabled = !!data.enabled
+        })
+        .catch(() => {})
+    },
+    handlePaySwitchChange(val) {
+      setPaySwitch(val)
+        .then(() => {
+          Message.success(val ? '在线支付已开启' : '在线支付已关闭')
+        })
+        .catch(() => {
+          // 失败时回滚开关状态
+          this.payEnabled = !val
+        })
+    },
     fetchList() {
       this.loading = true
       orderPage(this.query)

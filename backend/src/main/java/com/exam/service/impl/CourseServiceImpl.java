@@ -69,6 +69,14 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     @Autowired
     private VideoCategoryMapper videoCategoryMapper;
 
+    @Autowired
+    private com.exam.service.SystemSettingService systemSettingService;
+
+    /** 在线支付总开关是否开启 */
+    private boolean payEnabled() {
+        return "1".equals(systemSettingService.getValueByKey("pay_enabled"));
+    }
+
     @Override
     public List<CourseListItemVO> getCourseList(Long professionId, Long subjectId, Long categoryId, Long studentId, String keyword) {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
@@ -364,6 +372,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             vo.setSectionCount(course.getSectionCount());
             vo.setPurchased(false);
             vo.setNeedLogin(true);
+            vo.setPayEnabled(payEnabled());
             return vo;
         }
 
@@ -381,6 +390,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         vo.setSectionCount(course.getSectionCount());
         vo.setPurchased(purchased);
         vo.setNeedLogin(false);
+        vo.setPayEnabled(payEnabled());
 
         // 查询小节列表
         LambdaQueryWrapper<CourseSection> sectionWrapper = new LambdaQueryWrapper<>();

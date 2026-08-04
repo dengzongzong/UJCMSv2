@@ -375,9 +375,12 @@ export default {
         color: q === this.currentQuality ? '#1989fa' : '#333'
       }))
     },
-    /** 是否可在线购买: 已登录 + 未开通 + 价格>0 */
+    /** 是否可在线购买: 已登录 + 未开通 + 价格>0 + 支付总开关已开启 */
     canBuy() {
-      return !this.course.needLogin && this.course.purchased === false && Number(this.course.price) > 0
+      return !this.course.needLogin
+        && this.course.purchased === false
+        && Number(this.course.price) > 0
+        && this.course.payEnabled !== false
     },
     /** 可用支付渠道 */
     payChannels() {
@@ -525,6 +528,9 @@ export default {
           price: data.price || 0,
           totalDuration: data.totalDuration || 0,
           tags: data.tags || [],
+          purchased: data.purchased,
+          needLogin: data.needLogin,
+          payEnabled: data.payEnabled,
           chapters: data.chapters || data.sections || []
         }
         // 不再做兜底：后端没有返回章节就保持空数组，由 UI 自行提示"暂无目录"

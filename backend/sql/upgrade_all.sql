@@ -608,6 +608,10 @@ INSERT IGNORE INTO `system_setting` (`setting_key`, `setting_value`, `remark`) V
 ('face_verify_threshold', '0.6', '人脸比对阈值(欧式距离，越小越严格，建议0.4-0.6)'),
 ('face_verify_max_retries', '3', '人脸验证最大重试次数');
 
+-- 课程在线支付总开关(INSERT IGNORE 幂等, 默认关闭, 管理端可随时开启)
+INSERT IGNORE INTO `system_setting` (`setting_key`, `setting_value`, `remark`) VALUES
+('pay_enabled', '0', '课程在线支付总开关：0-关闭 1-开启');
+
 -- ============================================================
 -- 15. 直播课程功能 (live_room场次表 + live_message聊天表)
 -- 直播结束后管理端回填 replay_url 即可事后观看回放
