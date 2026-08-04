@@ -7,16 +7,6 @@
         <el-form-item label="直播标题" prop="title">
           <el-input v-model="form.title" placeholder="请输入直播标题" maxlength="100" show-word-limit />
         </el-form-item>
-        <el-form-item label="所属课程" prop="courseId">
-          <el-select v-model="form.courseId" placeholder="请选择所属课程(学生开通该课程后才能观看)" clearable filterable style="width: 100%">
-            <el-option
-              v-for="item in courses"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
         <el-form-item label="主播名称" prop="anchorName">
           <el-input v-model="form.anchorName" placeholder="请输入主播/讲师名称" maxlength="50" />
         </el-form-item>
@@ -85,7 +75,6 @@
 
 <script>
 import { liveDetail, addLive, updateLive } from '@/api/live'
-import { coursePage } from '@/api/course'
 import store from '@/store'
 import { apiUrl } from '@/utils/apiBase'
 
@@ -96,11 +85,9 @@ export default {
       loading: false,
       submitting: false,
       isEdit: false,
-      courses: [],
       form: {
         id: undefined,
         title: '',
-        courseId: undefined,
         anchorName: '',
         coverUrl: '',
         intro: '',
@@ -109,8 +96,7 @@ export default {
         sort: 0
       },
       rules: {
-        title: [{ required: true, message: '请输入直播标题', trigger: 'blur' }],
-        courseId: [{ required: true, message: '请选择所属课程', trigger: 'change' }]
+        title: [{ required: true, message: '请输入直播标题', trigger: 'blur' }]
       },
       uploadAction: '/api/file/upload',
       uploadHeaders: {
@@ -120,7 +106,6 @@ export default {
     }
   },
   created() {
-    this.fetchCourses()
     const id = this.$route.params.id
     if (id) {
       this.isEdit = true
@@ -129,16 +114,6 @@ export default {
   },
   methods: {
     apiUrl,
-    fetchCourses() {
-      coursePage({ page: 1, size: 1000 })
-        .then((res) => {
-          const data = res.data || {}
-          this.courses = data.records || data.list || data.rows || []
-        })
-        .catch(() => {
-          this.courses = []
-        })
-    },
     fetchDetail(id) {
       this.loading = true
       liveDetail(id)
@@ -147,7 +122,6 @@ export default {
           this.form = {
             id: data.id,
             title: data.title || '',
-            courseId: data.courseId,
             anchorName: data.anchorName || '',
             coverUrl: data.coverUrl || '',
             intro: data.intro || '',

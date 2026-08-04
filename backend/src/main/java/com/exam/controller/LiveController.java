@@ -40,20 +40,7 @@ public class LiveController {
         return Result.success(liveService.liveList(resolveUserId(request)));
     }
 
-    /** 某课程下的直播场次(需登录) */
-    @GetMapping("/course/{courseId}")
-    public Result<List<LiveRoom>> courseLives(@PathVariable Long courseId,
-                                              @RequestAttribute(value = "userId", required = false) Long userId) {
-        return Result.success(liveService.courseLives(courseId, userId));
-    }
-
-    /** 某课程下的直播场次(公开, 未登录也可看, 已登录则标记是否开通) */
-    @GetMapping("/public/course/{courseId}")
-    public Result<List<LiveRoom>> publicCourseLives(@PathVariable Long courseId, HttpServletRequest request) {
-        return Result.success(liveService.courseLives(courseId, resolveUserId(request)));
-    }
-
-    /** 直播间详情(已开通课程才返回播放地址) */
+    /** 直播间详情(已开通该直播才返回播放地址) */
     @GetMapping("/{id}")
     public Result<Map<String, Object>> detail(@PathVariable Long id,
                                               @RequestAttribute(value = "userId", required = false) Long userId) {
@@ -66,7 +53,7 @@ public class LiveController {
         return Result.success(liveService.publicDetail(id, resolveUserId(request)));
     }
 
-    /** 进入直播间(校验课程开通 + 累计观看人次) */
+    /** 进入直播间(校验直播开通 + 累计观看人次) */
     @PostMapping("/{id}/enter")
     public Result<Void> enter(@PathVariable Long id,
                               @RequestAttribute(value = "userId", required = false) Long userId) {

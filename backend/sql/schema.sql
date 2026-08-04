@@ -498,7 +498,6 @@ CREATE TABLE `face_verify_log` (
 DROP TABLE IF EXISTS `live_room`;
 CREATE TABLE `live_room` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `course_id` bigint NOT NULL COMMENT '所属课程ID',
   `title` varchar(200) NOT NULL COMMENT '直播标题',
   `cover_url` varchar(500) DEFAULT NULL COMMENT '封面图',
   `anchor_name` varchar(100) DEFAULT NULL COMMENT '讲师姓名',
@@ -516,12 +515,25 @@ CREATE TABLE `live_room` (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_course` (`course_id`),
   KEY `idx_status_time` (`status`, `start_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='直播场次表';
 
 -- ----------------------------
--- 24.2 直播聊天消息表
+-- 24.2 学生直播开通表(每场直播单独开通)
+-- ----------------------------
+DROP TABLE IF EXISTS `student_live`;
+CREATE TABLE `student_live` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `live_id` bigint NOT NULL COMMENT '直播场次ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_student_live` (`student_id`, `live_id`),
+  KEY `idx_live` (`live_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生直播开通表';
+
+-- ----------------------------
+-- 24.3 直播聊天消息表
 -- ----------------------------
 DROP TABLE IF EXISTS `live_message`;
 CREATE TABLE `live_message` (

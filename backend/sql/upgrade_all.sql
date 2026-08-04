@@ -613,12 +613,12 @@ INSERT IGNORE INTO `system_setting` (`setting_key`, `setting_value`, `remark`) V
 ('pay_enabled', '0', '课程在线支付总开关：0-关闭 1-开启');
 
 -- ============================================================
--- 15. 直播课程功能 (live_room场次表 + live_message聊天表)
+-- 15. 直播功能 (live_room场次表 + live_message聊天表 + student_live学生开通表)
 -- 直播结束后管理端回填 replay_url 即可事后观看回放
+-- 直播为独立模块: 不绑定课程, 每场直播可单独开通学生
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `live_room` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `course_id` bigint NOT NULL COMMENT '所属课程ID',
   `title` varchar(200) NOT NULL COMMENT '直播标题',
   `cover_url` varchar(500) DEFAULT NULL COMMENT '封面图',
   `anchor_name` varchar(100) DEFAULT NULL COMMENT '讲师姓名',
@@ -636,9 +636,29 @@ CREATE TABLE IF NOT EXISTS `live_room` (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_course` (`course_id`),
   KEY `idx_status_time` (`status`, `start_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='直播场次表';
+
+-- 历史版本遗留的 course_id 列(直播已与课程解耦), 幂等删除
+SET @live_col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'live_room' AND COLUMN_NAME = 'course_id');
+SET @live_ddl := IF(@live_col_exists > 0,
+    'ALTER TABLE `live_room` DROP COLUMN `course_id`',
+    'SELECT 1');
+PREPARE live_stmt FROM @live_ddl;
+EXECUTE live_stmt;
+DEALLOCATE PREPARE live_stmt;
+
+-- 学生直播开通表(每场直播单独开通)
+CREATE TABLE IF NOT EXISTS `student_live` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `live_id` bigint NOT NULL COMMENT '直播场次ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_student_live` (`student_id`, `live_id`),
+  KEY `idx_live` (`live_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生直播开通表';
 
 CREATE TABLE IF NOT EXISTS `live_message` (
   `id` bigint NOT NULL AUTO_INCREMENT,

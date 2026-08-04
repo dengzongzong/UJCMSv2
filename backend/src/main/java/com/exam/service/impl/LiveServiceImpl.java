@@ -16,10 +16,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,13 +34,16 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
     private LiveMessageMapper liveMessageMapper;
 
     @Autowired
-    private StudentCourseMapper studentCourseMapper;
-
-    @Autowired
-    private CourseMapper courseMapper;
+    private StudentLiveMapper studentLiveMapper;
 
     @Autowired
     private StudentMapper studentMapper;
+
+    @Autowired
+    private ProfessionMapper professionMapper;
+
+    @Autowired
+    private StudentProfessionMapper studentProfessionMapper;
 
     @Autowired
     private LiveProviderFactory providerFactory;
@@ -78,7 +86,6 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         }
         Map<String, Object> result = new HashMap<>();
         result.put("id", room.getId());
-        result.put("courseId", room.getCourseId());
         result.put("title", room.getTitle());
         result.put("coverUrl", room.getCoverUrl());
         result.put("anchorName", room.getAnchorName());
@@ -88,8 +95,6 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         result.put("status", room.getStatus());
         result.put("viewCount", room.getViewCount());
         result.put("replayUrl", room.getReplayUrl());
-        Course course = courseMapper.selectById(room.getCourseId());
-        result.put("courseName", course != null ? course.getName() : "");
 
         // 在线人数(WebSocket实时)
         int online = liveWebSocketHandler.getOnlineCount(room.getId());
@@ -99,8 +104,8 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
             this.updateById(room);
         }
 
-        // 是否已开通该课程(决定能否播放直播/回放)
-        boolean opened = checkOpened(room.getCourseId(), userId);
+        // 是否已开通该直播(决定能否播放直播/回放)
+        boolean opened = checkOpened(room.getId(), userId);
         result.put("opened", opened);
 
         // 仅已开通用户返回播放地址(直播中/已结束均可观看)
@@ -115,21 +120,6 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
     }
 
     @Override
-    public List<LiveRoom> courseLives(Long courseId, Long userId) {
-        LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(LiveRoom::getCourseId, courseId)
-                .ne(LiveRoom::getStatus, 3)
-                .orderByAsc(LiveRoom::getStartTime);
-        List<LiveRoom> list = this.list(wrapper);
-        for (LiveRoom room : list) {
-            hideSecret(room);
-            room.setOpened(checkOpened(room.getCourseId(), userId));
-            fillExtra(room);
-        }
-        return list;
-    }
-
-    @Override
     public List<LiveRoom> liveList(Long userId) {
         LambdaQueryWrapper<LiveRoom> wrapper = new LambdaQueryWrapper<>();
         wrapper.ne(LiveRoom::getStatus, 3)
@@ -137,7 +127,7 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         List<LiveRoom> list = this.list(wrapper);
         for (LiveRoom room : list) {
             hideSecret(room);
-            room.setOpened(checkOpened(room.getCourseId(), userId));
+            room.setOpened(checkOpened(room.getId(), userId));
             fillExtra(room);
         }
         return list;
@@ -152,9 +142,6 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         }
         if (room.getTitle() == null || room.getTitle().isEmpty()) {
             throw new BusinessException("请填写直播标题");
-        }
-        if (room.getCourseId() == null) {
-            throw new BusinessException("请选择所属课程");
         }
         // 自动生成流名与推拉流地址
         String streamName = provider.genStreamName();
@@ -324,9 +311,9 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         if (room.getStatus() == 0) {
             throw new BusinessException("直播尚未开始");
         }
-        // 权限校验: 必须已开通该课程
-        if (!checkOpened(room.getCourseId(), userId)) {
-            throw new BusinessException("您尚未开通该课程，请联系管理员开通后再观看直播");
+        // 权限校验: 必须已开通该直播
+        if (!checkOpened(room.getId(), userId)) {
+            throw new BusinessException("您尚未开通该直播，请联系管理员开通后再观看直播");
         }
         room.setViewCount((room.getViewCount() == null ? 0 : room.getViewCount()) + 1);
         this.updateById(room);
@@ -374,22 +361,18 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         return msg;
     }
 
-    private boolean checkOpened(Long courseId, Long userId) {
+    private boolean checkOpened(Long liveId, Long userId) {
         if (userId == null) {
             return false;
         }
-        LambdaQueryWrapper<StudentCourse> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StudentCourse::getStudentId, userId)
-                .eq(StudentCourse::getCourseId, courseId)
+        LambdaQueryWrapper<StudentLive> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(StudentLive::getStudentId, userId)
+                .eq(StudentLive::getLiveId, liveId)
                 .last("LIMIT 1");
-        return studentCourseMapper.selectCount(wrapper) > 0;
+        return studentLiveMapper.selectCount(wrapper) > 0;
     }
 
     private void fillExtra(LiveRoom room) {
-        if (room.getCourseId() != null) {
-            Course course = courseMapper.selectById(room.getCourseId());
-            room.setCourseName(course != null ? course.getName() : "");
-        }
         room.setOnlineCount(liveWebSocketHandler.getOnlineCount(room.getId()));
     }
 
@@ -398,5 +381,122 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         room.setStreamName(null);
         room.setPushUrl(null);
         room.setPlayUrl(null);
+    }
+
+    @Override
+    public PageResult<Student> studentsPage(Long liveId, Integer page, Integer size, String phone, String idCard, Integer exactCount, Integer unopened, String profession) {
+        // 显示最新N条：固定第1页，size = exactCount
+        if (exactCount != null && exactCount > 0) {
+            page = 1;
+            size = exactCount;
+        }
+        // 查询已开通该直播的学生ID集合
+        List<StudentLive> studentLives = studentLiveMapper.selectList(
+                new LambdaQueryWrapper<StudentLive>().eq(StudentLive::getLiveId, liveId));
+        Set<Long> openedIds = studentLives.stream().map(StudentLive::getStudentId).collect(Collectors.toSet());
+
+        // 按专业筛选: 先查 profession 表按名称匹配,再查 student_profession 关联表获取 studentId
+        Set<Long> professionFilteredIds = null;
+        if (StringUtils.hasText(profession)) {
+            List<Profession> matchedProfessions = professionMapper.selectList(
+                    new LambdaQueryWrapper<Profession>().like(Profession::getName, profession));
+            if (matchedProfessions.isEmpty()) {
+                return new PageResult<>(new Page<>(page, size));
+            }
+            Set<Long> profIds = matchedProfessions.stream().map(Profession::getId).collect(Collectors.toSet());
+            List<StudentProfession> sps = studentProfessionMapper.selectList(
+                    new LambdaQueryWrapper<StudentProfession>().in(StudentProfession::getProfessionId, profIds));
+            professionFilteredIds = sps.stream().map(StudentProfession::getStudentId).collect(Collectors.toSet());
+            if (professionFilteredIds.isEmpty()) {
+                return new PageResult<>(new Page<>(page, size));
+            }
+        }
+
+        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StringUtils.hasText(phone), Student::getPhone, phone);
+        wrapper.like(StringUtils.hasText(idCard), Student::getIdCard, idCard);
+        if (professionFilteredIds != null) {
+            wrapper.in(Student::getId, professionFilteredIds);
+        }
+        if (unopened != null && unopened == 1) {
+            // 未开通：id NOT IN openedIds
+            if (!openedIds.isEmpty()) {
+                wrapper.notIn(Student::getId, openedIds);
+            }
+        } else {
+            // 已开通：id IN openedIds
+            if (openedIds.isEmpty()) {
+                return new PageResult<>(new Page<>(page, size)); // 空分页
+            }
+            wrapper.in(Student::getId, openedIds);
+        }
+        wrapper.orderByDesc(Student::getCreateTime).orderByDesc(Student::getId);
+        Page<Student> p = new Page<>(page, size);
+        Page<Student> result = studentMapper.selectPage(p, wrapper);
+        result.getRecords().forEach(s -> s.setPassword(null));
+        // 填充专业名称
+        fillProfessionNames(result.getRecords());
+        return new PageResult<>(result);
+    }
+
+    /** 批量填充学生的专业名称(通过 student_profession 关联表) */
+    private void fillProfessionNames(List<Student> students) {
+        if (students == null || students.isEmpty()) return;
+        Set<Long> studentIds = students.stream().map(Student::getId).collect(Collectors.toSet());
+        List<StudentProfession> sps = studentProfessionMapper.selectList(
+                new LambdaQueryWrapper<StudentProfession>().in(StudentProfession::getStudentId, studentIds));
+        if (sps.isEmpty()) return;
+        Set<Long> profIds = sps.stream().map(StudentProfession::getProfessionId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> profNameMap = new HashMap<>();
+        if (!profIds.isEmpty()) {
+            List<Profession> professions = professionMapper.selectBatchIds(profIds);
+            for (Profession p : professions) {
+                profNameMap.put(p.getId(), p.getName());
+            }
+        }
+        Map<Long, List<String>> studentProfNames = new HashMap<>();
+        for (StudentProfession sp : sps) {
+            String pname = profNameMap.get(sp.getProfessionId());
+            if (pname != null) {
+                studentProfNames.computeIfAbsent(sp.getStudentId(), k -> new ArrayList<>()).add(pname);
+            }
+        }
+        for (Student s : students) {
+            List<String> names = studentProfNames.get(s.getId());
+            if (names != null && !names.isEmpty()) {
+                s.setProfessionName(String.join(",", names));
+            }
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void openStudents(Long liveId, List<Long> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return;
+        }
+        // 查询已存在的开通记录
+        List<StudentLive> existing = studentLiveMapper.selectList(
+                new LambdaQueryWrapper<StudentLive>()
+                        .eq(StudentLive::getLiveId, liveId)
+                        .in(StudentLive::getStudentId, studentIds));
+        Set<Long> existingIds = existing.stream().map(StudentLive::getStudentId).collect(Collectors.toSet());
+        for (Long studentId : studentIds) {
+            if (existingIds.contains(studentId)) {
+                continue;
+            }
+            StudentLive sl = new StudentLive();
+            sl.setStudentId(studentId);
+            sl.setLiveId(liveId);
+            studentLiveMapper.insert(sl);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void closeStudent(Long liveId, Long studentId) {
+        studentLiveMapper.delete(new LambdaQueryWrapper<StudentLive>()
+                .eq(StudentLive::getLiveId, liveId)
+                .eq(StudentLive::getStudentId, studentId));
     }
 }

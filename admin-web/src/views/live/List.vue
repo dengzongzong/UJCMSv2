@@ -46,9 +46,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="直播标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="courseName" label="所属课程" min-width="140" show-overflow-tooltip>
-          <template slot-scope="{ row }">{{ row.courseName || '-' }}</template>
-        </el-table-column>
         <el-table-column prop="anchorName" label="主播" width="110" align="center">
           <template slot-scope="{ row }">{{ row.anchorName || '-' }}</template>
         </el-table-column>
@@ -100,7 +97,6 @@
       <div v-loading="detailDialog.loading">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="直播标题" :span="2">{{ detailDialog.data.title }}</el-descriptions-item>
-          <el-descriptions-item label="所属课程">{{ detailDialog.data.courseName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="主播">{{ detailDialog.data.anchorName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ detailDialog.data.startTime }}</el-descriptions-item>
           <el-descriptions-item label="状态">
@@ -158,12 +154,16 @@
       </div>
     </el-dialog>
 
-    <!-- 开通学生弹窗(复用课程开通, 直播权限=绑定课程的开通权限) -->
+    <!-- 开通学生弹窗(每场直播单独开通) -->
     <open-students
       v-if="openStudentsDialog.visible"
       :visible.sync="openStudentsDialog.visible"
-      :course-id="openStudentsDialog.courseId"
-      :course-name="openStudentsDialog.courseName"
+      :resource-id="openStudentsDialog.liveId"
+      :resource-name="openStudentsDialog.liveName"
+      resource-type="直播"
+      :fetch-api="getLiveStudents"
+      :open-api="openLiveStudents"
+      :close-api="closeLiveStudent"
     />
 
     <!-- 回放地址弹窗 -->
@@ -181,7 +181,7 @@
 </template>
 
 <script>
-import { livePage, liveDetail, deleteLive, startLive, stopLive, setLiveReplay } from '@/api/live'
+import { livePage, liveDetail, deleteLive, startLive, stopLive, setLiveReplay, getLiveStudents, openLiveStudents, closeLiveStudent } from '@/api/live'
 import OpenStudents from '@/views/course/OpenStudents.vue'
 import { apiUrl } from '@/utils/apiBase'
 import tableMaxHeight from '@/mixins/tableMaxHeight'
@@ -208,8 +208,8 @@ export default {
       },
       openStudentsDialog: {
         visible: false,
-        courseId: undefined,
-        courseName: ''
+        liveId: undefined,
+        liveName: ''
       },
       replayDialog: {
         visible: false,
@@ -279,9 +279,9 @@ export default {
       this.$router.push(`/live/edit/${row.id}`).catch(() => {})
     },
     handleOpenStudents(row) {
-      // 直播权限=绑定课程的开通权限, 直接对课程开通学生
-      this.openStudentsDialog.courseId = row.courseId
-      this.openStudentsDialog.courseName = row.courseName
+      // 每场直播单独开通学生
+      this.openStudentsDialog.liveId = row.id
+      this.openStudentsDialog.liveName = row.title
       this.openStudentsDialog.visible = true
     },
     handleDetail(row) {

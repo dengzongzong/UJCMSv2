@@ -8,7 +8,7 @@
   >
     <div v-loading="loading">
       <el-alert
-        :title="`当前课程：${courseName}`"
+        :title="displayTitle"
         type="info"
         :closable="false"
         show-icon
@@ -203,8 +203,16 @@ export default {
   name: 'CourseOpenStudents',
   props: {
     visible: { type: Boolean, default: false },
+    // 兼容旧调用(课程/考试): 传 courseId + courseName, 内部使用课程开通接口
     courseId: { type: [Number, String], default: null },
-    courseName: { type: String, default: '' }
+    courseName: { type: String, default: '' },
+    // 通用调用(直播等): 传 resourceId/resourceName + 自定义API
+    resourceId: { type: [Number, String], default: null },
+    resourceName: { type: String, default: '' },
+    resourceType: { type: String, default: '课程' },
+    fetchApi: { type: Function, default: null },
+    openApi: { type: Function, default: null },
+    closeApi: { type: Function, default: null }
   },
   data() {
     return {
@@ -229,12 +237,19 @@ export default {
       set(val) {
         this.$emit('update:visible', val)
       }
+    },
+    rid() {
+      return this.resourceId !== null && this.resourceId !== undefined ? this.resourceId : this.courseId
+    },
+    displayTitle() {
+      const name = this.resourceName || this.courseName || ''
+      return `当前${this.resourceType}：${name}`
     }
   },
   watch: {
     visible: {
       handler(val) {
-        if (val && this.courseId) {
+        if (val && this.rid) {
           this.activeTab = 'opened'
           this.openedQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
           this.addQuery = { page: 1, size: 10, phone: '', idCard: '', exactCount: null, profession: '' }
@@ -270,7 +285,8 @@ export default {
         exactCount: this.openedQuery.exactCount,
         profession: this.openedQuery.profession
       }
-      getCourseStudents(this.courseId, params)
+      const fetchFn = this.fetchApi || getCourseStudents
+      fetchFn(this.rid, params)
         .then((res) => {
           const data = res.data || {}
           this.opened = data.records || data.list || data.rows || []
@@ -295,7 +311,8 @@ export default {
         profession: this.addQuery.profession,
         unopened: 1
       }
-      getCourseStudents(this.courseId, params)
+      const fetchFn = this.fetchApi || getCourseStudents
+      fetchFn(this.rid, params)
         .then((res) => {
           const data = res.data || {}
           this.unopened = data.records || data.list || data.rows || []
@@ -336,7 +353,8 @@ export default {
         return
       }
       this.submitting = true
-      openCourseStudents({ courseId: this.courseId, studentIds: this.selected })
+      const openFn = this.openApi || ((rid, ids) => openCourseStudents({ courseId: rid, studentIds: ids }))
+      openFn(this.rid, this.selected)
         .then(() => {
           this.$message.success('开通成功')
           this.selected = []
@@ -353,9 +371,10 @@ export default {
         })
     },
     handleCloseStudent(row) {
-      this.$confirm(`确定取消为 "${row.phone}" 开通该课程吗?`, '提示', { type: 'warning' })
+      this.$confirm(`确定取消为 "${row.phone}" 开通吗?`, '提示', { type: 'warning' })
         .then(() => {
-          closeCourseStudent(this.courseId, row.id).then(() => {
+          const closeFn = this.closeApi || closeCourseStudent
+          closeFn(this.rid, row.id).then(() => {
             this.$message.success('已取消开通')
             this.fetchOpened()
           })

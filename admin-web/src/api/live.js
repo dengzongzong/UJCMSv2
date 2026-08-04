@@ -31,3 +31,15 @@ export function stopLive(id) {
 export function setLiveReplay(id, replayUrl) {
   return request({ url: '/admin/live/' + id + '/replay', method: 'post', data: { replayUrl } })
 }
+
+export function getLiveStudents(liveId, params) {
+  return request({ url: '/admin/live/' + liveId + '/students', method: 'get', params })
+}
+
+export function openLiveStudents(liveId, studentIds) {
+  return request({ url: '/admin/live/' + liveId + '/students', method: 'post', data: { studentIds } })
+}
+
+export function closeLiveStudent(liveId, studentId) {
+  return request({ url: '/admin/live/' + liveId + '/students/' + studentId, method: 'delete' })
+}

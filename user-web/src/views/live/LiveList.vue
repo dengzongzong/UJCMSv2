@@ -53,7 +53,6 @@
             </div>
             <div class="live-info">
               <div class="live-title">{{ item.title }}</div>
-              <div class="live-course">{{ item.courseName || '未绑定课程' }}</div>
               <div class="live-meta">
                 <span v-if="item.anchorName"><van-icon name="manager-o" /> {{ item.anchorName }}</span>
                 <span><van-icon name="clock-o" /> {{ item.startTime || '-' }}</span>
@@ -135,7 +134,7 @@ export default {
       if (!this.loggedIn) {
         Dialog.confirm({
           title: '需要先登录',
-          message: '直播中心展示所有直播场次，但您当前未登录。登录后若已开通对应课程即可观看直播与回放。是否现在登录？',
+          message: '直播中心展示所有直播场次，但您当前未登录。登录后若已开通对应直播即可观看直播与回放。是否现在登录？',
           confirmButtonText: '去登录',
           cancelButtonText: '取消'
         })
@@ -147,8 +146,8 @@ export default {
       }
       if (!item.opened) {
         Dialog.alert({
-          title: '未开通该课程',
-          message: `您尚未开通课程「${item.courseName || ''}」，请联系管理员开通后再观看直播与回放。`,
+          title: '未开通该直播',
+          message: '您尚未开通该直播，请联系管理员开通后再观看直播与回放。',
           confirmButtonText: '我知道了'
         }).catch(() => {})
         return

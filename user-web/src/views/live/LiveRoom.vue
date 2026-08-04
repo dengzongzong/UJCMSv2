@@ -10,7 +10,7 @@
           left-icon="warning-o"
           color="#ff976a"
           background="#fdf6ec"
-          :text="'您尚未开通课程「' + (detail.courseName || '') + '」，请联系管理员开通后再观看直播'"
+          :text="'您尚未开通该直播，请联系管理员开通后再观看直播'"
         />
 
         <div class="live-main">
@@ -34,7 +34,7 @@
                   直播已结束，回放地址由管理员发布后即可观看
                 </div>
                 <div v-if="!detail.opened" class="placeholder-sub">
-                  开通课程后可观看直播与回放
+                  开通该直播后可观看直播与回放
                 </div>
               </div>
             </div>
@@ -92,32 +92,7 @@
                 发送
               </van-button>
             </div>
-            <div v-if="!canChat" class="chat-tip">登录并开通课程后即可参与互动</div>
-          </div>
-        </div>
-
-        <!-- 课程其他直播场次 -->
-        <div v-if="courseLives.length > 1" class="section-block">
-          <div class="block-title">本课程其他直播</div>
-          <div class="other-live-list">
-            <div
-              v-for="item in courseLives"
-              :key="item.id"
-              class="other-live-item"
-              :class="{ active: item.id === liveId }"
-              @click="switchLive(item.id)"
-            >
-              <div class="other-live-info">
-                <div class="other-live-title">{{ item.title }}</div>
-                <div class="other-live-time">
-                  <van-tag :type="statusType(item.status)" size="small" style="margin-right: 6px">
-                    {{ statusTextOf(item.status) }}
-                  </van-tag>
-                  {{ item.startTime || '' }}
-                </div>
-              </div>
-              <van-icon name="arrow" color="#999" />
-            </div>
+            <div v-if="!canChat" class="chat-tip">登录并开通该直播后即可参与互动</div>
           </div>
         </div>
       </div>
@@ -129,7 +104,7 @@
 import Header from '@/components/Header.vue'
 import store from '@/store'
 import { Toast } from 'vant'
-import { getLiveDetail, enterLive, getCourseLives, getLiveMessages, sendLiveMessage } from '@/api/live'
+import { getLiveDetail, enterLive, getLiveMessages, sendLiveMessage } from '@/api/live'
 import { apiBase, resolveImg } from '@/utils/apiBase'
 
 export default {
@@ -142,8 +117,6 @@ export default {
         loaded: false,
         id: null,
         title: '',
-        courseId: null,
-        courseName: '',
         coverUrl: '',
         anchorName: '',
         intro: '',
@@ -155,7 +128,6 @@ export default {
         playUrl: '',
         opened: false
       },
-      courseLives: [],
       messages: [],
       inputText: '',
       sending: false,
@@ -196,7 +168,7 @@ export default {
     placeholderText() {
       if (this.detail.status === 0) return '直播尚未开始，敬请期待'
       if (this.detail.status === 1) {
-        return this.detail.opened ? '正在加载直播流...' : '开通课程后即可观看直播'
+        return this.detail.opened ? '正在加载直播流...' : '开通该直播后即可观看直播'
       }
       if (this.detail.status === 2) {
         return this.detail.replayUrl ? '' : '直播已结束'
@@ -237,10 +209,6 @@ export default {
         }
         this.initPlayer()
         this.initChat()
-        // 详情加载完再拉同课程其他直播场次
-        if (this.detail.courseId) {
-          this.fetchCourseLives()
-        }
       } catch (e) {
         this.detail.loaded = true
         this.detail.status = 3
@@ -251,15 +219,6 @@ export default {
         this.detail.viewCount = (res.data && res.data) || this.detail.viewCount
       }).catch(() => {})
     },
-    fetchCourseLives() {
-      getCourseLives(this.detail.courseId)
-        .then((res) => {
-          this.courseLives = (res.data || []).filter((it) => it.id !== this.liveId)
-        })
-        .catch(() => {
-          this.courseLives = []
-        })
-    },
     switchLive(id) {
       this.closeAll()
       this.messages = []
@@ -268,8 +227,6 @@ export default {
         loaded: false,
         id: null,
         title: '',
-        courseId: null,
-        courseName: '',
         coverUrl: '',
         anchorName: '',
         intro: '',

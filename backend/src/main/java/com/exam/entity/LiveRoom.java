@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 public class LiveRoom {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long courseId;
     private String title;
     private String coverUrl;
     private String anchorName;
@@ -36,13 +35,10 @@ public class LiveRoom {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
 
-    /** 课程名称(非数据库字段) */
-    @TableField(exist = false)
-    private String courseName;
     /** 在线人数(非数据库字段, WebSocket维护) */
     @TableField(exist = false)
     private Integer onlineCount;
-    /** 当前用户是否已开通该课程(非数据库字段, 用户端列表用) */
+    /** 当前用户是否已开通该直播(非数据库字段, 用户端列表用) */
     @TableField(exist = false)
     private Boolean opened;
 }

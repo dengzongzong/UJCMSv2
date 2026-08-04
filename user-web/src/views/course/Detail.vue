@@ -115,52 +115,6 @@
               </div>
             </div>
 
-            <!-- 直播课程(后台配置,点击进入直播间,直播结束后可看回放) -->
-            <div v-if="courseLives.length" class="section-block">
-              <div class="block-title">直播课程</div>
-              <div class="live-course-list">
-                <div v-for="live in courseLives" :key="live.id" class="live-course-item" @click="goLive(live.id)">
-                  <div class="live-course-left">
-                    <img
-                      v-if="live.coverUrl"
-                      :src="resolveImg(live.coverUrl)"
-                      class="live-course-cover"
-                      alt=""
-                    />
-                    <div v-else class="live-course-cover cover-placeholder">
-                      <van-icon name="video-o" color="#c8c9cc" size="24" />
-                    </div>
-                    <div class="live-course-info">
-                      <div class="live-course-title">{{ live.title }}</div>
-                      <div class="live-course-meta">
-                        <span v-if="live.anchorName">{{ live.anchorName }}</span>
-                        <span>{{ live.startTime || '' }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="live-course-right">
-                    <van-tag :type="liveStatusType(live.status)" size="small">
-                      {{ liveStatusText(live.status) }}
-                    </van-tag>
-                    <van-button
-                      v-if="live.status === 2"
-                      size="small"
-                      plain
-                      type="primary"
-                      icon="replay"
-                    >看回放</van-button>
-                    <van-button
-                      v-else
-                      size="small"
-                      plain
-                      type="danger"
-                      icon="video-o"
-                    >进入直播</van-button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <!-- 测评服务平台(后台配置,点击跳转) -->
             <div v-if="threeImages.length" class="section-block evaluate-section">
               <div class="section-header">
@@ -316,7 +270,6 @@
 import Header from '@/components/Header.vue'
 import { getCourseDetail, reportVideoProgress, getVideoInfo } from '@/api/course'
 import { createOrder, getOrderByNo } from '@/api/order'
-import { getCourseLives } from '@/api/live'
 import { resolveImg } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
 
@@ -352,7 +305,6 @@ export default {
       reportTimer: null,
       lastReportTime: null,
       threeImages: [],
-      courseLives: [],
       // 支付相关
       showPayPopup: false,
       payData: {},
@@ -393,7 +345,6 @@ export default {
   created() {
     this.fetchCourseDetail()
     this.loadThreeImages()
-    this.fetchCourseLives()
   },
   beforeDestroy() {
     this.stopReportTimer()
@@ -472,25 +423,6 @@ export default {
         clearInterval(this.pollTimer)
         this.pollTimer = null
       }
-    },
-    fetchCourseLives() {
-      if (!this.courseId) return
-      getCourseLives(this.courseId)
-        .then((res) => {
-          this.courseLives = res.data || []
-        })
-        .catch(() => {
-          this.courseLives = []
-        })
-    },
-    goLive(liveId) {
-      this.$router.push({ path: '/live/' + liveId }).catch(() => {})
-    },
-    liveStatusText(status) {
-      return ['未开始', '直播中', '已结束', '已取消'][status] || ''
-    },
-    liveStatusType(status) {
-      return ['info', 'danger', 'success', 'info'][status] || 'info'
     },
     onThreeImageClick(img) {
       const t = Number(img.linkType)

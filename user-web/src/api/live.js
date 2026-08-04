@@ -8,22 +8,15 @@ export function getLiveList() {
 }
 
 /**
- * 某课程下的直播场次(公开)
- */
-export function getCourseLives(courseId) {
-  return request({ url: '/user/live/public/course/' + courseId, method: 'get' })
-}
-
-/**
- * 直播间详情(公开, 已登录自动带 token 判断是否开通课程)
- * 已开通课程才返回播放地址
+ * 直播间详情(公开, 已登录自动带 token 判断是否开通该直播)
+ * 已开通该直播才返回播放地址
  */
 export function getLiveDetail(id) {
   return request({ url: '/user/live/public/' + id, method: 'get' })
 }
 
 /**
- * 进入直播间(校验课程开通 + 累计观看人次)
+ * 进入直播间(校验直播开通 + 累计观看人次)
  */
 export function enterLive(id) {
   return request({ url: '/user/live/' + id + '/enter', method: 'post' })
