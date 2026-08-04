@@ -134,6 +134,12 @@ jobs:
              cd deploy-pkg && \
              MYSQL_PASS='${{ secrets.MYSQL_PASS }}' \
              JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+             LIVE_PROVIDER='${{ secrets.LIVE_PROVIDER }}' \
+             LIVE_PUSH_HOST='${{ secrets.LIVE_PUSH_HOST }}' \
+             LIVE_PLAY_HOST='${{ secrets.LIVE_PLAY_HOST }}' \
+             TENCENT_PUSH_KEY='${{ secrets.TENCENT_PUSH_KEY }}' \
+             TENCENT_PLAY_KEY='${{ secrets.TENCENT_PLAY_KEY }}' \
+             ALIYUN_AUTH_KEY='${{ secrets.ALIYUN_AUTH_KEY }}' \
              bash remote-deploy.sh"
 
       # ===== 12. 清理 =====

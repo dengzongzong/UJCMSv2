@@ -133,6 +133,21 @@ async:
     retention-days: 7
     zombie-hours: 2
 
+# 直播配置(从环境变量注入, 未配置时使用默认值)
+live:
+  provider: ${LIVE_PROVIDER:-tencent}
+  app-name: live
+  push-host: ${LIVE_PUSH_HOST:-push.zgrlosta.org.cn}
+  play-host: ${LIVE_PLAY_HOST:-play.zgrlosta.org.cn}
+  tencent:
+    push-key: "${TENCENT_PUSH_KEY:-}"
+    play-key: "${TENCENT_PLAY_KEY:-}"
+    push-valid-seconds: 86400
+    play-valid-seconds: 172800
+  aliyun:
+    auth-key: "${ALIYUN_AUTH_KEY:-}"
+    valid-seconds: 86400
+
 logging:
   level:
     com.exam: info
