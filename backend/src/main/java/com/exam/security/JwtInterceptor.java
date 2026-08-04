@@ -137,6 +137,7 @@ public class JwtInterceptor implements HandlerInterceptor {
                 || path.startsWith("/public/")
                 || path.equals("/user/course/public/list")
                 || path.equals("/user/exam/public/list")
+                || path.startsWith("/user/live/public/")
                 || path.startsWith("/portal/certificate/")
                 || path.startsWith("/uploads/")
                 || path.startsWith("/static/")
