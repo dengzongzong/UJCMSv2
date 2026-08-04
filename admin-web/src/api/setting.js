@@ -59,3 +59,20 @@ export function updateQuestionCategory(data) {
 export function deleteQuestionCategory(id) {
   return request({ url: '/admin/setting/question-category/' + id, method: 'delete' })
 }
+
+// 考试安全设置（人脸识别）
+export function getFaceVerifyConfig() {
+  return request({ url: '/admin/face-verify/config', method: 'get' })
+}
+
+export function saveFaceVerifyConfig(data) {
+  return request({ url: '/admin/face-verify/config', method: 'put', data })
+}
+
+export function getFaceVerifyStats(date) {
+  return request({ url: '/admin/face-verify/stats', method: 'get', params: { date } })
+}
+
+export function getFaceVerifyLogs(params) {
+  return request({ url: '/admin/face-verify/logs', method: 'get', params })
+}

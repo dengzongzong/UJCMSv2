@@ -369,6 +369,12 @@ export const constantRoutes = [
         name: 'CertificateTypeList',
         component: () => import('@/views/certificateType/List.vue'),
         meta: { title: '证书类型', icon: 'el-icon-document' }
+      },
+      {
+        path: 'face-verify',
+        name: 'SettingFaceVerify',
+        component: () => import('@/views/setting/FaceVerify.vue'),
+        meta: { title: '考试安全设置', icon: 'el-icon-lock' }
       }
     ]
   },

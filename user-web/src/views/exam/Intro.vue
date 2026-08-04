@@ -94,7 +94,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { getExamIntro } from '@/api/exam'
+import { getExamIntro, getFaceVerifyInfo } from '@/api/exam'
 import { Dialog } from 'vant'
 
 export default {
@@ -107,7 +107,8 @@ export default {
       loaded: false,
       starting: false,
       countdownTimer: null,
-      countdownText: ''
+      countdownText: '',
+      faceVerifyEnabled: false
     }
   },
   computed: {
@@ -130,6 +131,7 @@ export default {
   },
   created() {
     this.fetchExamIntro()
+    this.fetchFaceVerifyConfig()
   },
   beforeDestroy() {
     if (this.countdownTimer) {
@@ -137,6 +139,15 @@ export default {
     }
   },
   methods: {
+    async fetchFaceVerifyConfig() {
+      try {
+        const res = await getFaceVerifyInfo(this.examId)
+        const data = res.data || {}
+        this.faceVerifyEnabled = !!data.enabled
+      } catch (e) {
+        this.faceVerifyEnabled = false
+      }
+    },
     async fetchExamIntro() {
       try {
         const res = await getExamIntro(this.examId)
@@ -195,14 +206,31 @@ export default {
       this.countdownTimer = setInterval(updateCountdown, 1000)
     },
     handleStartExam() {
+      const message = this.faceVerifyEnabled
+        ? '考试前需要进行人脸识别验证，请确保光线充足。确认开始吗？'
+        : '开始考试后，中途退出会自动保存进度，下次可继续答题（断点续考）。确认开始吗？'
+      const confirmText = this.faceVerifyEnabled ? '开始验证' : '开始考试'
+
       Dialog.confirm({
         title: '确认开始考试',
-        message: '开始考试后，中途退出会自动保存进度，下次可继续答题（断点续考）。确认开始吗？',
-        confirmButtonText: '开始考试',
+        message: message,
+        confirmButtonText: confirmText,
         confirmButtonColor: '#1989fa'
       }).then(() => {
-        this.doStartExam()
+        if (this.faceVerifyEnabled) {
+          this.goToFaceVerify()
+        } else {
+          this.doStartExam()
+        }
       }).catch(() => {})
+    },
+    goToFaceVerify() {
+      var savedRecordId = localStorage.getItem('exam_record_' + this.examId)
+      if (savedRecordId) {
+        this.$router.push('/exam/face-verify/' + this.examId + '?recordId=' + savedRecordId).catch(() => {})
+      } else {
+        this.$router.push('/exam/face-verify/' + this.examId).catch(() => {})
+      }
     },
     doStartExam() {
       // 不再调 startExam，直接跳转。Exam.vue 会统一调 getExamPaper（带 recordId）

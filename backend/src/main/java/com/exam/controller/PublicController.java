@@ -18,6 +18,7 @@ import com.exam.service.HomepageSectionService;
 import com.exam.service.NewsManageService;
 import com.exam.service.ProfessionSubjectService;
 import com.exam.service.VideoCategoryService;
+import com.exam.service.SystemSettingService;
 import com.exam.vo.CourseListItemVO;
 import com.exam.vo.ExamListItemVO;
 import com.exam.vo.ProfessionVO;
@@ -80,6 +81,9 @@ public class PublicController {
 
     @Autowired
     private ExamService examService;
+
+    @Autowired
+    private SystemSettingService systemSettingService;
 
     /**
      * 获取所有启用的专业及科目树
@@ -346,5 +350,28 @@ public class PublicController {
         }
 
         return Result.success(result);
+    }
+
+    /**
+     * 获取系统设置值(公开接口,供前端获取开关配置)
+     */
+    @GetMapping("/setting/{key}")
+    public Result<String> getSetting(@PathVariable String key) {
+        if (key == null || key.isEmpty()) {
+            return Result.success("");
+        }
+        // 只允许查询白名单内的配置key,防止泄露敏感配置
+        List<String> allowedKeys = java.util.Arrays.asList(
+            "face_verify_enabled", "face_verify_threshold", "face_verify_max_retries",
+            "agreement_required"
+        );
+        if (!allowedKeys.contains(key)) {
+            return Result.success("");
+        }
+        try {
+            return Result.success(systemSettingService.getValueByKey(key));
+        } catch (Exception e) {
+            return Result.success("");
+        }
     }
 }

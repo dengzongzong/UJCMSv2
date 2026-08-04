@@ -189,3 +189,14 @@ export function getBestRecords() {
     method: 'get'
   })
 }
+
+/**
+ * 获取考前人脸验证配置与状态
+ */
+export function getFaceVerifyInfo(examId) {
+  return request({
+    url: '/user/exam/face-verify-info',
+    method: 'get',
+    params: { examId }
+  })
+}

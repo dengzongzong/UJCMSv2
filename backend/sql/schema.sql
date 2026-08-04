@@ -374,10 +374,14 @@ CREATE TABLE `exam_record` (
   `submit_status` tinyint NOT NULL DEFAULT 0 COMMENT '0-未提交 1-已提交 2-自动交卷',
   `submit_time` datetime DEFAULT NULL COMMENT '提交时间',
   `has_certificate` tinyint NOT NULL DEFAULT 0 COMMENT '是否有证书',
+  `face_verify_status` tinyint DEFAULT 0 COMMENT '0-未验证 1-验证通过 2-验证失败 3-无需验证',
+  `face_verify_time` datetime DEFAULT NULL COMMENT '人脸验证时间',
+  `face_similarity` decimal(5,4) DEFAULT NULL COMMENT '人脸相似度(欧式距离，越小越相似)',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_student` (`student_id`),
-  KEY `idx_exam` (`exam_id`)
+  KEY `idx_exam` (`exam_id`),
+  KEY `idx_face_verify` (`face_verify_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考试记录表';
 
 -- ----------------------------
@@ -442,7 +446,30 @@ CREATE TABLE `system_setting` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统设置表';
 
 -- ----------------------------
--- 24. 视频开通记录表
+-- 24. 人脸验证日志表
+-- ----------------------------
+DROP TABLE IF EXISTS `face_verify_log`;
+CREATE TABLE `face_verify_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `exam_id` bigint NOT NULL COMMENT '考试ID',
+  `record_id` bigint DEFAULT NULL COMMENT '考试记录ID',
+  `verify_result` tinyint NOT NULL COMMENT '0-失败 1-成功',
+  `similarity` decimal(5,4) DEFAULT NULL COMMENT '相似度(欧式距离)',
+  `retry_count` int DEFAULT 0 COMMENT '重试次数',
+  `id_photo_url` varchar(500) DEFAULT NULL COMMENT '证件照URL',
+  `error_msg` varchar(500) DEFAULT NULL COMMENT '错误信息',
+  `device_info` varchar(255) DEFAULT NULL COMMENT '设备信息',
+  `ip_address` varchar(50) DEFAULT NULL COMMENT 'IP地址',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_student` (`student_id`),
+  KEY `idx_exam_record` (`exam_id`, `record_id`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人脸验证日志表';
+
+-- ----------------------------
+-- 25. 视频开通记录表
 -- ----------------------------
 CREATE TABLE IF NOT EXISTS `student_video` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -477,7 +504,10 @@ INSERT INTO `admin` (`username`, `password`, `role_name`, `is_super`, `permissio
 -- 系统设置
 INSERT INTO `system_setting` (`setting_key`, `setting_value`, `remark`) VALUES
 ('default_password', '123456', '学生默认密码'),
-('agreement_required', '1', '登录是否需勾选协议');
+('agreement_required', '1', '登录是否需勾选协议'),
+('face_verify_enabled', '0', '考前人脸识别开关：0-关闭 1-开启'),
+('face_verify_threshold', '0.6', '人脸比对阈值(欧式距离，越小越严格，建议0.4-0.6)'),
+('face_verify_max_retries', '3', '人脸验证最大重试次数');
 
 -- 关于我们
 INSERT INTO `about_us` (`service_phone`, `service_qrcode`, `content`) VALUES

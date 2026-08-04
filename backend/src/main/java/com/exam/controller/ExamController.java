@@ -5,11 +5,14 @@ import com.exam.common.PageResult;
 import com.exam.dto.SaveAnswerDTO;
 import com.exam.dto.SubmitExamDTO;
 import com.exam.service.ExamService;
+import com.exam.service.FaceVerifyService;
+import com.exam.vo.FaceVerifyConfigVO;
 import com.exam.vo.ExamIntroVO;
 import com.exam.vo.ExamListItemVO;
 import com.exam.vo.ExamRecordVO;
 import com.exam.vo.ExamResultVO;
 import com.exam.vo.ExamStartVO;
+import com.exam.vo.FaceVerifyStatusVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +35,9 @@ public class ExamController {
 
     @Autowired
     private ExamService examService;
+
+    @Autowired
+    private FaceVerifyService faceVerifyService;
 
     /**
      * 考试中心(列表): 所有启用考试, 未登录也能浏览; 已登录则标记 purchased
@@ -76,6 +83,26 @@ public class ExamController {
     public Result<Boolean> checkAccess(@RequestParam Long examId,
                                        @RequestAttribute(value = "userId", required = false) Long userId) {
         return Result.success(examService.checkExamAccess(examId, userId));
+    }
+
+    /**
+     * 考前人脸识别配置与状态查询
+     */
+    @GetMapping("/face-verify-info")
+    public Result<Map<String, Object>> faceVerifyInfo(
+            @RequestParam Long examId,
+            @RequestAttribute("userId") Long userId) {
+        Map<String, Object> result = new HashMap<>();
+        FaceVerifyConfigVO config = faceVerifyService.getConfig();
+        result.put("enabled", config.isEnabled());
+        result.put("threshold", config.getThreshold());
+        result.put("maxRetries", config.getMaxRetries());
+        if (config.isEnabled()) {
+            FaceVerifyStatusVO status = faceVerifyService.getStatus(userId, examId);
+            result.put("verified", status.isVerified());
+            result.put("similarity", status.getSimilarity());
+        }
+        return Result.success(result);
     }
 
     /**

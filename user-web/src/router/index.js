@@ -96,6 +96,12 @@ const routes = [
       meta: { requiresAuth: true, requiresSubject: true, title: '考试介绍' }
     },
     {
+      path: '/exam/face-verify/:id',
+      name: 'FaceVerify',
+      component: () => import('@/views/exam/FaceVerify.vue'),
+      meta: { requiresAuth: true, requiresSubject: true, title: '考前人脸识别' }
+    },
+    {
       path: '/exam/take/:id',
       name: 'ExamTake',
       component: () => import('@/views/exam/Exam.vue'),
