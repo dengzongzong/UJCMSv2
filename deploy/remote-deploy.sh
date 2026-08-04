@@ -226,6 +226,9 @@ server {
     ssl_session_cache   shared:SSL:10m;
     ssl_session_timeout 10m;
 
+    # 学员端静态资源根(server级, 防止子location缺root时落到默认欢迎页)
+    root /opt/exam-platform/user-web/dist/;
+
     # 管理后台 admin-web
     location /admin/ {
         alias /opt/exam-platform/admin-web/dist/;
@@ -238,14 +241,6 @@ server {
         root /opt/exam-platform/user-web/dist/;
         try_files \$uri \$uri/ /index.html;
         index index.html;
-    }
-
-    # entry html no-cache (always load latest js after deploy)
-    location = /admin/index.html {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-    location = /index.html {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
     # 后端 API
@@ -283,6 +278,9 @@ server {
     listen 80;
     server_name 43.162.107.232;
 
+    # 学员端静态资源根(server级, 防止子location缺root时落到默认欢迎页)
+    root /opt/exam-platform/user-web/dist/;
+
     location /admin/ {
         alias /opt/exam-platform/admin-web/dist/;
         try_files $uri $uri/ /admin/index.html;
@@ -293,14 +291,6 @@ server {
         root /opt/exam-platform/user-web/dist/;
         try_files $uri $uri/ /index.html;
         index index.html;
-    }
-
-    # entry html no-cache (always load latest js after deploy)
-    location = /admin/index.html {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-    location = /index.html {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
     location /api/ {
