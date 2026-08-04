@@ -90,6 +90,26 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/live',
+    component: Layout,
+    meta: { title: '直播管理', icon: 'el-icon-video-camera-solid' },
+    children: [
+      {
+        path: 'list',
+        name: 'LiveList',
+        component: () => import('@/views/live/List.vue'),
+        meta: { title: '直播管理', icon: 'el-icon-video-camera-solid' }
+      },
+      {
+        path: 'edit/:id?',
+        name: 'LiveEdit',
+        component: () => import('@/views/live/Edit.vue'),
+        hidden: true,
+        meta: { title: '直播编辑', activeMenu: '/live/list' }
+      }
+    ]
+  },
+  {
     path: '/course',
     component: Layout,
     meta: { title: '课程管理', icon: 'el-icon-reading' },

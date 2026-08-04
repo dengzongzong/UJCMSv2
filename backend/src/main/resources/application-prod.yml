@@ -50,6 +50,28 @@ async:
     retention-days: 7
     zombie-hours: 2
 
+# =====================================================================
+# 直播配置(生产环境请在服务器上填真实鉴权Key)
+# 域名: push.zgrlosta.org.cn / play.zgrlosta.org.cn
+# 切换云厂商: live.provider = tencent | aliyun
+# =====================================================================
+live:
+  provider: tencent
+  app-name: live
+  push-host: push.zgrlosta.org.cn
+  play-host: play.zgrlosta.org.cn
+  tencent:
+    # 腾讯云直播控制台-推流配置中的 Key
+    push-key: "YOUR_TENCENT_PUSH_KEY"
+    # 腾讯云直播控制台-播放配置中的 Key
+    play-key: "YOUR_TENCENT_PLAY_KEY"
+    push-valid-seconds: 86400
+    play-valid-seconds: 172800
+  aliyun:
+    # 阿里云直播控制台-推流域名鉴权配置中的主Key
+    auth-key: "YOUR_ALIYUN_AUTH_KEY"
+    valid-seconds: 86400
+
 logging:
   level:
     com.exam: info

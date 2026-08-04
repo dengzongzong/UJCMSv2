@@ -77,6 +77,12 @@ const routes = [
       meta: { requiresAuth: true, requiresSubject: false, title: '我的课程' }
     },
     {
+      path: '/live/:id',
+      name: 'LiveRoom',
+      component: () => import('@/views/live/LiveRoom.vue'),
+      meta: { requiresAuth: false, requiresSubject: false, title: '直播间' }
+    },
+    {
       path: '/exam',
       name: 'ExamCenter',
       component: () => import('@/views/exam/List.vue'),

@@ -35,6 +35,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         // 公开:课程/考试公开列表
                         "/api/user/course/public/list",
                         "/api/user/exam/public/list",
+                        // 公开:直播(列表/详情/聊天, 详情已登录可判断是否开通)
+                        "/api/user/live/public/**",
                         // 公开:学员端证书查询/下载(凭身份证+姓名双因子,无需登录)
                         "/api/portal/certificate/**",
                         // 静态资源

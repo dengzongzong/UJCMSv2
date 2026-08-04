@@ -110,6 +110,52 @@
               </div>
             </div>
 
+            <!-- 直播课程(后台配置,点击进入直播间,直播结束后可看回放) -->
+            <div v-if="courseLives.length" class="section-block">
+              <div class="block-title">直播课程</div>
+              <div class="live-course-list">
+                <div v-for="live in courseLives" :key="live.id" class="live-course-item" @click="goLive(live.id)">
+                  <div class="live-course-left">
+                    <img
+                      v-if="live.coverUrl"
+                      :src="resolveImg(live.coverUrl)"
+                      class="live-course-cover"
+                      alt=""
+                    />
+                    <div v-else class="live-course-cover cover-placeholder">
+                      <van-icon name="video-o" color="#c8c9cc" size="24" />
+                    </div>
+                    <div class="live-course-info">
+                      <div class="live-course-title">{{ live.title }}</div>
+                      <div class="live-course-meta">
+                        <span v-if="live.anchorName">{{ live.anchorName }}</span>
+                        <span>{{ live.startTime || '' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-course-right">
+                    <van-tag :type="liveStatusType(live.status)" size="small">
+                      {{ liveStatusText(live.status) }}
+                    </van-tag>
+                    <van-button
+                      v-if="live.status === 2"
+                      size="small"
+                      plain
+                      type="primary"
+                      icon="replay"
+                    >看回放</van-button>
+                    <van-button
+                      v-else
+                      size="small"
+                      plain
+                      type="danger"
+                      icon="video-o"
+                    >进入直播</van-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 测评服务平台(后台配置,点击跳转) -->
             <div v-if="threeImages.length" class="section-block evaluate-section">
               <div class="section-header">
@@ -218,6 +264,7 @@
 <script>
 import Header from '@/components/Header.vue'
 import { getCourseDetail, reportVideoProgress, getVideoInfo } from '@/api/course'
+import { getCourseLives } from '@/api/live'
 import { resolveImg } from '@/utils/apiBase'
 import { Toast, Dialog } from 'vant'
 
@@ -253,6 +300,7 @@ export default {
       reportTimer: null,
       lastReportTime: null,
       threeImages: [],
+      courseLives: [],
       defaultCover: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect fill="#e8e8e8" width="120" height="80"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#999" font-size="12">课程封面</text></svg>')
     }
   },
@@ -274,6 +322,7 @@ export default {
   created() {
     this.fetchCourseDetail()
     this.loadThreeImages()
+    this.fetchCourseLives()
   },
   beforeDestroy() {
     this.stopReportTimer()
@@ -285,6 +334,25 @@ export default {
     },
     goRegister() {
       this.$router.push({ path: '/register', query: { redirect: this.$route.fullPath } })
+    },
+    fetchCourseLives() {
+      if (!this.courseId) return
+      getCourseLives(this.courseId)
+        .then((res) => {
+          this.courseLives = res.data || []
+        })
+        .catch(() => {
+          this.courseLives = []
+        })
+    },
+    goLive(liveId) {
+      this.$router.push({ path: '/live/' + liveId }).catch(() => {})
+    },
+    liveStatusText(status) {
+      return ['未开始', '直播中', '已结束', '已取消'][status] || ''
+    },
+    liveStatusType(status) {
+      return ['info', 'danger', 'success', 'info'][status] || 'info'
     },
     onThreeImageClick(img) {
       const t = Number(img.linkType)
@@ -1112,6 +1180,80 @@ export default {
   font-weight: 500;
   color: #333;
   line-height: 1.5;
+}
+
+/* 直播课程 */
+.live-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.live-course-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.live-course-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.live-course-cover {
+  width: 96px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f6f8;
+}
+
+.live-course-info {
+  min-width: 0;
+}
+
+.live-course-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-course-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #969799;
+  display: flex;
+  gap: 10px;
+}
+
+.live-course-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 10px;
 }
 
 /* 移动端适配 */

@@ -49,6 +49,25 @@ async:
     # 超过该小时数仍处于 RUNNING 的任务会被判定为"僵尸",允许重试
     zombie-hours: 2
 
+live:
+  # 云厂商: tencent(腾讯云) | aliyun(阿里云)
+  provider: tencent
+  # 推拉流路径中的应用名
+  app-name: live
+  push-host: push.zgrlosta.org.cn
+  play-host: play.zgrlosta.org.cn
+  tencent:
+    # 推流鉴权Key(腾讯云直播控制台-推流配置获取)
+    push-key: ""
+    # 播放鉴权Key(腾讯云直播控制台-播放配置获取)
+    play-key: ""
+    push-valid-seconds: 86400
+    play-valid-seconds: 172800
+  aliyun:
+    # 鉴权主Key(阿里云直播控制台-推流域名/播放域名-鉴权配置获取)
+    auth-key: ""
+    valid-seconds: 86400
+
 logging:
   level:
     com.exam: debug

@@ -1,6 +1,7 @@
 package com.exam.config;
 
 import com.exam.ws.AsyncTaskWebSocketHandler;
+import com.exam.ws.LiveWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -18,9 +19,14 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Autowired
     private AsyncTaskWebSocketHandler asyncTaskHandler;
 
+    @Autowired
+    private LiveWebSocketHandler liveHandler;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(asyncTaskHandler, "/ws/task")
+                .setAllowedOriginPatterns("*");
+        registry.addHandler(liveHandler, "/ws/live/{liveId}")
                 .setAllowedOriginPatterns("*");
     }
 }

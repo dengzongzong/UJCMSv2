@@ -469,6 +469,49 @@ CREATE TABLE `face_verify_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人脸验证日志表';
 
 -- ----------------------------
+-- 24.1 直播场次表
+-- ----------------------------
+DROP TABLE IF EXISTS `live_room`;
+CREATE TABLE `live_room` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `course_id` bigint NOT NULL COMMENT '所属课程ID',
+  `title` varchar(200) NOT NULL COMMENT '直播标题',
+  `cover_url` varchar(500) DEFAULT NULL COMMENT '封面图',
+  `anchor_name` varchar(100) DEFAULT NULL COMMENT '讲师姓名',
+  `intro` text COMMENT '直播简介',
+  `start_time` datetime DEFAULT NULL COMMENT '计划开始时间',
+  `end_time` datetime DEFAULT NULL COMMENT '计划结束时间',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '0-未开始 1-直播中 2-已结束 3-已取消',
+  `stream_name` varchar(100) DEFAULT NULL COMMENT '直播流名(唯一,生成推拉流地址用)',
+  `push_url` varchar(600) DEFAULT NULL COMMENT 'RTMP推流地址(含鉴权,仅管理端可见)',
+  `play_url` varchar(600) DEFAULT NULL COMMENT 'HLS播放地址(直播流)',
+  `replay_url` varchar(600) DEFAULT NULL COMMENT '回放地址(结束后回填,可复看)',
+  `max_online` int DEFAULT 0 COMMENT '最高同时在线',
+  `view_count` int DEFAULT 0 COMMENT '累计观看人次',
+  `sort` int DEFAULT 0 COMMENT '排序',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_course` (`course_id`),
+  KEY `idx_status_time` (`status`, `start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='直播场次表';
+
+-- ----------------------------
+-- 24.2 直播聊天消息表
+-- ----------------------------
+DROP TABLE IF EXISTS `live_message`;
+CREATE TABLE `live_message` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `live_id` bigint NOT NULL COMMENT '直播ID',
+  `student_id` bigint DEFAULT NULL COMMENT '发言学生ID(游客为空)',
+  `nickname` varchar(100) DEFAULT NULL COMMENT '昵称',
+  `content` varchar(500) NOT NULL COMMENT '消息内容',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_live_time` (`live_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='直播聊天消息表';
+
+-- ----------------------------
 -- 25. 视频开通记录表
 -- ----------------------------
 CREATE TABLE IF NOT EXISTS `student_video` (
