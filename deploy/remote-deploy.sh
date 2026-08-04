@@ -215,7 +215,7 @@ server {
 
 # HTTPS 主配置
 server {
-    listen 443 ssl;
+    listen 443 ssl http2;
     server_name ${SERVER_DOMAIN} www.${SERVER_DOMAIN};
 
     ssl_certificate     ${SSL_CERT};
@@ -234,6 +234,15 @@ server {
         alias /opt/exam-platform/admin-web/dist/;
         try_files \$uri \$uri/ /admin/index.html;
         index index.html;
+        # 带内容hash的构建产物长缓存(immutable), 二次访问直接命中浏览器缓存
+        location ~* \.(js|css|woff2?|ttf|eot|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, max-age=31536000, immutable";
+        }
+        location ~* \.(png|jpe?g|gif|webp|ico)$ {
+            expires 7d;
+            add_header Cache-Control "public, max-age=604800";
+        }
     }
 
     # 学员端 user-web (根路径直接访问 user-web)
@@ -241,6 +250,19 @@ server {
         root /opt/exam-platform/user-web/dist/;
         try_files \$uri \$uri/ /index.html;
         index index.html;
+        # 带内容hash的构建产物长缓存(immutable), 二次访问直接命中浏览器缓存
+        location ~* \.(js|css|woff2?|ttf|eot|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, max-age=31536000, immutable";
+        }
+        location ~* \.(png|jpe?g|gif|webp|ico)$ {
+            expires 7d;
+            add_header Cache-Control "public, max-age=604800";
+        }
+        # index.html 不缓存(必须每次校验最新资源引用)
+        location = /index.html {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
     }
 
     # 后端 API
@@ -285,12 +307,34 @@ server {
         alias /opt/exam-platform/admin-web/dist/;
         try_files $uri $uri/ /admin/index.html;
         index index.html;
+        # 带内容hash的构建产物长缓存(immutable), 二次访问直接命中浏览器缓存
+        location ~* \.(js|css|woff2?|ttf|eot|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, max-age=31536000, immutable";
+        }
+        location ~* \.(png|jpe?g|gif|webp|ico)$ {
+            expires 7d;
+            add_header Cache-Control "public, max-age=604800";
+        }
     }
 
     location / {
         root /opt/exam-platform/user-web/dist/;
         try_files $uri $uri/ /index.html;
         index index.html;
+        # 带内容hash的构建产物长缓存(immutable), 二次访问直接命中浏览器缓存
+        location ~* \.(js|css|woff2?|ttf|eot|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, max-age=31536000, immutable";
+        }
+        location ~* \.(png|jpe?g|gif|webp|ico)$ {
+            expires 7d;
+            add_header Cache-Control "public, max-age=604800";
+        }
+        # index.html 不缓存(必须每次校验最新资源引用)
+        location = /index.html {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
     }
 
     location /api/ {
