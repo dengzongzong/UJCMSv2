@@ -106,6 +106,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e, HttpServletRequest request) {
         log.error("系统异常: {} - {}", request.getRequestURI(), e.getMessage(), e);
-        return Result.error("系统异常，请稍后重试");
+        String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        return Result.error("系统异常：" + msg);
+    }
+
+    /** 捕获 Error 类型异常(如 UnsatisfiedLinkError),避免原生库加载失败时返回裸 500 */
+    @ExceptionHandler(Throwable.class)
+    public Result<Void> handleThrowable(Throwable e, HttpServletRequest request) {
+        log.error("未预期异常(Throwable): {} - {} | {}", request.getRequestURI(), e.getClass().getName(), e.getMessage(), e);
+        String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        return Result.error("系统异常：" + msg);
     }
 }

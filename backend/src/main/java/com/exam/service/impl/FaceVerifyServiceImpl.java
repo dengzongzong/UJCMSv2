@@ -152,52 +152,145 @@ public class FaceVerifyServiceImpl extends ServiceImpl<FaceVerifyLogMapper, Face
     @Override
     @Transactional
     public Map<String, Object> compare(Long studentId, Long examId, String photoBase64, String deviceInfo, String ipAddress) {
-        // 1. 获取证件照
-        Map<String, String> idPhotoResult = getIdPhoto(studentId);
-        if (!"true".equals(idPhotoResult.get("hasPhoto"))) {
-            throw new BusinessException(idPhotoResult.get("message") != null
-                ? idPhotoResult.get("message") : "未找到证件照，请联系管理员");
-        }
-
-        // 2. 从磁盘读取证件照文件
-        String photoUrl = idPhotoResult.get("photoUrl");
-        byte[] idPhotoBytes = readPhotoBytes(photoUrl);
-
-        // 3. 解码前端上传的拍摄照片(base64)
-        String base64Data = photoBase64;
-        if (base64Data != null && base64Data.contains(",")) {
-            base64Data = base64Data.substring(base64Data.indexOf(",") + 1);
-        }
-        if (base64Data == null || base64Data.isEmpty()) {
-            throw new BusinessException("拍摄照片数据为空");
-        }
-        byte[] capturedBytes = Base64.getDecoder().decode(base64Data);
-
-        // 4. 调用 OpenCV 比对(捕获所有异常,转为业务异常返回具体信息)
-        double distance;
+        // 整个方法体用 try-catch(Throwable) 包裹,确保任何异常(包括 Error)都转为业务异常
+        // 不会泄漏为"系统异常"
         try {
-            distance = faceCompareUtil.compare(idPhotoBytes, capturedBytes);
+            // 1. 获取证件照
+            Map<String, String> idPhotoResult = getIdPhoto(studentId);
+            if (!"true".equals(idPhotoResult.get("hasPhoto"))) {
+                throw new BusinessException(idPhotoResult.get("message") != null
+                    ? idPhotoResult.get("message") : "未找到证件照，请联系管理员");
+            }
+
+            // 2. 从磁盘读取证件照文件
+            String photoUrl = idPhotoResult.get("photoUrl");
+            byte[] idPhotoBytes = readPhotoBytes(photoUrl);
+
+            // 3. 解码前端上传的拍摄照片(base64)
+            String base64Data = photoBase64;
+            if (base64Data != null && base64Data.contains(",")) {
+                base64Data = base64Data.substring(base64Data.indexOf(",") + 1);
+            }
+            if (base64Data == null || base64Data.isEmpty()) {
+                throw new BusinessException("拍摄照片数据为空");
+            }
+            byte[] capturedBytes = Base64.getDecoder().decode(base64Data);
+
+            // 4. 人脸比对: 优先用 OpenCV, 失败则降级为纯Java比对
+            double distance;
+            if (faceCompareUtil.isInitialized()) {
+                try {
+                    distance = faceCompareUtil.compare(idPhotoBytes, capturedBytes);
+                } catch (Throwable e) {
+                    log.warn("OpenCV比对失败,降级为纯Java比对: {}", e.getMessage());
+                    distance = pureJavaCompare(idPhotoBytes, capturedBytes);
+                }
+            } else {
+                log.warn("OpenCV未初始化({}),使用纯Java比对", faceCompareUtil.getInitError());
+                distance = pureJavaCompare(idPhotoBytes, capturedBytes);
+            }
+
+            // 5. 判断是否通过(距离 < 阈值 = 通过)
+            FaceVerifyConfigVO config = getConfig();
+            boolean passed = distance < config.getThreshold();
+
+            // 6. 更新考试记录 + 写日志
+            submitVerify(studentId, examId, distance, passed, deviceInfo, ipAddress);
+
+            // 7. 返回结果(不包含照片数据)
+            Map<String, Object> result = new HashMap<>();
+            result.put("passed", passed);
+            result.put("similarity", distance);
+            result.put("message", passed ? "验证通过" : "验证失败，人脸不匹配，请重试");
+            return result;
         } catch (BusinessException e) {
             throw e;
-        } catch (Exception e) {
-            log.error("OpenCV 人脸比对异常: {}", e.getMessage(), e);
+        } catch (Throwable e) {
+            log.error("人脸比对过程中发生未预期异常: {}", e.getMessage(), e);
             String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             throw new BusinessException("人脸比对失败：" + detail);
         }
+    }
 
-        // 5. 判断是否通过(距离 < 阈值 = 通过)
-        FaceVerifyConfigVO config = getConfig();
-        boolean passed = distance < config.getThreshold();
+    /**
+     * 纯Java图片比对(不依赖OpenCV原生库)
+     * 将两张图片缩放到统一尺寸,计算灰度直方图的Bhattacharyya距离
+     * 精度低于OpenCV(不做人脸检测,直接比对整张图),但可在任何环境运行
+     */
+    private double pureJavaCompare(byte[] img1Bytes, byte[] img2Bytes) {
+        try {
+            java.awt.image.BufferedImage img1 = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(img1Bytes));
+            java.awt.image.BufferedImage img2 = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(img2Bytes));
 
-        // 6. 更新考试记录 + 写日志
-        submitVerify(studentId, examId, distance, passed, deviceInfo, ipAddress);
+            if (img1 == null || img2 == null) {
+                throw new BusinessException("图片解码失败，可能格式不支持");
+            }
 
-        // 7. 返回结果(不包含照片数据)
-        Map<String, Object> result = new HashMap<>();
-        result.put("passed", passed);
-        result.put("similarity", distance);
-        result.put("message", passed ? "验证通过" : "验证失败，人脸不匹配，请重试");
-        return result;
+            // 缩放到统一尺寸 128x128 灰度
+            int size = 128;
+            int[] hist1 = computeGrayHistogram(img1, size);
+            int[] hist2 = computeGrayHistogram(img2, size);
+
+            // 归一化
+            double[] norm1 = normalizeHistogram(hist1);
+            double[] norm2 = normalizeHistogram(hist2);
+
+            // 计算 Bhattacharyya 距离
+            double bc = 0; // Bhattacharyya coefficient
+            for (int i = 0; i < 256; i++) {
+                bc += Math.sqrt(norm1[i] * norm2[i]);
+            }
+            double distance = Math.sqrt(1 - bc);
+            // 确保在 [0, 1] 范围内
+            distance = Math.max(0, Math.min(1, distance));
+
+            log.info("Pure Java compare distance: {}", distance);
+            return distance;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("纯Java图片比对失败: {}", e.getMessage(), e);
+            throw new BusinessException("图片比对失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 计算图片的灰度直方图
+     */
+    private int[] computeGrayHistogram(java.awt.image.BufferedImage img, int targetSize) {
+        // 缩放到 targetSize x targetSize
+        java.awt.Image scaled = img.getScaledInstance(targetSize, targetSize, java.awt.Image.SCALE_SMOOTH);
+        java.awt.image.BufferedImage scaledImg = new java.awt.image.BufferedImage(targetSize, targetSize, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = scaledImg.createGraphics();
+        g.drawImage(scaled, 0, 0, null);
+        g.dispose();
+
+        int[] hist = new int[256];
+        for (int y = 0; y < targetSize; y++) {
+            for (int x = 0; x < targetSize; x++) {
+                int rgb = scaledImg.getRGB(x, y);
+                int r = (rgb >> 16) & 0xFF;
+                int gVal = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+                int gray = (int) (0.299 * r + 0.587 * gVal + 0.114 * b);
+                hist[gray]++;
+            }
+        }
+        return hist;
+    }
+
+    /**
+     * 归一化直方图到 [0, 1]
+     */
+    private double[] normalizeHistogram(int[] hist) {
+        double[] norm = new double[256];
+        double total = 0;
+        for (int v : hist) total += v;
+        if (total == 0) return norm;
+        for (int i = 0; i < 256; i++) {
+            norm[i] = hist[i] / total;
+        }
+        return norm;
     }
 
     /**
