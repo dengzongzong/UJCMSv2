@@ -288,39 +288,55 @@ export default {
       this.loadingMessage = '正在加载人脸识别组件...'
       const faceapi = await this.ensureFaceApiLoaded()
 
-      this.loadingMessage = '正在加载AI模型...'
+      this.loadingMessage = '正在下载AI模型文件(约7MB)，请保持网络通畅...'
       const MODEL_URL = (process.env.BASE_URL || '/') + 'models'
 
       // 使用 tinyFaceDetector(190KB) 替代 ssdMobilenetv1(5.6MB),加载快30倍
-      // tinyFaceDetector 精度略低但足够用于考前验证,且对手机端更友好
+      // 三个模型并行加载,比串行快2-3倍;120秒超时兼容慢网络
       const modelNames = [
-        { net: faceapi.nets.tinyFaceDetector, label: '人脸检测模型' },
-        { net: faceapi.nets.faceLandmark68Net, label: '人脸特征点模型' },
-        { net: faceapi.nets.faceRecognitionNet, label: '人脸识别模型' }
+        { net: faceapi.nets.tinyFaceDetector, label: '人脸检测' },
+        { net: faceapi.nets.faceLandmark68Net, label: '特征点' },
+        { net: faceapi.nets.faceRecognitionNet, label: '人脸识别' }
       ]
-      for (const m of modelNames) {
-        this.loadingMessage = '正在加载' + m.label + '...'
+
+      const loadOne = async (m) => {
         try {
-          // 60秒超时,防止网络问题导致无限等待
           await Promise.race([
             m.net.loadFromUri(MODEL_URL),
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(m.label + '加载超时')), 60000)
+              setTimeout(() => reject(new Error(m.label + '加载超时')), 120000)
             )
           ])
+          return { label: m.label, ok: true }
         } catch (err) {
           console.error(m.label + '加载失败:', err)
-          // 提取实际错误信息,帮助排查(如 404, CORS, JSON parse error 等)
           var detail = ''
-          if (err && err.message) {
-            detail = err.message
-          } else if (typeof err === 'string') {
-            detail = err
-          } else if (err && err.status) {
-            detail = 'HTTP ' + err.status
-          }
-          throw new Error(m.label + '加载失败(' + detail + ')，请刷新页面重试')
+          if (err && err.message) detail = err.message
+          else if (typeof err === 'string') detail = err
+          else if (err && err.status) detail = 'HTTP ' + err.status
+          return { label: m.label, ok: false, detail: detail }
         }
+      }
+
+      // 并行启动所有模型加载
+      const promises = modelNames.map(loadOne)
+
+      // 轮询显示进度
+      let completed = 0
+      const total = modelNames.length
+      const checkProgress = setInterval(async () => {
+        const states = await Promise.all(promises.map(p => p.then(() => true, () => true)))
+        completed = states.filter(Boolean).length
+        this.loadingMessage = '正在下载AI模型(' + completed + '/' + total + ')...'
+      }, 500)
+
+      const results = await Promise.all(promises)
+      clearInterval(checkProgress)
+
+      const failed = results.filter(r => !r.ok)
+      if (failed.length > 0) {
+        const first = failed[0]
+        throw new Error(first.label + '模型加载失败(' + first.detail + ')，请切换WiFi后刷新重试')
       }
     },
 
