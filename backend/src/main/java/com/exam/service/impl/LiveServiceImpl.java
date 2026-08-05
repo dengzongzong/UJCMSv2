@@ -494,6 +494,8 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
             sl.setLiveId(liveId);
             studentLiveMapper.insert(sl);
         }
+        log.info("[live] openStudents 完成: liveId={}, 请求开通studentIds={}, 实际新增={}",
+                liveId, studentIds, studentIds.stream().filter(id -> !existingIds.contains(id)).collect(Collectors.toList()));
     }
 
     @Override
