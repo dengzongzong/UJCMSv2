@@ -3,6 +3,7 @@ package com.exam.common;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -85,6 +86,13 @@ public class GlobalExceptionHandler {
     public Result<Void> handleNullPointer(NullPointerException e, HttpServletRequest request) {
         log.error("空指针异常: {} - {}", request.getRequestURI(), e.getMessage(), e);
         return Result.error("数据处理异常，请检查数据是否完整后重试");
+    }
+
+    /** SQL语法异常:通常是数据库表/字段缺失,提示管理员执行升级脚本 */
+    @ExceptionHandler(BadSqlGrammarException.class)
+    public Result<Void> handleBadSqlGrammar(BadSqlGrammarException e, HttpServletRequest request) {
+        log.error("数据库异常: {} - {} | SQL: [{}]", request.getRequestURI(), e.getMessage(), e.getSql());
+        return Result.error("系统尚未完成数据库升级，请联系管理员执行升级脚本后重试");
     }
 
     @ExceptionHandler(HttpMessageNotWritableException.class)

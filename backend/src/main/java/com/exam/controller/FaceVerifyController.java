@@ -30,9 +30,10 @@ public class FaceVerifyController {
     @PostMapping("/verify")
     public Result<Void> submitVerify(
             @RequestAttribute("userId") Long userId,
-            @RequestParam Long examId,
             @RequestBody Map<String, Object> params,
             HttpServletRequest request) {
+        Long examId = params.get("examId") != null
+            ? Long.valueOf(params.get("examId").toString()) : null;
         Double similarity = params.get("similarity") != null
             ? Double.valueOf(params.get("similarity").toString()) : null;
         Boolean passed = (Boolean) params.get("passed");

@@ -40,6 +40,7 @@
           <div class="error-overlay" v-if="cameraError">
             <van-icon name="warning-o" size="32px" color="#ee0a24" />
             <span>{{ cameraErrorMessage }}</span>
+            <van-button size="small" type="primary" @click="retryInit" style="margin-top:12px">重新加载</van-button>
           </div>
         </div>
 
@@ -169,10 +170,24 @@ export default {
   },
 
   methods: {
+    retryInit() {
+      this.cameraError = false
+      this.cameraErrorMessage = ''
+      this.loading = true
+      this.loadingMessage = '正在重新加载...'
+      this.initFaceVerify()
+    },
+
     async initFaceVerify() {
       try {
         const configRes = await getFaceConfig()
         this.config = configRes.data || this.config
+
+        // 如果人脸识别未启用，直接进入考试
+        if (!this.config.enabled) {
+          this.goToExam()
+          return
+        }
 
         const statusRes = await getFaceStatus(this.examId)
         if (statusRes.data && statusRes.data.verified) {
@@ -186,7 +201,12 @@ export default {
       } catch (err) {
         console.error('初始化失败:', err)
         this.cameraError = true
-        this.cameraErrorMessage = err.message || '初始化失败'
+        let msg = err.message || '初始化失败'
+        // 后端返回的通用错误给用户更友好的提示
+        if (msg.includes('系统异常')) {
+          msg = '服务暂时不可用，请稍后刷新重试。如反复出现请联系管理员检查系统配置'
+        }
+        this.cameraErrorMessage = msg
       } finally {
         this.loading = false
       }
@@ -209,7 +229,13 @@ export default {
       for (const m of modelNames) {
         this.loadingMessage = '正在加载' + m.label + '...'
         try {
-          await m.net.loadFromUri(MODEL_URL)
+          // 30秒超时,防止网络问题导致无限等待
+          await Promise.race([
+            m.net.loadFromUri(MODEL_URL),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(m.label + '加载超时，请检查网络后刷新重试')), 30000)
+            )
+          ])
         } catch (err) {
           console.error(m.label + '加载失败:', err)
           throw new Error(m.label + '加载失败，请检查网络后刷新重试')
