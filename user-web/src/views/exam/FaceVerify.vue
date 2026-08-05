@@ -233,13 +233,59 @@ export default {
       }
     },
 
-    async loadModels() {
-      this.loadingMessage = '正在加载AI模型...'
-      const faceapi = window.faceapi
-      if (!faceapi) {
-        throw new Error('人脸识别组件加载失败，请刷新页面重试')
+    /**
+     * 动态加载 face-api.js 脚本(带重试)
+     * 不依赖 index.html 的 <script> 标签,避免 CDN 被墙或加载顺序问题
+     */
+    async ensureFaceApiLoaded() {
+      // 已加载则直接返回
+      if (window.faceapi && window.faceapi.nets) {
+        return window.faceapi
       }
-      const MODEL_URL = '/models'
+
+      // 查找是否已有 script 标签(可能正在加载中)
+      const existing = document.querySelector('script[data-face-api]')
+      if (existing) {
+        // 等待已有标签加载完成
+        await new Promise((resolve, reject) => {
+          existing.addEventListener('load', resolve)
+          existing.addEventListener('error', () => reject(new Error('人脸识别脚本加载失败')))
+        })
+        if (window.faceapi) return window.faceapi
+        throw new Error('人脸识别组件初始化失败')
+      }
+
+      // 动态创建 script 标签加载本地文件
+      const script = document.createElement('script')
+      script.src = (process.env.BASE_URL || '/') + 'js/face-api.min.js'
+      script.setAttribute('data-face-api', '1')
+      script.async = false
+
+      await new Promise((resolve, reject) => {
+        script.addEventListener('load', resolve)
+        script.addEventListener('error', () => reject(new Error('人脸识别脚本文件加载失败，请检查网络后刷新重试')))
+        document.head.appendChild(script)
+      })
+
+      // 等待 faceapi 对象可用(脚本加载后可能需要一帧时间初始化)
+      let retries = 0
+      while (!window.faceapi && retries < 20) {
+        await new Promise(r => setTimeout(r, 50))
+        retries++
+      }
+
+      if (!window.faceapi) {
+        throw new Error('人脸识别组件初始化超时，请刷新页面重试')
+      }
+      return window.faceapi
+    },
+
+    async loadModels() {
+      this.loadingMessage = '正在加载人脸识别组件...'
+      const faceapi = await this.ensureFaceApiLoaded()
+
+      this.loadingMessage = '正在加载AI模型...'
+      const MODEL_URL = (process.env.BASE_URL || '/') + 'models'
 
       // 逐个加载模型,便于定位哪个模型加载失败
       const modelNames = [
@@ -275,7 +321,7 @@ export default {
         throw new Error(data.message || '未找到证件照，可点击下方跳过验证直接进入考试')
       }
 
-      const faceapi = window.faceapi
+      const faceapi = await this.ensureFaceApiLoaded()
       const img = await faceapi.fetchImage(data.photoUrl)
       const detection = await faceapi
         .detectSingleFace(img)
