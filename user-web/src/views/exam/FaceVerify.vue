@@ -41,6 +41,7 @@
             <van-icon name="warning-o" size="32px" color="#ee0a24" />
             <span>{{ cameraErrorMessage }}</span>
             <van-button size="small" type="primary" @click="retryInit" style="margin-top:12px">重新加载</van-button>
+            <van-button v-if="allowSkip" size="small" type="warning" @click="skipToExam" style="margin-top:8px">跳过验证，进入考试</van-button>
           </div>
         </div>
 
@@ -129,7 +130,10 @@ export default {
       retryCount: 0,
 
       stream: null,
-      detectInterval: null
+      detectInterval: null,
+
+      // 证件照缺失时允许跳过(记录为验证失败)
+      allowSkip: false
     }
   },
 
@@ -176,6 +180,23 @@ export default {
       this.loading = true
       this.loadingMessage = '正在重新加载...'
       this.initFaceVerify()
+    },
+
+    async skipToExam() {
+      // 证件照缺失时跳过验证,向后端提交一条"验证失败"记录
+      try {
+        await submitVerifyResult({
+          examId: this.examId,
+          similarity: null,
+          passed: false,
+          deviceInfo: navigator.userAgent
+        })
+      } catch (e) {
+        // 提交失败不阻塞考试
+        console.warn('跳过验证记录提交失败:', e)
+      }
+      this.$toast('已跳过人脸验证，正在进入考试...')
+      setTimeout(() => this.goToExam(), 1000)
     },
 
     async initFaceVerify() {
@@ -249,7 +270,9 @@ export default {
       const data = res.data || {}
 
       if (data.hasPhoto !== 'true') {
-        throw new Error(data.message || '未找到证件照')
+        // 证件照缺失:允许跳过验证(记录为失败),不卡死学生
+        this.allowSkip = true
+        throw new Error(data.message || '未找到证件照，可点击下方跳过验证直接进入考试')
       }
 
       const faceapi = window.faceapi

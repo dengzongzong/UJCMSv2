@@ -118,15 +118,20 @@ public class FaceVerifyServiceImpl extends ServiceImpl<FaceVerifyLogMapper, Face
         record.setFaceSimilarity(similarity != null ? BigDecimal.valueOf(similarity) : null);
         examRecordMapper.updateById(record);
 
-        FaceVerifyLog faceLog = new FaceVerifyLog();
-        faceLog.setStudentId(studentId);
-        faceLog.setExamId(examId);
-        faceLog.setRecordId(record.getId());
-        faceLog.setVerifyResult(passed ? 1 : 0);
-        faceLog.setSimilarity(similarity != null ? BigDecimal.valueOf(similarity) : null);
-        faceLog.setDeviceInfo(deviceInfo);
-        faceLog.setIpAddress(ipAddress);
-        this.save(faceLog);
+        try {
+            FaceVerifyLog faceLog = new FaceVerifyLog();
+            faceLog.setStudentId(studentId);
+            faceLog.setExamId(examId);
+            faceLog.setRecordId(record.getId());
+            faceLog.setVerifyResult(passed ? 1 : 0);
+            faceLog.setSimilarity(similarity != null ? BigDecimal.valueOf(similarity) : null);
+            faceLog.setDeviceInfo(deviceInfo);
+            faceLog.setIpAddress(ipAddress);
+            this.save(faceLog);
+        } catch (Exception e) {
+            // 日志表写入失败不影响考试流程
+            log.warn("人脸验证日志写入失败: {}", e.getMessage());
+        }
     }
 
     @Override
