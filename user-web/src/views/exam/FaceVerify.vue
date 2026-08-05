@@ -76,7 +76,7 @@
           :disabled="!faceDetected || cameraError || loading"
           @click="handleVerify"
         >
-          {{ verifying ? '比对中...' : '开始验证' }}
+          {{ verifying ? (lightMode ? '拍照中...' : '比对中...') : (lightMode ? '拍照并进入考试' : '开始验证') }}
         </van-button>
 
         <van-button
@@ -136,7 +136,11 @@ export default {
       detectInterval: null,
 
       // 证件照缺失时允许跳过(记录为验证失败)
-      allowSkip: false
+      allowSkip: false,
+
+      // 轻量模式：高级模型加载失败时只检测人脸+拍照存档
+      lightMode: false,
+      snapshotUploading: false
     }
   },
 
@@ -144,7 +148,10 @@ export default {
     statusMessage() {
       if (this.loading) return this.loadingMessage
       if (this.cameraError) return this.cameraErrorMessage
+      if (this.verifying && this.lightMode) return '正在拍照存档...'
       if (this.verifying) return '正在比对人脸特征...'
+      if (this.lightMode && this.faceDetected) return '轻量模式：人脸已检测到，点击拍照进入考试'
+      if (this.lightMode) return '轻量模式：请正对摄像头'
       if (this.faceDetected) return '人脸已定位，点击验证'
       if (this.faceMismatch) return '请正对摄像头，确保面部清晰'
       return '请正对摄像头'
@@ -157,6 +164,7 @@ export default {
     statusClass() {
       if (this.faceDetected) return 'status-success'
       if (this.cameraError || this.faceMismatch) return 'status-warning'
+      if (this.lightMode) return 'status-light'
       return 'status-normal'
     },
     similarityPercent() {
@@ -220,7 +228,9 @@ export default {
         }
 
         await this.loadModels()
-        await this.loadIdPhoto()
+        if (!this.lightMode) {
+          await this.loadIdPhoto()
+        }
         await this.initCamera()
       } catch (err) {
         console.error('初始化失败:', err)
@@ -291,18 +301,29 @@ export default {
       this.loadingMessage = '正在加载人脸识别组件...'
       const faceapi = await this.ensureFaceApiLoaded()
 
-      this.loadingMessage = '正在下载AI模型文件(约7MB)，请保持网络通畅...'
       const MODEL_URL = (process.env.BASE_URL || '/') + 'models'
 
-      // 使用 tinyFaceDetector(190KB) 替代 ssdMobilenetv1(5.6MB),加载快30倍
-      // 三个模型并行加载,比串行快2-3倍;120秒超时兼容慢网络
-      const modelNames = [
-        { net: faceapi.nets.tinyFaceDetector, label: '人脸检测' },
+      // 第一步：先加载 tinyFaceDetector（190KB，极快）
+      this.loadingMessage = '正在下载基础模型(190KB)...'
+      try {
+        await Promise.race([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('基础模型加载超时')), 30000)
+          )
+        ])
+      } catch (err) {
+        throw new Error('基础模型加载失败，请检查网络后刷新重试')
+      }
+
+      // 第二步：尝试加载高级模型（特征点 + 人脸识别，约6MB）
+      this.loadingMessage = '正在下载高级模型(约6MB)，请保持网络通畅...'
+      const advancedModels = [
         { net: faceapi.nets.faceLandmark68Net, label: '特征点' },
         { net: faceapi.nets.faceRecognitionNet, label: '人脸识别' }
       ]
 
-      const loadOne = async (m) => {
+      const loadAdvanced = async (m) => {
         try {
           await Promise.race([
             m.net.loadFromUri(MODEL_URL),
@@ -312,34 +333,18 @@ export default {
           ])
           return { label: m.label, ok: true }
         } catch (err) {
-          console.error(m.label + '加载失败:', err)
-          var detail = ''
-          if (err && err.message) detail = err.message
-          else if (typeof err === 'string') detail = err
-          else if (err && err.status) detail = 'HTTP ' + err.status
-          return { label: m.label, ok: false, detail: detail }
+          console.warn(m.label + '加载失败(将降级):', err)
+          return { label: m.label, ok: false }
         }
       }
 
-      // 并行启动所有模型加载
-      const promises = modelNames.map(loadOne)
+      const advancedResults = await Promise.all(advancedModels.map(loadAdvanced))
+      const advancedFailed = advancedResults.filter(r => !r.ok)
 
-      // 轮询显示进度
-      let completed = 0
-      const total = modelNames.length
-      const checkProgress = setInterval(async () => {
-        const states = await Promise.all(promises.map(p => p.then(() => true, () => true)))
-        completed = states.filter(Boolean).length
-        this.loadingMessage = '正在下载AI模型(' + completed + '/' + total + ')...'
-      }, 500)
-
-      const results = await Promise.all(promises)
-      clearInterval(checkProgress)
-
-      const failed = results.filter(r => !r.ok)
-      if (failed.length > 0) {
-        const first = failed[0]
-        throw new Error(first.label + '模型加载失败(' + first.detail + ')，请切换WiFi后刷新重试')
+      if (advancedFailed.length > 0) {
+        // 高级模型加载失败，进入轻量模式：只检测人脸，拍照存档
+        this.lightMode = true
+        this.$toast('网络较慢，已切换轻量验证模式')
       }
     },
 
@@ -422,17 +427,29 @@ export default {
         if (video.readyState !== video.HAVE_ENOUGH_DATA) return
 
         try {
-          const detection = await faceapi
-            .detectSingleFace(video, options)
-            .withFaceLandmarks()
-            .withFaceDescriptor()
-
-          if (detection) {
-            this.faceDetected = true
-            this.faceMismatch = false
-            this.faceDescriptor = detection.descriptor
+          if (this.lightMode) {
+            // 轻量模式：只检测人脸是否存在
+            const detection = await faceapi.detectSingleFace(video, options)
+            if (detection) {
+              this.faceDetected = true
+              this.faceMismatch = false
+            } else {
+              this.faceDetected = false
+            }
           } else {
-            this.faceDetected = false
+            // 完整模式：检测 + 特征提取
+            const detection = await faceapi
+              .detectSingleFace(video, options)
+              .withFaceLandmarks()
+              .withFaceDescriptor()
+
+            if (detection) {
+              this.faceDetected = true
+              this.faceMismatch = false
+              this.faceDescriptor = detection.descriptor
+            } else {
+              this.faceDetected = false
+            }
           }
         } catch (e) {
           // ignore
@@ -441,6 +458,11 @@ export default {
     },
 
     async handleVerify() {
+      if (this.lightMode) {
+        await this.handleLightVerify()
+        return
+      }
+
       if (!this.faceDescriptor || !this.idPhotoLoaded) {
         this.$toast('请等待人脸加载完成')
         return
@@ -482,6 +504,63 @@ export default {
       } finally {
         this.verifying = false
       }
+    },
+
+    /**
+     * 轻量验证：只检测人脸存在，截图压缩后上传服务器存档
+     * 用于高级模型加载失败时的降级方案
+     */
+    async handleLightVerify() {
+      if (!this.faceDetected) {
+        this.$toast('请先确保人脸在框内')
+        return
+      }
+
+      this.verifying = true
+
+      try {
+        const snapshot = await this.takeSnapshot()
+
+        await submitVerifyResult({
+          examId: this.examId,
+          similarity: null,
+          passed: true,
+          deviceInfo: navigator.userAgent,
+          snapshot: snapshot,
+          lightMode: true
+        })
+
+        this.verifyResult = true
+        this.$toast('拍照存档成功，即将进入考试')
+        setTimeout(() => this.goToExam(), 1500)
+      } catch (err) {
+        this.$toast.fail('上传失败：' + (err.message || '未知错误'))
+      } finally {
+        this.verifying = false
+      }
+    },
+
+    /**
+     * 从视频流截取一帧，压缩为 JPEG base64（约 50-100KB）
+     */
+    async takeSnapshot() {
+      const video = this.$refs.video
+      const canvas = this.$refs.canvas
+      const ctx = canvas.getContext('2d')
+
+      // 缩小尺寸减少体积：320x240
+      const width = 320
+      const height = 240
+      canvas.width = width
+      canvas.height = height
+
+      // 镜像翻转，与预览一致
+      ctx.setTransform(-1, 0, 0, 1, width, 0)
+      ctx.drawImage(video, 0, 0, width, height)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+
+      // quality 0.6 的 jpeg，体积通常 30-80KB
+      return canvas.toDataURL('image/jpeg', 0.6)
     },
 
     handleRetry() {
@@ -647,6 +726,7 @@ export default {
   &.status-normal { background: #f0f0f0; color: #666; }
   &.status-success { background: #e8f5e9; color: #4caf50; }
   &.status-warning { background: #fff3e0; color: #ff9800; }
+  &.status-light { background: #e3f2fd; color: #1976d2; }
 }
 
 .result-section {

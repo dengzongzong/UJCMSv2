@@ -27,3 +27,11 @@ export function getFaceVerifyInfo(examId) {
     params: { examId }
   })
 }
+
+export function uploadFaceSnapshot(data) {
+  return request({
+    url: '/user/face/snapshot',
+    method: 'post',
+    data
+  })
+}
