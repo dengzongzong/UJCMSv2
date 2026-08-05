@@ -265,6 +265,22 @@ server {
         }
     }
 
+    # face-api.js 人脸识别模型文件(禁用缓存,防止浏览器缓存旧的 index.html 回退响应)
+    location /models/ {
+        root /opt/exam-platform/user-web/dist/;
+        default_type application/octet-stream;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        try_files \$uri =404;
+    }
+
+    # face-api.js 本地脚本文件
+    location /js/ {
+        root /opt/exam-platform/user-web/dist/;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        try_files \$uri =404;
+    }
+
     # 后端 API
     location /api/ {
         proxy_pass http://127.0.0.1:8080/api/;
@@ -335,6 +351,22 @@ server {
         location = /index.html {
             add_header Cache-Control "no-cache, no-store, must-revalidate";
         }
+    }
+
+    # face-api.js 人脸识别模型文件(禁用缓存,防止浏览器缓存旧的 index.html 回退响应)
+    location /models/ {
+        root /opt/exam-platform/user-web/dist/;
+        default_type application/octet-stream;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        try_files $uri =404;
+    }
+
+    # face-api.js 本地脚本文件
+    location /js/ {
+        root /opt/exam-platform/user-web/dist/;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        try_files $uri =404;
     }
 
     location /api/ {

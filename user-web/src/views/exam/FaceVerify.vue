@@ -227,6 +227,10 @@ export default {
         if (msg.includes('系统异常')) {
           msg = '服务暂时不可用，请稍后刷新重试。如反复出现请联系管理员检查系统配置'
         }
+        // 模型加载失败或证件照缺失时,允许跳过验证进入考试
+        if (msg.includes('模型') || msg.includes('证件照') || msg.includes('组件')) {
+          this.allowSkip = true
+        }
         this.cameraErrorMessage = msg
       } finally {
         this.loading = false
@@ -305,7 +309,16 @@ export default {
           ])
         } catch (err) {
           console.error(m.label + '加载失败:', err)
-          throw new Error(m.label + '加载失败，请检查网络后刷新重试')
+          // 提取实际错误信息,帮助排查(如 404, CORS, JSON parse error 等)
+          var detail = ''
+          if (err && err.message) {
+            detail = err.message
+          } else if (typeof err === 'string') {
+            detail = err
+          } else if (err && err.status) {
+            detail = 'HTTP ' + err.status
+          }
+          throw new Error(m.label + '加载失败(' + detail + ')，请刷新页面重试')
         }
       }
     },
