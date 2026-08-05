@@ -15,6 +15,9 @@
             ref="video"
             autoplay
             playsinline
+            webkit-playsinline
+            x5-playsinline
+            x5-video-player-type="h5"
             muted
             :class="{ 'camera-error': cameraError }"
           ></video>
@@ -370,6 +373,11 @@ export default {
       this.loadingMessage = '正在启动摄像头...'
 
       try {
+        // 检查浏览器是否支持摄像头
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('当前浏览器不支持摄像头功能，请使用微信内置浏览器或Chrome/Safari')
+        }
+
         this.stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
@@ -381,15 +389,27 @@ export default {
 
         this.$refs.video.srcObject = this.stream
 
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           this.$refs.video.onloadedmetadata = resolve
+          // 5秒超时，防止视频永远挂起
+          setTimeout(() => reject(new Error('摄像头视频加载超时')), 5000)
         })
 
         this.startFaceDetection()
       } catch (err) {
         this.cameraError = true
-        this.cameraErrorMessage = '无法访问摄像头，请检查权限设置'
-        throw err
+        let msg = '无法访问摄像头'
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          msg = '摄像头权限被拒绝，请在浏览器设置中允许访问摄像头后刷新重试'
+        } else if (err.name === 'NotFoundError') {
+          msg = '未检测到摄像头设备，请检查设备是否连接'
+        } else if (err.name === 'NotReadableError') {
+          msg = '摄像头被其他应用占用，请关闭其他使用摄像头的应用后重试'
+        } else if (err.message) {
+          msg = err.message
+        }
+        this.cameraErrorMessage = msg
+        throw new Error(msg)
       }
     },
 
@@ -520,17 +540,34 @@ export default {
   width: 100%;
   max-width: 400px;
   margin: 0 auto;
-  aspect-ratio: 4/3;
   background: #000;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  /* 兼容不支持 aspect-ratio 的浏览器 */
+  aspect-ratio: 4/3;
 
   video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transform: scaleX(-1);
+    display: block;
+    /* 确保 iOS Safari 视频正常显示 */
+    -webkit-transform: scaleX(-1);
+  }
+}
+
+/* fallback: 旧浏览器用 padding-bottom 维持比例 */
+@supports not (aspect-ratio: 4/3) {
+  .camera-wrapper {
+    padding-bottom: 75%; /* 3/4 = 75% */
+    height: 0;
+  }
+  .camera-wrapper video {
+    position: absolute;
+    top: 0;
+    left: 0;
   }
 }
 
@@ -553,41 +590,47 @@ export default {
 
   .corner {
     position: absolute;
-    width: 30px;
-    height: 30px;
-    border-color: rgba(255, 255, 255, 0.5);
+    width: 36px;
+    height: 36px;
+    border-color: rgba(255, 255, 255, 0.85);
     border-style: solid;
     border-width: 0;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 
     &.top-left {
       top: 0; left: 0;
-      border-top-width: 3px;
-      border-left-width: 3px;
+      border-top-width: 4px;
+      border-left-width: 4px;
+      border-top-left-radius: 8px;
     }
     &.top-right {
       top: 0; right: 0;
-      border-top-width: 3px;
-      border-right-width: 3px;
+      border-top-width: 4px;
+      border-right-width: 4px;
+      border-top-right-radius: 8px;
     }
     &.bottom-left {
       bottom: 0; left: 0;
-      border-bottom-width: 3px;
-      border-left-width: 3px;
+      border-bottom-width: 4px;
+      border-left-width: 4px;
+      border-bottom-left-radius: 8px;
     }
     &.bottom-right {
       bottom: 0; right: 0;
-      border-bottom-width: 3px;
-      border-right-width: 3px;
+      border-bottom-width: 4px;
+      border-right-width: 4px;
+      border-bottom-right-radius: 8px;
     }
   }
 
   &.face-detected .corner {
     border-color: #1989fa;
-    box-shadow: 0 0 8px rgba(25, 137, 250, 0.5);
+    box-shadow: 0 0 12px rgba(25, 137, 250, 0.6);
   }
 
   &.face-mismatch .corner {
     border-color: #ee0a24;
+    box-shadow: 0 0 12px rgba(238, 10, 36, 0.4);
   }
 }
 
