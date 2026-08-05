@@ -43,6 +43,24 @@ public class FaceVerifyController {
         return Result.success();
     }
 
+    /**
+     * 后端人脸比对: 前端拍摄照片上传, 后端与证件照比对
+     * 不保存拍摄照片, 比对后即丢弃
+     */
+    @PostMapping("/compare")
+    public Result<Map<String, Object>> compare(
+            @RequestAttribute("userId") Long userId,
+            @RequestBody Map<String, Object> params,
+            HttpServletRequest request) {
+        Long examId = params.get("examId") != null
+            ? Long.valueOf(params.get("examId").toString()) : null;
+        String photo = params.get("photo") != null ? params.get("photo").toString() : "";
+        String deviceInfo = params.get("deviceInfo") != null ? params.get("deviceInfo").toString() : "";
+        String ipAddress = getClientIp(request);
+        Map<String, Object> result = faceVerifyService.compare(userId, examId, photo, deviceInfo, ipAddress);
+        return Result.success(result);
+    }
+
     @GetMapping("/status")
     public Result<FaceVerifyStatusVO> getStatus(
             @RequestAttribute("userId") Long userId,

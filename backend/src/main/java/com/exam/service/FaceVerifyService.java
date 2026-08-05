@@ -18,6 +18,19 @@ public interface FaceVerifyService extends IService<FaceVerifyLog> {
 
     void submitVerify(Long studentId, Long examId, Double similarity, Boolean passed, String deviceInfo, String ipAddress);
 
+    /**
+     * 后端人脸比对: 接收前端拍摄的照片, 与证件照比对
+     * 不保存拍摄照片, 只返回比对结果并更新考试记录
+     *
+     * @param studentId  学生ID
+     * @param examId     考试ID
+     * @param photoBase64 拍摄照片(base64编码, 可带 data:image/jpeg;base64, 前缀)
+     * @param deviceInfo 设备信息
+     * @param ipAddress  IP地址
+     * @return Map: {passed, similarity, message}
+     */
+    Map<String, Object> compare(Long studentId, Long examId, String photoBase64, String deviceInfo, String ipAddress);
+
     FaceVerifyStatusVO getStatus(Long studentId, Long examId);
 
     void saveConfig(String enabled, String threshold, String maxRetries);

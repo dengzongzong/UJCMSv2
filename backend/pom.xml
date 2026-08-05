@@ -103,6 +103,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- OpenCV: 服务端人脸检测与比对(前端不再下载大模型) -->
+        <dependency>
+            <groupId>org.openpnp</groupId>
+            <artifactId>opencv</artifactId>
+            <version>4.7.0-0</version>
+        </dependency>
+
     </dependencies>
 
     <build>

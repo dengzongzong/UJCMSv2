@@ -144,50 +144,9 @@ export default {
         const res = await getFaceVerifyInfo(this.examId)
         const data = res.data || {}
         this.faceVerifyEnabled = !!data.enabled
-        // 人脸识别开启时,提前预加载模型文件到浏览器缓存
-        // 用户浏览考试介绍时后台静默下载,等点"开始考试"时模型已在缓存中
-        if (this.faceVerifyEnabled) {
-          this.preloadFaceModels()
-        }
+        // 人脸比对已改为后端处理,前端无需预加载任何模型文件
       } catch (e) {
         this.faceVerifyEnabled = false
-      }
-    },
-    /**
-     * 预加载 face-api.js 脚本和模型文件到浏览器缓存
-     * 不阻塞页面,静默执行,失败也不影响后续流程
-     */
-    async preloadFaceModels() {
-      try {
-        var BASE = process.env.BASE_URL || '/'
-        // 1. 先加载 face-api.js 脚本(如果尚未加载)
-        if (!window.faceapi) {
-          await new Promise(function(resolve, reject) {
-            var s = document.createElement('script')
-            s.src = BASE + 'js/face-api.min.js'
-            s.setAttribute('data-face-api', '1')
-            s.onload = resolve
-            s.onerror = function() { reject(new Error('script load error')) }
-            document.head.appendChild(s)
-          })
-        }
-        // 2. 用 fetch 预取模型文件存入浏览器HTTP缓存(face-api.js loadFromUri后续命中缓存)
-        var modelFiles = [
-          'tiny_face_detector_model-weights_manifest.json',
-          'tiny_face_detector_model-shard1',
-          'face_landmark_68_model-weights_manifest.json',
-          'face_landmark_68_model-shard1',
-          'face_recognition_model-weights_manifest.json',
-          'face_recognition_model-shard1',
-          'face_recognition_model-shard2'
-        ]
-        modelFiles.forEach(function(f) {
-          fetch(BASE + 'models/' + f, { cache: 'force-cache' }).catch(function() {})
-        })
-        console.log('[preload] 人脸识别模型预加载已启动')
-      } catch (e) {
-        // 预加载失败不影响后续流程
-        console.warn('[preload] 模型预加载失败:', e.message)
       }
     },
     async fetchExamIntro() {

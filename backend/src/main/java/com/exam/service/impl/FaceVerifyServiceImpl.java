@@ -8,20 +8,25 @@ import com.exam.mapper.*;
 import com.exam.service.CertificatePhotoService;
 import com.exam.service.FaceVerifyService;
 import com.exam.service.SystemSettingService;
+import com.exam.util.FaceCompareUtil;
 import com.exam.vo.FaceVerifyConfigVO;
 import com.exam.vo.FaceVerifyLogVO;
 import com.exam.vo.FaceVerifyStatsVO;
 import com.exam.vo.FaceVerifyStatusVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +53,12 @@ public class FaceVerifyServiceImpl extends ServiceImpl<FaceVerifyLogMapper, Face
 
     @Autowired
     private ExamMapper examMapper;
+
+    @Autowired
+    private FaceCompareUtil faceCompareUtil;
+
+    @Value("${upload.path}")
+    private String uploadPath;
 
     @Override
     public FaceVerifyConfigVO getConfig() {
@@ -131,6 +142,86 @@ public class FaceVerifyServiceImpl extends ServiceImpl<FaceVerifyLogMapper, Face
         } catch (Exception e) {
             // 日志表写入失败不影响考试流程
             log.warn("人脸验证日志写入失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 后端人脸比对: 接收前端拍摄的照片, 与证件照比对
+     * 不保存拍摄照片, 只返回比对结果并更新考试记录
+     */
+    @Override
+    @Transactional
+    public Map<String, Object> compare(Long studentId, Long examId, String photoBase64, String deviceInfo, String ipAddress) {
+        // 1. 获取证件照
+        Map<String, String> idPhotoResult = getIdPhoto(studentId);
+        if (!"true".equals(idPhotoResult.get("hasPhoto"))) {
+            throw new BusinessException(idPhotoResult.get("message") != null
+                ? idPhotoResult.get("message") : "未找到证件照，请联系管理员");
+        }
+
+        // 2. 从磁盘读取证件照文件
+        String photoUrl = idPhotoResult.get("photoUrl");
+        byte[] idPhotoBytes = readPhotoBytes(photoUrl);
+
+        // 3. 解码前端上传的拍摄照片(base64)
+        String base64Data = photoBase64;
+        if (base64Data != null && base64Data.contains(",")) {
+            base64Data = base64Data.substring(base64Data.indexOf(",") + 1);
+        }
+        if (base64Data == null || base64Data.isEmpty()) {
+            throw new BusinessException("拍摄照片数据为空");
+        }
+        byte[] capturedBytes = Base64.getDecoder().decode(base64Data);
+
+        // 4. 调用 OpenCV 比对
+        double distance = faceCompareUtil.compare(idPhotoBytes, capturedBytes);
+
+        // 5. 判断是否通过(距离 < 阈值 = 通过)
+        FaceVerifyConfigVO config = getConfig();
+        boolean passed = distance < config.getThreshold();
+
+        // 6. 更新考试记录 + 写日志
+        submitVerify(studentId, examId, distance, passed, deviceInfo, ipAddress);
+
+        // 7. 返回结果(不包含照片数据)
+        Map<String, Object> result = new HashMap<>();
+        result.put("passed", passed);
+        result.put("similarity", distance);
+        result.put("message", passed ? "验证通过" : "验证失败，人脸不匹配，请重试");
+        return result;
+    }
+
+    /**
+     * 根据照片URL读取文件字节
+     * 支持: /uploads/xxx.jpg, http://xxx/api/uploads/xxx.jpg, 纯文件名
+     */
+    private byte[] readPhotoBytes(String photoUrl) {
+        try {
+            String filePath;
+            if (photoUrl == null || photoUrl.isEmpty()) {
+                throw new BusinessException("证件照URL为空");
+            }
+
+            if (photoUrl.contains("/uploads/")) {
+                // 提取 /uploads/ 后面的文件名
+                String filename = photoUrl.substring(photoUrl.lastIndexOf("/uploads/") + "/uploads/".length());
+                filePath = uploadPath + "/" + filename;
+            } else if (photoUrl.startsWith("/")) {
+                filePath = uploadPath + photoUrl;
+            } else {
+                filePath = uploadPath + "/" + photoUrl;
+            }
+
+            File file = new File(filePath);
+            if (!file.exists()) {
+                throw new BusinessException("证件照文件不存在，请联系管理员");
+            }
+            return Files.readAllBytes(file.toPath());
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("读取证件照文件失败: url={}, error={}", photoUrl, e.getMessage());
+            throw new BusinessException("证件照文件读取失败，请联系管理员");
         }
     }
 

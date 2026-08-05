@@ -23,11 +23,9 @@
           ></video>
           <canvas ref="canvas" style="display:none"></canvas>
 
-          <div class="face-overlay" v-if="!cameraError">
-            <div class="face-frame" :class="{
-              'face-detected': faceDetected,
-              'face-mismatch': faceMismatch
-            }">
+          <!-- 静态人脸框引导(不需要前端模型检测) -->
+          <div class="face-overlay" v-if="!cameraError && !loading">
+            <div class="face-frame">
               <div class="corner top-left"></div>
               <div class="corner top-right"></div>
               <div class="corner bottom-left"></div>
@@ -46,6 +44,9 @@
             <van-button size="small" type="primary" @click="retryInit" style="margin-top:12px">重新加载</van-button>
             <van-button v-if="allowSkip" size="small" type="warning" @click="skipToExam" style="margin-top:8px">跳过验证，进入考试</van-button>
           </div>
+
+          <!-- 拍照闪光效果 -->
+          <div class="flash-overlay" v-if="flash"></div>
         </div>
 
         <div class="status-bar" :class="statusClass">
@@ -73,10 +74,10 @@
           type="primary"
           size="large"
           :loading="verifying"
-          :disabled="!faceDetected || cameraError || loading"
+          :disabled="cameraError || loading"
           @click="handleVerify"
         >
-          {{ verifying ? (lightMode ? '拍照中...' : '比对中...') : (lightMode ? '拍照并进入考试' : '开始验证') }}
+          {{ verifying ? '比对中...' : '拍照验证' }}
         </van-button>
 
         <van-button
@@ -100,7 +101,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { getFaceConfig, getIdPhoto, submitVerifyResult, getFaceStatus } from '@/api/face'
+import { getFaceConfig, compareFace, submitVerifyResult, getFaceStatus } from '@/api/face'
 
 export default {
   name: 'FaceVerify',
@@ -117,30 +118,21 @@ export default {
       },
 
       loading: true,
-      loadingMessage: '正在加载AI模型...',
+      loadingMessage: '正在初始化...',
       cameraError: false,
       cameraErrorMessage: '',
       verifying: false,
-      faceDetected: false,
-      faceMismatch: false,
-
-      faceDescriptor: null,
-      idPhotoDescriptor: null,
-      idPhotoLoaded: false,
+      flash: false,
 
       verifyResult: null,
       similarity: null,
       retryCount: 0,
+      maxRetries: 3,
 
       stream: null,
-      detectInterval: null,
 
-      // 证件照缺失时允许跳过(记录为验证失败)
-      allowSkip: false,
-
-      // 轻量模式：高级模型加载失败时只检测人脸+拍照存档
-      lightMode: false,
-      snapshotUploading: false
+      // 系统异常时允许跳过(记录为验证失败)
+      allowSkip: false
     }
   },
 
@@ -148,27 +140,25 @@ export default {
     statusMessage() {
       if (this.loading) return this.loadingMessage
       if (this.cameraError) return this.cameraErrorMessage
-      if (this.verifying && this.lightMode) return '正在拍照存档...'
-      if (this.verifying) return '正在比对人脸特征...'
-      if (this.lightMode && this.faceDetected) return '轻量模式：人脸已检测到，点击拍照进入考试'
-      if (this.lightMode) return '轻量模式：请正对摄像头'
-      if (this.faceDetected) return '人脸已定位，点击验证'
-      if (this.faceMismatch) return '请正对摄像头，确保面部清晰'
-      return '请正对摄像头'
+      if (this.verifying) return '正在上传照片比对...'
+      if (this.verifyResult === true) return '验证通过'
+      if (this.verifyResult === false) return '验证失败，请重试'
+      return '请将面部对准框内，点击拍照验证'
     },
     statusIcon() {
-      if (this.faceDetected) return 'success'
-      if (this.cameraError || this.faceMismatch) return 'warning-o'
+      if (this.verifyResult === true) return 'success'
+      if (this.cameraError || this.verifyResult === false) return 'warning-o'
       return 'info-o'
     },
     statusClass() {
-      if (this.faceDetected) return 'status-success'
-      if (this.cameraError || this.faceMismatch) return 'status-warning'
-      if (this.lightMode) return 'status-light'
+      if (this.verifyResult === true) return 'status-success'
+      if (this.cameraError || this.verifyResult === false) return 'status-warning'
       return 'status-normal'
     },
     similarityPercent() {
       if (this.similarity === null) return 0
+      // similarity 是 Bhattacharyya 距离 [0,1], 0=完全相同
+      // 转为百分比: (1 - distance) * 100
       return Math.max(0, Math.round((1 - this.similarity) * 100))
     }
   },
@@ -179,9 +169,6 @@ export default {
 
   beforeDestroy() {
     this.stopCamera()
-    if (this.detectInterval) {
-      clearInterval(this.detectInterval)
-    }
   },
 
   methods: {
@@ -194,7 +181,6 @@ export default {
     },
 
     async skipToExam() {
-      // 证件照缺失时跳过验证,向后端提交一条"验证失败"记录
       try {
         await submitVerifyResult({
           examId: this.examId,
@@ -203,7 +189,6 @@ export default {
           deviceInfo: navigator.userAgent
         })
       } catch (e) {
-        // 提交失败不阻塞考试
         console.warn('跳过验证记录提交失败:', e)
       }
       this.$toast('已跳过人脸验证，正在进入考试...')
@@ -212,8 +197,10 @@ export default {
 
     async initFaceVerify() {
       try {
+        // 1. 获取人脸验证配置
         const configRes = await getFaceConfig()
         this.config = configRes.data || this.config
+        this.maxRetries = this.config.maxRetries || 3
 
         // 如果人脸识别未启用，直接进入考试
         if (!this.config.enabled) {
@@ -221,27 +208,23 @@ export default {
           return
         }
 
+        // 2. 检查是否已验证通过
         const statusRes = await getFaceStatus(this.examId)
         if (statusRes.data && statusRes.data.verified) {
           this.goToExam()
           return
         }
 
-        await this.loadModels()
-        if (!this.lightMode) {
-          await this.loadIdPhoto()
-        }
+        // 3. 启动摄像头(不需要加载任何模型)
         await this.initCamera()
       } catch (err) {
         console.error('初始化失败:', err)
         this.cameraError = true
         let msg = err.message || '初始化失败'
-        // 后端返回的通用错误给用户更友好的提示
         if (msg.includes('系统异常')) {
-          msg = '服务暂时不可用，请稍后刷新重试。如反复出现请联系管理员检查系统配置'
+          msg = '服务暂时不可用，请稍后刷新重试'
         }
-        // 模型加载失败或证件照缺失时,允许跳过验证进入考试
-        if (msg.includes('模型') || msg.includes('证件照') || msg.includes('组件')) {
+        if (msg.includes('证件照') || msg.includes('未找到')) {
           this.allowSkip = true
         }
         this.cameraErrorMessage = msg
@@ -250,135 +233,10 @@ export default {
       }
     },
 
-    /**
-     * 动态加载 face-api.js 脚本(带重试)
-     * 不依赖 index.html 的 <script> 标签,避免 CDN 被墙或加载顺序问题
-     */
-    async ensureFaceApiLoaded() {
-      // 已加载则直接返回
-      if (window.faceapi && window.faceapi.nets) {
-        return window.faceapi
-      }
-
-      // 查找是否已有 script 标签(可能正在加载中)
-      const existing = document.querySelector('script[data-face-api]')
-      if (existing) {
-        // 等待已有标签加载完成
-        await new Promise((resolve, reject) => {
-          existing.addEventListener('load', resolve)
-          existing.addEventListener('error', () => reject(new Error('人脸识别脚本加载失败')))
-        })
-        if (window.faceapi) return window.faceapi
-        throw new Error('人脸识别组件初始化失败')
-      }
-
-      // 动态创建 script 标签加载本地文件
-      const script = document.createElement('script')
-      script.src = (process.env.BASE_URL || '/') + 'js/face-api.min.js'
-      script.setAttribute('data-face-api', '1')
-      script.async = false
-
-      await new Promise((resolve, reject) => {
-        script.addEventListener('load', resolve)
-        script.addEventListener('error', () => reject(new Error('人脸识别脚本文件加载失败，请检查网络后刷新重试')))
-        document.head.appendChild(script)
-      })
-
-      // 等待 faceapi 对象可用(脚本加载后可能需要一帧时间初始化)
-      let retries = 0
-      while (!window.faceapi && retries < 20) {
-        await new Promise(r => setTimeout(r, 50))
-        retries++
-      }
-
-      if (!window.faceapi) {
-        throw new Error('人脸识别组件初始化超时，请刷新页面重试')
-      }
-      return window.faceapi
-    },
-
-    async loadModels() {
-      this.loadingMessage = '正在加载人脸识别组件...'
-      const faceapi = await this.ensureFaceApiLoaded()
-
-      const MODEL_URL = (process.env.BASE_URL || '/') + 'models'
-
-      // 第一步：先加载 tinyFaceDetector（190KB，极快）
-      this.loadingMessage = '正在下载基础模型(190KB)...'
-      try {
-        await Promise.race([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('基础模型加载超时')), 30000)
-          )
-        ])
-      } catch (err) {
-        throw new Error('基础模型加载失败，请检查网络后刷新重试')
-      }
-
-      // 第二步：尝试加载高级模型（特征点 + 人脸识别，约6MB）
-      this.loadingMessage = '正在下载高级模型(约6MB)，请保持网络通畅...'
-      const advancedModels = [
-        { net: faceapi.nets.faceLandmark68Net, label: '特征点' },
-        { net: faceapi.nets.faceRecognitionNet, label: '人脸识别' }
-      ]
-
-      const loadAdvanced = async (m) => {
-        try {
-          await Promise.race([
-            m.net.loadFromUri(MODEL_URL),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(m.label + '加载超时')), 120000)
-            )
-          ])
-          return { label: m.label, ok: true }
-        } catch (err) {
-          console.warn(m.label + '加载失败(将降级):', err)
-          return { label: m.label, ok: false }
-        }
-      }
-
-      const advancedResults = await Promise.all(advancedModels.map(loadAdvanced))
-      const advancedFailed = advancedResults.filter(r => !r.ok)
-
-      if (advancedFailed.length > 0) {
-        // 高级模型加载失败，进入轻量模式：只检测人脸，拍照存档
-        this.lightMode = true
-        this.$toast('网络较慢，已切换轻量验证模式')
-      }
-    },
-
-    async loadIdPhoto() {
-      this.loadingMessage = '正在加载证件照...'
-      const res = await getIdPhoto()
-      const data = res.data || {}
-
-      if (data.hasPhoto !== 'true') {
-        // 证件照缺失:允许跳过验证(记录为失败),不卡死学生
-        this.allowSkip = true
-        throw new Error(data.message || '未找到证件照，可点击下方跳过验证直接进入考试')
-      }
-
-      const faceapi = await this.ensureFaceApiLoaded()
-      const img = await faceapi.fetchImage(data.photoUrl)
-      const detection = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
-        .withFaceLandmarks()
-        .withFaceDescriptor()
-
-      if (!detection) {
-        throw new Error('证件照中未检测到人脸，请联系管理员')
-      }
-
-      this.idPhotoDescriptor = detection.descriptor
-      this.idPhotoLoaded = true
-    },
-
     async initCamera() {
       this.loadingMessage = '正在启动摄像头...'
 
       try {
-        // 检查浏览器是否支持摄像头
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('当前浏览器不支持摄像头功能，请使用微信内置浏览器或Chrome/Safari')
         }
@@ -396,11 +254,10 @@ export default {
 
         await new Promise((resolve, reject) => {
           this.$refs.video.onloadedmetadata = resolve
-          // 5秒超时，防止视频永远挂起
           setTimeout(() => reject(new Error('摄像头视频加载超时')), 5000)
         })
 
-        this.startFaceDetection()
+        // 摄像头就绪,不需要加载模型,直接显示
       } catch (err) {
         this.cameraError = true
         let msg = '无法访问摄像头'
@@ -418,149 +275,78 @@ export default {
       }
     },
 
-    startFaceDetection() {
-      const video = this.$refs.video
-      const faceapi = window.faceapi
-      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 })
-
-      this.detectInterval = setInterval(async () => {
-        if (video.readyState !== video.HAVE_ENOUGH_DATA) return
-
-        try {
-          if (this.lightMode) {
-            // 轻量模式：只检测人脸是否存在
-            const detection = await faceapi.detectSingleFace(video, options)
-            if (detection) {
-              this.faceDetected = true
-              this.faceMismatch = false
-            } else {
-              this.faceDetected = false
-            }
-          } else {
-            // 完整模式：检测 + 特征提取
-            const detection = await faceapi
-              .detectSingleFace(video, options)
-              .withFaceLandmarks()
-              .withFaceDescriptor()
-
-            if (detection) {
-              this.faceDetected = true
-              this.faceMismatch = false
-              this.faceDescriptor = detection.descriptor
-            } else {
-              this.faceDetected = false
-            }
-          }
-        } catch (e) {
-          // ignore
-        }
-      }, 200)
-    },
-
+    /**
+     * 拍照验证: 截取视频帧 -> 压缩为JPEG -> 上传后端比对
+     */
     async handleVerify() {
-      if (this.lightMode) {
-        await this.handleLightVerify()
-        return
-      }
-
-      if (!this.faceDescriptor || !this.idPhotoLoaded) {
-        this.$toast('请等待人脸加载完成')
-        return
-      }
+      if (this.verifying) return
 
       this.verifying = true
 
       try {
-        const faceapi = window.faceapi
-        const distance = faceapi.euclideanDistance(
-          this.faceDescriptor,
-          this.idPhotoDescriptor
-        )
+        // 1. 闪光效果
+        this.flash = true
+        setTimeout(() => { this.flash = false }, 300)
 
-        this.similarity = distance
-        const passed = distance < this.config.threshold
-        this.verifyResult = passed
+        // 2. 截取视频帧并压缩
+        const photoBase64 = this.takeSnapshot()
 
-        await submitVerifyResult({
+        // 3. 上传到后端比对
+        const res = await compareFace({
           examId: this.examId,
-          similarity: distance,
-          passed: passed,
+          photo: photoBase64,
           deviceInfo: navigator.userAgent
         })
 
-        if (passed) {
+        const data = res.data || {}
+        this.similarity = data.similarity
+        this.verifyResult = data.passed
+
+        if (data.passed) {
           this.$toast('验证通过，即将进入考试...')
           setTimeout(() => this.goToExam(), 1500)
         } else {
           this.retryCount++
-          if (this.retryCount >= this.config.maxRetries) {
+          if (this.retryCount >= this.maxRetries) {
             this.$toast.fail('验证失败次数过多，请联系管理员')
           } else {
-            this.$toast.fail('验证失败，请重试')
+            this.$toast.fail(data.message || '验证失败，请重试')
           }
         }
       } catch (err) {
-        this.$toast.fail('验证出错：' + (err.message || '未知错误'))
+        console.error('人脸比对失败:', err)
+        let msg = err.message || '未知错误'
+        // 证件照相关错误允许跳过
+        if (msg.includes('证件照') || msg.includes('未找到') || msg.includes('引擎')) {
+          this.allowSkip = true
+        }
+        this.$toast.fail('验证失败：' + msg)
       } finally {
         this.verifying = false
       }
     },
 
     /**
-     * 轻量验证：只检测人脸存在，截图压缩后上传服务器存档
-     * 用于高级模型加载失败时的降级方案
+     * 从视频流截取一帧，压缩为 JPEG base64
+     * 尺寸 480x360, quality 0.8, 体积约 30-60KB
      */
-    async handleLightVerify() {
-      if (!this.faceDetected) {
-        this.$toast('请先确保人脸在框内')
-        return
-      }
-
-      this.verifying = true
-
-      try {
-        const snapshot = await this.takeSnapshot()
-
-        await submitVerifyResult({
-          examId: this.examId,
-          similarity: null,
-          passed: true,
-          deviceInfo: navigator.userAgent,
-          snapshot: snapshot,
-          lightMode: true
-        })
-
-        this.verifyResult = true
-        this.$toast('拍照存档成功，即将进入考试')
-        setTimeout(() => this.goToExam(), 1500)
-      } catch (err) {
-        this.$toast.fail('上传失败：' + (err.message || '未知错误'))
-      } finally {
-        this.verifying = false
-      }
-    },
-
-    /**
-     * 从视频流截取一帧，压缩为 JPEG base64（约 50-100KB）
-     */
-    async takeSnapshot() {
+    takeSnapshot() {
       const video = this.$refs.video
       const canvas = this.$refs.canvas
       const ctx = canvas.getContext('2d')
 
-      // 缩小尺寸减少体积：320x240
-      const width = 320
-      const height = 240
+      // 截取中间区域(优先人脸部分), 缩小到 480x360
+      var width = 480
+      var height = 360
       canvas.width = width
       canvas.height = height
 
-      // 镜像翻转，与预览一致
+      // 镜像翻转(与预览一致)
       ctx.setTransform(-1, 0, 0, 1, width, 0)
       ctx.drawImage(video, 0, 0, width, height)
       ctx.setTransform(1, 0, 0, 1, 0, 0)
 
-      // quality 0.6 的 jpeg，体积通常 30-80KB
-      return canvas.toDataURL('image/jpeg', 0.6)
+      return canvas.toDataURL('image/jpeg', 0.8)
     },
 
     handleRetry() {
@@ -623,7 +409,6 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  /* 兼容不支持 aspect-ratio 的浏览器 */
   aspect-ratio: 4/3;
 
   video {
@@ -632,15 +417,13 @@ export default {
     object-fit: cover;
     transform: scaleX(-1);
     display: block;
-    /* 确保 iOS Safari 视频正常显示 */
     -webkit-transform: scaleX(-1);
   }
 }
 
-/* fallback: 旧浏览器用 padding-bottom 维持比例 */
 @supports not (aspect-ratio: 4/3) {
   .camera-wrapper {
-    padding-bottom: 75%; /* 3/4 = 75% */
+    padding-bottom: 75%;
     height: 0;
   }
   .camera-wrapper video {
@@ -701,16 +484,6 @@ export default {
       border-bottom-right-radius: 8px;
     }
   }
-
-  &.face-detected .corner {
-    border-color: #1989fa;
-    box-shadow: 0 0 12px rgba(25, 137, 250, 0.6);
-  }
-
-  &.face-mismatch .corner {
-    border-color: #ee0a24;
-    box-shadow: 0 0 12px rgba(238, 10, 36, 0.4);
-  }
 }
 
 .status-bar {
@@ -726,7 +499,6 @@ export default {
   &.status-normal { background: #f0f0f0; color: #666; }
   &.status-success { background: #e8f5e9; color: #4caf50; }
   &.status-warning { background: #fff3e0; color: #ff9800; }
-  &.status-light { background: #e3f2fd; color: #1976d2; }
 }
 
 .result-section {
@@ -782,5 +554,18 @@ export default {
   gap: 12px;
   padding: 20px;
   text-align: center;
+}
+
+.flash-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #fff;
+  opacity: 0.8;
+  animation: flash 0.3s ease-out;
+}
+
+@keyframes flash {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
 }
 </style>

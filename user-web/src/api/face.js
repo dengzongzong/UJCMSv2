@@ -12,6 +12,14 @@ export function submitVerifyResult(data) {
   return request({ url: '/user/face/verify', method: 'post', data })
 }
 
+/**
+ * 后端人脸比对: 前端拍摄照片上传, 后端与证件照比对
+ * 不在前端加载任何模型文件
+ */
+export function compareFace(data) {
+  return request({ url: '/user/face/compare', method: 'post', data })
+}
+
 export function getFaceStatus(examId) {
   return request({
     url: '/user/face/status',
@@ -25,13 +33,5 @@ export function getFaceVerifyInfo(examId) {
     url: '/user/exam/face-verify-info',
     method: 'get',
     params: { examId }
-  })
-}
-
-export function uploadFaceSnapshot(data) {
-  return request({
-    url: '/user/face/snapshot',
-    method: 'post',
-    data
   })
 }
