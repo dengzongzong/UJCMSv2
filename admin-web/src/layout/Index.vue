@@ -172,12 +172,29 @@ export default {
       // 引用 certTypes 使其成为响应式依赖
       const certTypes = this.certTypes || []
       const routes = this.$router.options.routes
+
+      // 超级管理员显示全部菜单
+      const isSuper = this.adminInfo && this.adminInfo.isSuper === 1
+      const permissions = (this.adminInfo && this.adminInfo.permissions) || []
+
       return routes
         .filter((r) => r.meta && r.meta.title && r.children && r.children.length)
+        .filter((r) => {
+          if (isSuper) return true
+          // 子管理员: 检查路由path是否在permissions中
+          // 路由path如 '/dashboard', '/course' 等, permissions中存的是 'dashboard','course' 等
+          const permKey = r.path.replace('/', '')
+          return permissions.includes(permKey)
+        })
         .map((r) => {
           if (r.path === '/certificate') {
             // 证书管理:静态子路由 + 证书类型动态子菜单
             const staticChildren = r.children.filter((c) => !c.hidden)
+            // 子管理员如果没有 certificate 权限,上面已过滤掉了
+            // 如果有权限,显示证书类型子菜单
+            if (!isSuper && !permissions.includes('certificate')) {
+              return { ...r, children: [] }
+            }
             const dynamicChildren = certTypes.map((t, idx) => {
               const name = (t && (t.name || t)) || '证书类型'
               return {

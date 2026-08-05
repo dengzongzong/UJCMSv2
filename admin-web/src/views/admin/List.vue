@@ -235,7 +235,11 @@ export default {
         { value: 'course', label: '课程管理' },
         { value: 'question', label: '题库管理' },
         { value: 'exam', label: '考试管理' },
-        { value: 'setting', label: '系统设置' }
+        { value: 'certificate', label: '证书管理' },
+        { value: 'live', label: '直播管理' },
+        { value: 'order', label: '订单管理' },
+        { value: 'setting', label: '系统设置' },
+        { value: 'delete', label: '数据删除（需单独开启）' }
       ],
       dialog: {
         visible: false,

@@ -5,10 +5,15 @@ import App from './App.vue'
 import router from './router'
 import store from './store'
 import './styles/index.scss'
+import { hasPermission, canDelete } from '@/utils/permission'
 
 Vue.use(ElementUI, { size: 'small' })
 
 Vue.config.productionTip = false
+
+// 注册全局权限校验方法,模板中可通过 v-if="$hasPermission('xxx')" / v-if="$canDelete()" 控制
+Vue.prototype.$hasPermission = hasPermission
+Vue.prototype.$canDelete = canDelete
 
 // ===== 全局错误兜底,避免后端异常时弹出 "Uncaught runtime errors" 遮罩 =====
 // 1) 捕获未处理的 Promise rejection(如后端返回 500/业务错误后,组件未 catch 的场景)

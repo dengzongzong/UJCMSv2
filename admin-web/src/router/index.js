@@ -460,6 +460,38 @@ router.beforeEach(async (to, from, next) => {
       }
       // 加载证书类型(用于侧边栏菜单)
       await loadCertTypes()
+
+      // 子管理员权限校验: 未授权的路由跳转到第一个有权限的页面
+      const adminInfo = store.getters.adminInfo
+      const isSuper = adminInfo && adminInfo.isSuper === 1
+      if (!isSuper) {
+        const permissions = adminInfo && adminInfo.permissions ? adminInfo.permissions : []
+        // 获取目标路由的一级path
+        const topPath = '/' + (to.path.split('/')[1] || '')
+        const permKey = topPath.replace('/', '')
+        // 白名单: 登录页、首页重定向
+        if (to.path !== '/login' && to.path !== '/' && !permissions.includes(permKey)) {
+          // 找到第一个有权限的路由跳转
+          const firstPerm = permissions[0]
+          if (firstPerm) {
+            next({ path: '/' + firstPerm })
+          } else {
+            next({ path: '/login', query: { redirect: to.fullPath } })
+          }
+          return
+        }
+        // 当 to.path === '/' 时,根据权限重定向到第一个有权限的页面而不是默认 dashboard
+        if (to.path === '/') {
+          const firstPerm = permissions[0]
+          if (firstPerm) {
+            next({ path: '/' + firstPerm })
+          } else {
+            next({ path: '/login', query: { redirect: to.fullPath } })
+          }
+          return
+        }
+      }
+
       next()
     }
   } else {
