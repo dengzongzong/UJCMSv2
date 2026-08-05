@@ -363,13 +363,16 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
 
     private boolean checkOpened(Long liveId, Long userId) {
         if (userId == null) {
+            log.warn("[live] checkOpened userId=null, liveId={}, 未登录或token未注入", liveId);
             return false;
         }
         LambdaQueryWrapper<StudentLive> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(StudentLive::getStudentId, userId)
                 .eq(StudentLive::getLiveId, liveId)
                 .last("LIMIT 1");
-        return studentLiveMapper.selectCount(wrapper) > 0;
+        boolean opened = studentLiveMapper.selectCount(wrapper) > 0;
+        log.info("[live] checkOpened liveId={}, userId={}, opened={}", liveId, userId, opened);
+        return opened;
     }
 
     private void fillExtra(LiveRoom room) {
