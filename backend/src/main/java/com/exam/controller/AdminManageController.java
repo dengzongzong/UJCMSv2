@@ -6,6 +6,7 @@ import com.exam.dto.AdminDTO;
 import com.exam.entity.Admin;
 import com.exam.service.AdminManageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequireSuper;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -36,6 +37,7 @@ public class AdminManageController {
     /**
      * 新增子管理员
      */
+    @RequireSuper
     @PostMapping
     public Result<Void> add(@RequestBody AdminDTO dto) {
         adminManageService.add(dto);
@@ -45,6 +47,7 @@ public class AdminManageController {
     /**
      * 编辑子管理员
      */
+    @RequireSuper
     @PutMapping
     public Result<Void> update(@RequestBody AdminDTO dto) {
         adminManageService.update(dto);
@@ -54,6 +57,7 @@ public class AdminManageController {
     /**
      * 删除子管理员
      */
+    @RequireSuper
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         adminManageService.delete(id);

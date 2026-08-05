@@ -49,4 +49,10 @@ public class LoginVO {
      * 学生所属专业名称
      */
     private String professionName;
+
+    /** 管理员权限列表(仅admin角色有值) */
+    private java.util.List<String> permissions;
+
+    /** 是否超级管理员: 1=是, 0=子管理员 */
+    private Integer isSuper;
 }

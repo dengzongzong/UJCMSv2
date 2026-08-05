@@ -6,6 +6,7 @@ import com.exam.dto.VideoDTO;
 import com.exam.service.VideoManageService;
 import com.exam.vo.AdminVideoVO;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -64,6 +65,7 @@ public class VideoManageController {
     /**
      * 删除视频
      */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         videoManageService.delete(id);
@@ -73,6 +75,7 @@ public class VideoManageController {
     /**
      * 批量删除视频
      */
+    @RequirePermission("delete")
     @DeleteMapping("/batch")
     public Result<Void> batchDelete(@RequestBody List<Long> ids) {
         videoManageService.batchDelete(ids);

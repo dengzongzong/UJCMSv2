@@ -7,6 +7,7 @@ import com.exam.entity.Student;
 import com.exam.service.CourseManageService;
 import com.exam.vo.AdminCourseVO;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -71,6 +72,7 @@ public class CourseManageController {
     /**
      * 删除课程
      */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         courseManageService.delete(id);
@@ -80,6 +82,7 @@ public class CourseManageController {
     /**
      * 批量删除课程
      */
+    @RequirePermission("delete")
     @DeleteMapping("/batch")
     public Result<Void> batchDelete(@RequestBody List<Long> ids) {
         courseManageService.batchDelete(ids);

@@ -7,6 +7,7 @@ import com.exam.dto.PaperDTO;
 import com.exam.entity.Paper;
 import com.exam.service.PaperManageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -77,6 +78,7 @@ public class PaperManageController {
     /**
      * 删除试卷
      */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         paperManageService.delete(id);
@@ -86,6 +88,7 @@ public class PaperManageController {
     /**
      * 批量删除试卷
      */
+    @RequirePermission("delete")
     @DeleteMapping("/batch")
     public Result<Void> batchDelete(@RequestBody List<Long> ids) {
         paperManageService.batchDelete(ids);

@@ -5,6 +5,7 @@ import com.exam.common.Result;
 import com.exam.dto.QuestionDTO;
 import com.exam.service.QuestionManageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -87,6 +88,7 @@ public class QuestionManageController {
     /**
      * 删除题目
      */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         questionManageService.delete(id);
@@ -96,6 +98,7 @@ public class QuestionManageController {
     /**
      * 批量删除题目
      */
+    @RequirePermission("delete")
     @DeleteMapping("/batch")
     public Result<Void> batchDelete(@RequestBody List<Long> ids) {
         questionManageService.batchDelete(ids);

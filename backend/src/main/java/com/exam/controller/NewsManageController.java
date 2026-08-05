@@ -5,6 +5,7 @@ import com.exam.common.Result;
 import com.exam.entity.News;
 import com.exam.service.NewsManageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -53,6 +54,7 @@ public class NewsManageController {
     /**
      * 删除新闻
      */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         newsManageService.delete(id);
@@ -62,6 +64,7 @@ public class NewsManageController {
     /**
      * 批量删除新闻
      */
+    @RequirePermission("delete")
     @DeleteMapping("/batch")
     public Result<Void> batchDelete(@RequestBody List<Long> ids) {
         newsManageService.batchDelete(ids);

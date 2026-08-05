@@ -106,6 +106,17 @@ public class AuthServiceImpl implements AuthService {
             vo.setUsername(admin.getUsername());
             vo.setNickname(admin.getRoleName());
             vo.setAvatar(admin.getAvatar());
+            vo.setIsSuper(admin.getIsSuper());
+            // 超级管理员拥有全部权限
+            if (admin.getIsSuper() != null && admin.getIsSuper() == 1) {
+                vo.setPermissions(java.util.Arrays.asList("dashboard","admin","student","video","course","question","exam","setting","certificate","live","order","delete"));
+            } else if (admin.getPermissions() != null) {
+                try {
+                    vo.setPermissions(cn.hutool.json.JSONUtil.parseArray(admin.getPermissions()).toList(String.class));
+                } catch (Exception e) {
+                    vo.setPermissions(java.util.Collections.emptyList());
+                }
+            }
             vo.setToken(jwtUtil.generateToken(admin.getId(), admin.getUsername(), "admin"));
         } else {
             // 学员登录:支持 手机号 / 身份证号 两种方式,由 loginType 决定(默认 phone)
@@ -322,6 +333,17 @@ public class AuthServiceImpl implements AuthService {
             vo.setUsername(admin.getUsername());
             vo.setNickname(admin.getRoleName());
             vo.setAvatar(admin.getAvatar());
+            vo.setIsSuper(admin.getIsSuper());
+            // 超级管理员拥有全部权限
+            if (admin.getIsSuper() != null && admin.getIsSuper() == 1) {
+                vo.setPermissions(java.util.Arrays.asList("dashboard","admin","student","video","course","question","exam","setting","certificate","live","order","delete"));
+            } else if (admin.getPermissions() != null) {
+                try {
+                    vo.setPermissions(cn.hutool.json.JSONUtil.parseArray(admin.getPermissions()).toList(String.class));
+                } catch (Exception e) {
+                    vo.setPermissions(java.util.Collections.emptyList());
+                }
+            }
         } else {
             Student student = studentMapper.selectById(userId);
             if (student == null) {

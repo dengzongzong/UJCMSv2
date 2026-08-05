@@ -6,6 +6,7 @@ import com.exam.entity.LiveRoom;
 import com.exam.entity.Student;
 import com.exam.service.LiveService;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,6 +52,7 @@ public class LiveManageController {
     }
 
     /** 删除直播场次 */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         liveService.delete(id);

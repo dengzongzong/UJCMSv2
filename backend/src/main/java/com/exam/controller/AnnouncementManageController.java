@@ -5,6 +5,7 @@ import com.exam.common.Result;
 import com.exam.entity.Announcement;
 import com.exam.service.AnnouncementManageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -52,6 +53,7 @@ public class AnnouncementManageController {
     /**
      * 删除公告
      */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         announcementManageService.delete(id);
@@ -61,6 +63,7 @@ public class AnnouncementManageController {
     /**
      * 批量删除公告
      */
+    @RequirePermission("delete")
     @DeleteMapping("/batch")
     public Result<Void> batchDelete(@RequestBody List<Long> ids) {
         announcementManageService.batchDelete(ids);

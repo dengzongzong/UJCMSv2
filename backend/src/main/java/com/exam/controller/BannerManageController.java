@@ -9,6 +9,7 @@ import com.exam.entity.Banner;
 import com.exam.service.BannerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -72,6 +73,7 @@ public class BannerManageController {
     /**
      * 删除轮播图
      */
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         bannerService.removeById(id);

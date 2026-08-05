@@ -11,6 +11,7 @@ import com.exam.entity.Student;
 import com.exam.service.StudentManageService;
 import com.exam.service.CertificateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.exam.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -61,6 +62,7 @@ public class StudentManageController {
         return Result.success();
     }
 
+    @RequirePermission("delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         studentManageService.deleteStudent(id);
@@ -70,6 +72,7 @@ public class StudentManageController {
     /**
      * 批量删除学生
      */
+    @RequirePermission("delete")
     @DeleteMapping("/batch")
     public Result<Void> batchDelete(@RequestBody List<Long> ids) {
         studentManageService.batchDeleteStudents(ids);
