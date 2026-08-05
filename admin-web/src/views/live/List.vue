@@ -161,9 +161,9 @@
       :resource-id="openStudentsDialog.liveId"
       :resource-name="openStudentsDialog.liveName"
       resource-type="直播"
-      :fetch-api="getLiveStudents"
-      :open-api="openLiveStudents"
-      :close-api="closeLiveStudent"
+      :fetch-api="fetchLiveStudents"
+      :open-api="openLiveStudentsApi"
+      :close-api="closeLiveStudentApi"
     />
 
     <!-- 回放地址弹窗 -->
@@ -283,6 +283,17 @@ export default {
       this.openStudentsDialog.liveId = row.id
       this.openStudentsDialog.liveName = row.title
       this.openStudentsDialog.visible = true
+    },
+    // 注意: Vue2 模板中的裸标识符会被编译为实例属性访问,
+    // import 的模块函数必须包装成实例方法才能作为 props 传函数引用
+    fetchLiveStudents(liveId, params) {
+      return getLiveStudents(liveId, params)
+    },
+    openLiveStudentsApi(liveId, studentIds) {
+      return openLiveStudents(liveId, studentIds)
+    },
+    closeLiveStudentApi(liveId, studentId) {
+      return closeLiveStudent(liveId, studentId)
     },
     handleDetail(row) {
       this.detailDialog.visible = true
