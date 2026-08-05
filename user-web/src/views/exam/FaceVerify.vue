@@ -316,9 +316,12 @@ export default {
       } catch (err) {
         console.error('人脸比对失败:', err)
         let msg = err.message || '未知错误'
-        // 证件照相关错误允许跳过
-        if (msg.includes('证件照') || msg.includes('未找到') || msg.includes('引擎')) {
+        // 证件照/引擎/OpenCV相关错误允许跳过验证进入考试
+        if (msg.includes('证件照') || msg.includes('未找到') || msg.includes('引擎')
+            || msg.includes('OpenCV') || msg.includes('原生库') || msg.includes('初始化')
+            || msg.includes('系统异常')) {
           this.allowSkip = true
+          msg = '人脸比对服务暂时不可用(' + msg + ')，可点击跳过验证进入考试'
         }
         this.$toast.fail('验证失败：' + msg)
       } finally {

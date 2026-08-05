@@ -173,8 +173,17 @@ public class FaceVerifyServiceImpl extends ServiceImpl<FaceVerifyLogMapper, Face
         }
         byte[] capturedBytes = Base64.getDecoder().decode(base64Data);
 
-        // 4. 调用 OpenCV 比对
-        double distance = faceCompareUtil.compare(idPhotoBytes, capturedBytes);
+        // 4. 调用 OpenCV 比对(捕获所有异常,转为业务异常返回具体信息)
+        double distance;
+        try {
+            distance = faceCompareUtil.compare(idPhotoBytes, capturedBytes);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("OpenCV 人脸比对异常: {}", e.getMessage(), e);
+            String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            throw new BusinessException("人脸比对失败：" + detail);
+        }
 
         // 5. 判断是否通过(距离 < 阈值 = 通过)
         FaceVerifyConfigVO config = getConfig();

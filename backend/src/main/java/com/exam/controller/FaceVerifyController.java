@@ -2,12 +2,14 @@ package com.exam.controller;
 
 import com.exam.common.Result;
 import com.exam.service.FaceVerifyService;
+import com.exam.util.FaceCompareUtil;
 import com.exam.vo.FaceVerifyConfigVO;
 import com.exam.vo.FaceVerifyStatusVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -16,6 +18,20 @@ public class FaceVerifyController {
 
     @Autowired
     private FaceVerifyService faceVerifyService;
+
+    @Autowired
+    private FaceCompareUtil faceCompareUtil;
+
+    /**
+     * 检查人脸比对引擎状态(用于排查 OpenCV 加载问题)
+     */
+    @GetMapping("/engine-status")
+    public Result<Map<String, Object>> getEngineStatus() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("initialized", faceCompareUtil.isInitialized());
+        status.put("error", faceCompareUtil.getInitError());
+        return Result.success(status);
+    }
 
     @GetMapping("/config")
     public Result<FaceVerifyConfigVO> getConfig() {
