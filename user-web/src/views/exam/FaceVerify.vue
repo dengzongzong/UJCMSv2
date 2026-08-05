@@ -291,20 +291,21 @@ export default {
       this.loadingMessage = '正在加载AI模型...'
       const MODEL_URL = (process.env.BASE_URL || '/') + 'models'
 
-      // 逐个加载模型,便于定位哪个模型加载失败
+      // 使用 tinyFaceDetector(190KB) 替代 ssdMobilenetv1(5.6MB),加载快30倍
+      // tinyFaceDetector 精度略低但足够用于考前验证,且对手机端更友好
       const modelNames = [
-        { net: faceapi.nets.ssdMobilenetv1, label: '人脸检测模型' },
+        { net: faceapi.nets.tinyFaceDetector, label: '人脸检测模型' },
         { net: faceapi.nets.faceLandmark68Net, label: '人脸特征点模型' },
         { net: faceapi.nets.faceRecognitionNet, label: '人脸识别模型' }
       ]
       for (const m of modelNames) {
         this.loadingMessage = '正在加载' + m.label + '...'
         try {
-          // 30秒超时,防止网络问题导致无限等待
+          // 60秒超时,防止网络问题导致无限等待
           await Promise.race([
             m.net.loadFromUri(MODEL_URL),
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(m.label + '加载超时，请检查网络后刷新重试')), 30000)
+              setTimeout(() => reject(new Error(m.label + '加载超时')), 60000)
             )
           ])
         } catch (err) {
@@ -337,7 +338,7 @@ export default {
       const faceapi = await this.ensureFaceApiLoaded()
       const img = await faceapi.fetchImage(data.photoUrl)
       const detection = await faceapi
-        .detectSingleFace(img)
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor()
 
@@ -379,13 +380,14 @@ export default {
     startFaceDetection() {
       const video = this.$refs.video
       const faceapi = window.faceapi
+      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 })
 
       this.detectInterval = setInterval(async () => {
         if (video.readyState !== video.HAVE_ENOUGH_DATA) return
 
         try {
           const detection = await faceapi
-            .detectSingleFace(video)
+            .detectSingleFace(video, options)
             .withFaceLandmarks()
             .withFaceDescriptor()
 
