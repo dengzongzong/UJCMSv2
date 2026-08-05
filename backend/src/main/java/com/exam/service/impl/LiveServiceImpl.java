@@ -63,6 +63,7 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
         wrapper.orderByDesc(LiveRoom::getCreateTime);
         IPage<LiveRoom> result = this.page(new Page<>(page, size), wrapper);
         for (LiveRoom room : result.getRecords()) {
+            room.setOpened(false);
             fillExtra(room);
         }
         return new PageResult<>(result);
