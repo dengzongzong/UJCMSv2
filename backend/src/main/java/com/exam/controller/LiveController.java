@@ -6,6 +6,7 @@ import com.exam.entity.LiveMessage;
 import com.exam.entity.LiveRoom;
 import com.exam.security.JwtUtil;
 import com.exam.service.LiveService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +19,7 @@ import java.util.Map;
  * - /api/user/live/** 需要登录(拦截器注入 userId)
  * - /api/user/live/public/** 公开(未登录 userId=null, 不返回播放地址)
  */
+@Slf4j
 @RestController
 @RequestMapping("/user/live")
 public class LiveController {
@@ -94,9 +96,12 @@ public class LiveController {
     private Long resolveUserId(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header == null || header.isEmpty()) {
+            log.warn("[live] resolveUserId: 请求未带Authorization头, uri={}", request.getRequestURI());
             return null;
         }
         String token = header.startsWith("Bearer ") ? header.substring(7) : header;
-        return jwtUtil.getUserId(token);
+        Long uid = jwtUtil.getUserId(token);
+        log.info("[live] resolveUserId: uri={}, tokenLen={}, userId={}", request.getRequestURI(), token.length(), uid);
+        return uid;
     }
 }
