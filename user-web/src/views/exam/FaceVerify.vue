@@ -200,11 +200,21 @@ export default {
       }
       const MODEL_URL = '/models'
 
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ])
+      // 逐个加载模型,便于定位哪个模型加载失败
+      const modelNames = [
+        { net: faceapi.nets.ssdMobilenetv1, label: '人脸检测模型' },
+        { net: faceapi.nets.faceLandmark68Net, label: '人脸特征点模型' },
+        { net: faceapi.nets.faceRecognitionNet, label: '人脸识别模型' }
+      ]
+      for (const m of modelNames) {
+        this.loadingMessage = '正在加载' + m.label + '...'
+        try {
+          await m.net.loadFromUri(MODEL_URL)
+        } catch (err) {
+          console.error(m.label + '加载失败:', err)
+          throw new Error(m.label + '加载失败，请检查网络后刷新重试')
+        }
+      }
     },
 
     async loadIdPhoto() {
