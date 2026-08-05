@@ -56,6 +56,17 @@ mkdir -p $DEPLOY_DIR/user-web/dist
 mkdir -p $DEPLOY_DIR/uploads
 mkdir -p $DEPLOY_DIR/logs
 
+# 2.5 安装 OpenCV 运行时依赖(人脸比对需要)
+echo "[2.5/8] 检查 OpenCV 运行时依赖..."
+if command -v apt-get &> /dev/null; then
+    apt-get update -qq 2>/dev/null
+    apt-get install -y -qq libgl1-mesa-glx libglib2.0-0 2>/dev/null || true
+    echo "  OpenCV 依赖已安装(apt)"
+elif command -v yum &> /dev/null; then
+    yum install -y -q mesa-libGL glib2 2>/dev/null || true
+    echo "  OpenCV 依赖已安装(yum)"
+fi
+
 # 3. 替换后端 JAR
 echo "[3/8] 部署后端 JAR..."
 if [ -f "exam-platform-1.0.0.jar" ]; then
@@ -427,7 +438,7 @@ After=network.target mysqld.service
 Type=simple
 User=root
 WorkingDirectory=${DEPLOY_DIR}
-ExecStart=/usr/bin/java -jar ${DEPLOY_DIR}/exam-platform-1.0.0.jar --spring.profiles.active=prod --spring.config.additional-location=file:${DEPLOY_DIR}/
+ExecStart=/usr/bin/java -Djava.library.path=/usr/lib/jni:/usr/lib/x86_64-linux-gnu -jar ${DEPLOY_DIR}/exam-platform-1.0.0.jar --spring.profiles.active=prod --spring.config.additional-location=file:${DEPLOY_DIR}/
 Restart=on-failure
 RestartSec=10
 
