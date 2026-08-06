@@ -74,7 +74,7 @@
           size="large"
           class="verify-btn"
           :loading="verifying"
-          :disabled="!faceDetected || cameraError || loading"
+          :disabled="cameraError || loading"
           @click="handleVerify"
         >
           {{ verifying ? '比对中...' : '开始验证' }}
