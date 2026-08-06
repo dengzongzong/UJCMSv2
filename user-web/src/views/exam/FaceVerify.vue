@@ -70,22 +70,22 @@
       <div class="action-section">
         <van-button
           round
-          block
           type="primary"
           size="large"
+          class="verify-btn"
           :loading="verifying"
-          :disabled="cameraError || loading"
+          :disabled="!faceDetected || cameraError || loading"
           @click="handleVerify"
         >
-          {{ verifying ? '比对中...' : '拍照验证' }}
+          {{ verifying ? '比对中...' : '开始验证' }}
         </van-button>
 
         <van-button
           v-if="verifyResult === false && retryCount < maxRetries"
           round
-          block
           plain
-          size="large"
+          size="normal"
+          class="verify-btn"
           @click="handleRetry"
         >
           重新验证
@@ -524,7 +524,14 @@ export default {
 }
 
 .action-section {
-  .van-button { margin-bottom: 12px; }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  .verify-btn {
+    width: 220px;
+  }
 }
 
 .retry-tip {

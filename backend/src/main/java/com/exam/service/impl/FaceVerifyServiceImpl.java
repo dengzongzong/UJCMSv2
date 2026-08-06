@@ -82,7 +82,10 @@ public class FaceVerifyServiceImpl extends ServiceImpl<FaceVerifyLogMapper, Face
 
         String idCard = null;
         LambdaQueryWrapper<CertificateUser> cuWrapper = new LambdaQueryWrapper<>();
-        cuWrapper.eq(CertificateUser::getStudentId, studentId);
+        cuWrapper.eq(CertificateUser::getStudentId, studentId)
+                .orderByDesc(CertificateUser::getId)
+                .last("LIMIT 1");
+        // 注意: 一个学生可关联多个证书(certificate_user无唯一约束), 必须取最新一条, 不能用无limit的selectOne
         CertificateUser certUser = certificateUserMapper.selectOne(cuWrapper);
 
         if (certUser != null && certUser.getIdCard() != null) {
