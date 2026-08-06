@@ -57,7 +57,7 @@
                 >
                   <!-- 封面图 -->
                   <div class="card-cover" @click="goDetail(course)">
-                    <img :src="resolveImg(course.coverUrl || course.coverImage || defaultCover)" :alt="course.name" />
+                    <img :src="resolveImg(course.coverUrl || course.coverImage || defaultCover)" :alt="course.name" loading="lazy" decoding="async" />
                     <div v-if="!course.purchased" class="locked-tag">
                       <van-icon name="lock" /> 未开通
                     </div>
@@ -132,7 +132,7 @@ export default {
       loading: false,
       finished: false,
       page: 1,
-      pageSize: 50,
+      pageSize: 12,
       // 搜索关键词
       searchKeyword: '',
       searchTimer: null,

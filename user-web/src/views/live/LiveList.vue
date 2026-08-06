@@ -35,7 +35,7 @@
             @click="goLive(item)"
           >
             <div class="live-cover">
-              <img v-if="item.coverUrl" :src="resolveImg(item.coverUrl)" :alt="item.title" />
+              <img v-if="item.coverUrl" :src="resolveImg(item.coverUrl)" :alt="item.title" loading="lazy" decoding="async" />
               <div v-else class="cover-placeholder">
                 <van-icon name="video-o" size="36" color="#c8c9cc" />
               </div>

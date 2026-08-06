@@ -56,7 +56,7 @@
                 @click="goExam(exam)"
               >
                 <div class="exam-cover">
-                  <img :src="resolveImg(exam.coverUrl || exam.coverImage || defaultCover)" :alt="exam.name" />
+                  <img :src="resolveImg(exam.coverUrl || exam.coverImage || defaultCover)" :alt="exam.name" loading="lazy" decoding="async" />
                   <div v-if="!exam.purchased" class="locked-tag">
                     <van-icon name="lock" /> 未开通
                   </div>
@@ -128,7 +128,7 @@ export default {
       loading: false,
       finished: false,
       page: 1,
-      pageSize: 50,
+      pageSize: 12,
       // 搜索关键词
       searchKeyword: '',
       searchTimer: null,

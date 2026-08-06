@@ -10,7 +10,7 @@
           <div class="banner-left">
             <van-swipe class="banner-swipe" :autoplay="4000" :show-indicators="true" indicator-color="#ffffff">
               <van-swipe-item v-for="(item, index) in banners" :key="item.id || index">
-                <img :src="resolveImg(item.imageUrl || item.image)" class="banner-img" @click="onBannerClick(item)" />
+                <img :src="resolveImg(item.imageUrl || item.image)" class="banner-img" loading="lazy" decoding="async" @click="onBannerClick(item)" />
               </van-swipe-item>
               <van-swipe-item v-if="banners.length === 0">
                 <div class="banner-placeholder">
@@ -78,7 +78,7 @@
           class="homepage-banner-item"
           @click="onBannerImageClick(banner)"
         >
-          <img :src="resolveImg(banner.imageUrl)" class="homepage-banner-img" />
+          <img :src="resolveImg(banner.imageUrl)" class="homepage-banner-img" loading="lazy" decoding="async" />
           <div v-if="banner.title" class="homepage-banner-title">{{ banner.title }}</div>
         </div>
       </div>
@@ -98,7 +98,7 @@
               @click="goCourseDetail(course.id)"
             >
               <div class="course-cover">
-                <img :src="resolveImg(course.coverUrl || course.coverImage || course.thumbnail || defaultCover)" :alt="course.name" />
+                <img :src="resolveImg(course.coverUrl || course.coverImage || course.thumbnail || defaultCover)" :alt="course.name" loading="lazy" decoding="async" />
                 <div v-if="course.progress > 0" class="progress-tag">已学{{ course.progress }}%</div>
                 <div v-if="!course.purchased && loggedIn" class="locked-tag">
                   <van-icon name="lock" /> 未开通
@@ -180,7 +180,7 @@
             >
               <template v-if="img.imageUrl">
                 <div class="evaluate-image-wrapper">
-                  <img :src="resolveImg(img.imageUrl)" :alt="img.description ? stripHtml(img.description) : ''" class="evaluate-image" />
+                  <img :src="resolveImg(img.imageUrl)" :alt="img.description ? stripHtml(img.description) : ''" class="evaluate-image" loading="lazy" decoding="async" />
                 </div>
                 <div v-if="img.description" class="evaluate-desc" v-html="processRichContent(img.description)"></div>
               </template>
@@ -208,7 +208,7 @@
               rel="noopener"
               class="related-item"
             >
-              <img v-if="link.imageUrl" :src="resolveImg(link.imageUrl)" :alt="link.name" class="related-img" />
+              <img v-if="link.imageUrl" :src="resolveImg(link.imageUrl)" :alt="link.name" class="related-img" loading="lazy" decoding="async" />
               <div v-else class="related-img related-placeholder">
                 <van-icon name="link-o" size="32" color="#999" />
               </div>
