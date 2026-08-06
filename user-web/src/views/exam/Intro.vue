@@ -94,7 +94,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { getExamIntro, getFaceVerifyInfo } from '@/api/exam'
+import { getExamIntro, getFaceVerifyInfo, startExam } from '@/api/exam'
 import { Dialog } from 'vant'
 
 export default {
@@ -226,12 +226,18 @@ export default {
       }).catch(() => {})
     },
     goToFaceVerify() {
-      var savedRecordId = localStorage.getItem('exam_record_' + this.examId)
-      if (savedRecordId) {
-        this.$router.push('/exam/face-verify/' + this.examId + '?recordId=' + savedRecordId).catch(() => {})
-      } else {
-        this.$router.push('/exam/face-verify/' + this.examId).catch(() => {})
-      }
+      // 先调 startExam 创建/获取考试记录, 确保 submitVerify 有 submitStatus=0 的记录可更新
+      startExam(this.examId).then(res => {
+        const recordId = res.data?.recordId
+        if (recordId) {
+          localStorage.setItem('exam_record_' + this.examId, recordId)
+          this.$router.push('/exam/face-verify/' + this.examId + '?recordId=' + recordId).catch(() => {})
+        } else {
+          this.$toast.fail('创建考试记录失败，请重试')
+        }
+      }).catch(err => {
+        this.$toast.fail(err.message || '创建考试记录失败')
+      })
     },
     doStartExam() {
       // 不再调 startExam，直接跳转。Exam.vue 会统一调 getExamPaper（带 recordId）
