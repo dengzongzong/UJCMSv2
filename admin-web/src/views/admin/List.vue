@@ -234,6 +234,7 @@ export default {
         { value: 'video', label: '视频管理' },
         { value: 'course', label: '课程管理' },
         { value: 'question', label: '题库管理' },
+        { value: 'paper', label: '试卷管理' },
         { value: 'exam', label: '考试管理' },
         { value: 'certificate', label: '证书管理' },
         { value: 'live', label: '直播管理' },
