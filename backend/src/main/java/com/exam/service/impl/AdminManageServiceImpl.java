@@ -49,6 +49,9 @@ public class AdminManageServiceImpl extends ServiceImpl<AdminMapper, Admin> impl
         if (dto.getPermissions() != null) {
             admin.setPermissions(JSONUtil.toJsonStr(dto.getPermissions()));
         }
+        if (dto.getCertTypeIds() != null) {
+            admin.setCertTypeIds(JSONUtil.toJsonStr(dto.getCertTypeIds()));
+        }
         this.save(admin);
     }
 
@@ -75,6 +78,9 @@ public class AdminManageServiceImpl extends ServiceImpl<AdminMapper, Admin> impl
         }
         if (dto.getPermissions() != null) {
             admin.setPermissions(JSONUtil.toJsonStr(dto.getPermissions()));
+        }
+        if (dto.getCertTypeIds() != null) {
+            admin.setCertTypeIds(JSONUtil.toJsonStr(dto.getCertTypeIds()));
         }
         // 如果传了密码则修改密码
         if (StringUtils.hasText(dto.getPassword())) {

@@ -171,6 +171,30 @@
             <el-button type="text" @click="form.permissions = []">清空</el-button>
           </div>
         </el-form-item>
+        <el-form-item
+          v-if="showCertTypeSelector"
+          label="证书类型"
+          prop="certTypeIds"
+          required
+        >
+          <el-select
+            v-model="form.certTypeIds"
+            multiple
+            collapse-tags
+            placeholder="请选择可操作的证书类型"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="t in certTypeOptions"
+              :key="t.name"
+              :label="t.name"
+              :value="t.name"
+            />
+          </el-select>
+          <div class="perm-tip">
+            勾选"学生管理"或"证书管理"后，子管理员只能查看/操作所选证书类型的学生和证书
+          </div>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
             <el-radio :label="1">启用</el-radio>
@@ -201,6 +225,7 @@ import {
   getCurrentAdmin,
   changeAdminPassword
 } from '@/api/admin'
+import { certificateTypeList } from '@/api/certificateType'
 import tableMaxHeight from '@/mixins/tableMaxHeight'
 
 export default {
@@ -242,6 +267,7 @@ export default {
         { value: 'setting', label: '系统设置' },
         { value: 'delete', label: '数据删除（需单独开启）' }
       ],
+      certTypeOptions: [],
       dialog: {
         visible: false,
         id: null,
@@ -252,6 +278,7 @@ export default {
         roleName: '',
         password: '',
         permissions: [],
+        certTypeIds: [],
         status: 1
       },
       pwdForm: { oldPassword: '', newPassword: '', submitting: false },
@@ -276,8 +303,24 @@ export default {
   },
   created() {
     this.fetchList()
+    this.loadCertTypes()
+  },
+  computed: {
+    // 勾选"学生管理"或"证书管理"权限时才需要选择可操作的证书类型
+    showCertTypeSelector() {
+      return this.form.permissions.includes('student') || this.form.permissions.includes('certificate')
+    }
   },
   methods: {
+    loadCertTypes() {
+      certificateTypeList()
+        .then((res) => {
+          this.certTypeOptions = res.data || []
+        })
+        .catch(() => {
+          this.certTypeOptions = []
+        })
+    },
     fetchList() {
       this.loading = true
       adminPage(this.query)
@@ -330,6 +373,20 @@ export default {
       }
       return []
     },
+    // 解析后端返回的 certTypeIds(可能为 JSON 字符串/数组/undefined)
+    parseCertTypeIds(ids) {
+      if (!ids) return []
+      if (Array.isArray(ids)) return ids
+      if (typeof ids === 'string') {
+        try {
+          const arr = JSON.parse(ids)
+          return Array.isArray(arr) ? arr : []
+        } catch (e) {
+          return []
+        }
+      }
+      return []
+    },
     handleAdd() {
       this.dialog.id = null
       this.form = {
@@ -337,6 +394,7 @@ export default {
         roleName: '',
         password: '',
         permissions: [],
+        certTypeIds: [],
         status: 1
       }
       this.dialog.visible = true
@@ -351,6 +409,7 @@ export default {
         roleName: row.roleName,
         password: '',
         permissions: this.formatPermissions(row.permissions),
+        certTypeIds: this.parseCertTypeIds(row.certTypeIds),
         status: row.status
       }
       this.dialog.visible = true
@@ -364,8 +423,17 @@ export default {
     submitForm() {
       this.$refs.form.validate((valid) => {
         if (!valid) return
+        // 勾选学生管理/证书管理时必须指定证书类型
+        if (this.showCertTypeSelector && (!this.form.certTypeIds || this.form.certTypeIds.length === 0)) {
+          this.$message.warning('请至少选择一个可操作的证书类型')
+          return
+        }
         this.dialog.submitting = true
         const payload = { ...this.form }
+        if (!this.showCertTypeSelector) {
+          // 未勾选学生/证书权限时不提交证书类型
+          payload.certTypeIds = []
+        }
         if (this.dialog.id) {
           payload.id = this.dialog.id
           if (!payload.password) delete payload.password
@@ -456,6 +524,13 @@ export default {
 }
 
 .perm-actions {
+  margin-top: 4px;
+}
+
+.perm-tip {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
   margin-top: 4px;
 }
 

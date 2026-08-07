@@ -53,6 +53,9 @@ public class LoginVO {
     /** 管理员权限列表(仅admin角色有值) */
     private java.util.List<String> permissions;
 
+    /** 子管理员可操作的证书类型名称列表(仅admin子管理员有值) */
+    private java.util.List<String> certTypeIds;
+
     /** 是否超级管理员: 1=是, 0=子管理员 */
     private Integer isSuper;
 }

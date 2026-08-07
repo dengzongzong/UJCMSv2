@@ -117,6 +117,16 @@ public class AuthServiceImpl implements AuthService {
                     vo.setPermissions(java.util.Collections.emptyList());
                 }
             }
+            // 子管理员证书类型范围(超管为 null, 前端不做限制)
+            if (admin.getCertTypeIds() != null && !admin.getCertTypeIds().isEmpty()) {
+                try {
+                    vo.setCertTypeIds(cn.hutool.json.JSONUtil.parseArray(admin.getCertTypeIds()).toList(String.class));
+                } catch (Exception e) {
+                    vo.setCertTypeIds(java.util.Collections.emptyList());
+                }
+            } else {
+                vo.setCertTypeIds(java.util.Collections.emptyList());
+            }
             vo.setToken(jwtUtil.generateToken(admin.getId(), admin.getUsername(), "admin"));
         } else {
             // 学员登录:支持 手机号 / 身份证号 两种方式,由 loginType 决定(默认 phone)
@@ -343,6 +353,16 @@ public class AuthServiceImpl implements AuthService {
                 } catch (Exception e) {
                     vo.setPermissions(java.util.Collections.emptyList());
                 }
+            }
+            // 子管理员证书类型范围
+            if (admin.getCertTypeIds() != null && !admin.getCertTypeIds().isEmpty()) {
+                try {
+                    vo.setCertTypeIds(cn.hutool.json.JSONUtil.parseArray(admin.getCertTypeIds()).toList(String.class));
+                } catch (Exception e) {
+                    vo.setCertTypeIds(java.util.Collections.emptyList());
+                }
+            } else {
+                vo.setCertTypeIds(java.util.Collections.emptyList());
             }
         } else {
             Student student = studentMapper.selectById(userId);

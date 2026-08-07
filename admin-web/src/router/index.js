@@ -2,7 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Layout from '@/layout/Index.vue'
 import store from '@/store'
-import { publicCertificateTypes } from '@/api/certificateType'
+import { certificateTypeList } from '@/api/certificateType'
 
 Vue.use(VueRouter)
 
@@ -429,14 +429,18 @@ const router = createRouter()
 const whiteList = ['/login']
 
 // 加载证书类型到 store(用于侧边栏菜单生成)
-let certTypesLoaded = false
+// 用管理端接口: 超管返回全部, 子管理员仅返回被授权的证书类型(菜单自动受限)
+// 缓存 key 为当前管理员 id, 切换账号登录后重新加载
+let certTypesLoadedFor = null
 async function loadCertTypes() {
-  if (certTypesLoaded) return
+  const adminInfo = store.getters.adminInfo || {}
+  const uid = adminInfo.id || adminInfo.userId || 'anon'
+  if (certTypesLoadedFor === uid) return
   try {
-    const res = await publicCertificateTypes()
+    const res = await certificateTypeList()
     const types = (res.data || res || [])
     store.commit('app/SET_CERT_TYPES', types)
-    certTypesLoaded = true
+    certTypesLoadedFor = uid
   } catch (e) {
     // 静默失败,不影响登录
   }

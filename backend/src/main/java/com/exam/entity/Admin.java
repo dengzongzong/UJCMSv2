@@ -17,6 +17,8 @@ public class Admin {
     private String avatar;
     private Integer isSuper;
     private String permissions;
+    /** 子管理员可操作的证书类型名称列表(JSON数组字符串), 超管不适用 */
+    private String certTypeIds;
     private Integer status;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastLoginTime;

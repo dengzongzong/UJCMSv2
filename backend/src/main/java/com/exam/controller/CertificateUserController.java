@@ -10,6 +10,7 @@ import com.exam.entity.CertificateUser;
 import com.exam.mapper.CertificateMapper;
 import com.exam.mapper.CertificateUserMapper;
 import com.exam.service.CertificateUserSyncService;
+import com.exam.service.AdminScopeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +37,8 @@ public class CertificateUserController {
     private com.exam.service.CertificateService certificateService;
     @Autowired
     private com.exam.service.AsyncTaskService asyncTaskService;
+    @Autowired
+    private AdminScopeService adminScopeService;
 
     /**
      * 分页查询证书用户
@@ -58,6 +61,14 @@ public class CertificateUserController {
         LambdaQueryWrapper<CertificateUser> wrapper = new LambdaQueryWrapper<CertificateUser>()
                 .orderByDesc(CertificateUser::getSyncTime)
                 .orderByDesc(CertificateUser::getId);
+        // 子管理员证书类型范围过滤
+        List<String> scopeCertTypes = adminScopeService.scopeCertTypes();
+        if (scopeCertTypes != null) {
+            if (scopeCertTypes.isEmpty()) {
+                return Result.success(new PageResult<>(new Page<>(page, size)));
+            }
+            wrapper.in(CertificateUser::getCertType, scopeCertTypes);
+        }
         if (StringUtils.hasText(keyword)) {
             String kw = keyword;
             wrapper.and(w -> w.like(CertificateUser::getName, kw)
@@ -101,6 +112,10 @@ public class CertificateUserController {
      */
     @PostMapping("/sync")
     public Result<Map<String, Object>> sync(@RequestParam(required = false) String certType) {
+        // 子管理员只能同步自己授权的证书类型
+        if (!adminScopeService.canOperateCertType(certType)) {
+            throw new BusinessException("请指定可操作的证书类型进行同步");
+        }
         // 预先查询学生总数,用于进度计算
         int studentCount = certificateUserSyncService.countStudents(certType);
         // 提交异步任务
@@ -136,6 +151,8 @@ public class CertificateUserController {
         if (!StringUtils.hasText(user.getName())) {
             throw new BusinessException("姓名不能为空");
         }
+        // 子管理员只能新增自己授权证书类型的证书用户
+        adminScopeService.checkCertType(user.getCertType());
         user.setId(null);
         user.setSyncTime(java.time.LocalDateTime.now());
         certificateUserMapper.insert(user);
@@ -153,6 +170,11 @@ public class CertificateUserController {
         CertificateUser exist = certificateUserMapper.selectById(user.getId());
         if (exist == null) {
             throw new BusinessException("证书用户不存在");
+        }
+        // 子管理员只能操作自己授权证书类型的数据, 且不能把数据改成非授权类型
+        adminScopeService.checkCertType(exist.getCertType());
+        if (user.getCertType() != null && !user.getCertType().equals(exist.getCertType())) {
+            adminScopeService.checkCertType(user.getCertType());
         }
         if (user.getName() != null) exist.setName(user.getName());
         if (user.getIdCard() != null) exist.setIdCard(user.getIdCard());
@@ -187,6 +209,14 @@ public class CertificateUserController {
         LambdaQueryWrapper<CertificateUser> wrapper = new LambdaQueryWrapper<CertificateUser>()
                 .orderByDesc(CertificateUser::getSyncTime)
                 .orderByDesc(CertificateUser::getId);
+        // 子管理员证书类型范围过滤
+        List<String> scopeCertTypes = adminScopeService.scopeCertTypes();
+        if (scopeCertTypes != null) {
+            if (scopeCertTypes.isEmpty()) {
+                return;
+            }
+            wrapper.in(CertificateUser::getCertType, scopeCertTypes);
+        }
         if (StringUtils.hasText(keyword)) {
             String kw = keyword;
             wrapper.and(w -> w.like(CertificateUser::getName, kw)

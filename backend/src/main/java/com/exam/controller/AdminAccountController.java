@@ -52,6 +52,15 @@ public class AdminAccountController {
         } else {
             map.put("permissions", Collections.emptyList());
         }
+        if (admin.getCertTypeIds() != null && !admin.getCertTypeIds().isEmpty()) {
+            try {
+                map.put("certTypeIds", cn.hutool.json.JSONUtil.parseArray(admin.getCertTypeIds()));
+            } catch (Exception e) {
+                map.put("certTypeIds", Collections.emptyList());
+            }
+        } else {
+            map.put("certTypeIds", Collections.emptyList());
+        }
         return Result.success(map);
     }
 

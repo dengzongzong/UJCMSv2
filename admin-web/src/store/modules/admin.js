@@ -49,6 +49,7 @@ const actions = {
               avatar: data.avatar,
               role: data.role,
               permissions: data.permissions || [],
+              certTypeIds: data.certTypeIds || [],
               isSuper: data.isSuper
             }
             commit('SET_ADMIN_INFO', info)

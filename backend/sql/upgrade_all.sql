@@ -693,3 +693,17 @@ CREATE TABLE IF NOT EXISTS `course_order` (
   KEY `idx_course` (`course_id`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程支付订单表';
+
+-- ============================================================
+-- 16. 子管理员证书类型权限: admin 表加 cert_type_ids 字段
+-- 存子管理员可操作的证书类型名称列表(JSON数组字符串), 超管不适用
+-- (用 information_schema 判断, 幂等可重复执行)
+-- ============================================================
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'admin' AND COLUMN_NAME = 'cert_type_ids');
+SET @sql := IF(@col_exists = 0,
+    'ALTER TABLE `admin` ADD COLUMN `cert_type_ids` varchar(2000) DEFAULT NULL COMMENT ''子管理员可操作的证书类型名称列表(JSON数组)'' AFTER `permissions`',
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

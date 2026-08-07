@@ -120,6 +120,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     private com.exam.service.CertificateTypeService certificateTypeService;
     @Autowired
     private CertificateDownloadCountMapper downloadCountMapper;
+    @Autowired
+    private com.exam.service.AdminScopeService adminScopeService;
 
     @Override
     public PageResult<Certificate> page(Integer page, Integer size, String name,
@@ -459,6 +461,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getCreateTime)
                 .orderByDesc(Certificate::getId);
+        // 子管理员证书类型范围过滤
+        List<String> scopeCertTypes = adminScopeService.scopeCertTypes();
+        if (scopeCertTypes != null) {
+            if (scopeCertTypes.isEmpty()) {
+                return new PageResult<>(new Page<>(page, size));
+            }
+            w.in(Certificate::getCertType, scopeCertTypes);
+        }
         // 导入时间范围查询(支持小时级别: yyyy-MM-dd HH:mm:ss)
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -497,6 +507,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getCreateTime)
                 .orderByDesc(Certificate::getId);
+        // 子管理员证书类型范围过滤
+        List<String> scopeCertTypes = adminScopeService.scopeCertTypes();
+        if (scopeCertTypes != null) {
+            if (scopeCertTypes.isEmpty()) {
+                return new PageResult<>(new Page<>(page, size));
+            }
+            w.in(Certificate::getCertType, scopeCertTypes);
+        }
         // 导入时间范围查询(支持小时级别)
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -546,6 +564,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     public CertificateVO detail(Long id) {
         Certificate c = this.getById(id);
         if (c == null) throw new BusinessException("证书不存在");
+        // 子管理员只能查看自己授权证书类型的证书
+        adminScopeService.checkCertType(c.getCertType());
         CertificateVO vo = new CertificateVO();
         org.springframework.beans.BeanUtils.copyProperties(c, vo);
         vo.setIssueDate(c.getIssueDate() == null ? null : c.getIssueDate().toString());
@@ -596,6 +616,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     public boolean add(CertificateDTO dto) {
         Certificate c = new Certificate();
         copyDtoToEntity(dto, c);
+        // 子管理员只能新增自己授权证书类型的证书
+        adminScopeService.checkCertType(c.getCertType());
         // 身份证号必填校验(数据库 id_card NOT NULL,前端/导入路径均已校验,此处兜底)
         if (!StringUtils.hasText(c.getIdCard())) {
             throw new BusinessException("身份证号不能为空");
@@ -733,6 +755,11 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (dto.getStudentNo() != null && !StringUtils.hasText(dto.getStudentNo())) dto.setStudentNo(null);
         Certificate exist = this.getById(dto.getId());
         if (exist == null) throw new BusinessException("证书不存在");
+        // 子管理员只能操作自己授权证书类型的证书, 且不能改成非授权类型
+        adminScopeService.checkCertType(exist.getCertType());
+        if (dto.getCertType() != null && !dto.getCertType().equals(exist.getCertType())) {
+            adminScopeService.checkCertType(dto.getCertType());
+        }
         Certificate c = new Certificate();
         c.setId(dto.getId());
         if (StringUtils.hasText(dto.getName())) c.setName(dto.getName());
@@ -896,6 +923,10 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (ids == null || ids.isEmpty()) return;
         // 先收集要删除的证书的身份证号(用于删除后反向同步学生专业)
         List<Certificate> certs = this.listByIds(ids);
+        // 子管理员只能删除自己授权证书类型的证书
+        for (Certificate c : certs) {
+            adminScopeService.checkCertType(c.getCertType());
+        }
         Set<String> idCards = new HashSet<>();
         for (Certificate c : certs) {
             if (StringUtils.hasText(c.getIdCard())) {
@@ -1142,6 +1173,14 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                 .eq(StringUtils.hasText(certType), Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getCreateTime)
                 .orderByDesc(Certificate::getId);
+        // 子管理员证书类型范围过滤
+        List<String> scopeCertTypes = adminScopeService.scopeCertTypes();
+        if (scopeCertTypes != null) {
+            if (scopeCertTypes.isEmpty()) {
+                return new ArrayList<>();
+            }
+            w.in(Certificate::getCertType, scopeCertTypes);
+        }
         if (StringUtils.hasText(issueDateStart)) {
             w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
         }
@@ -1378,8 +1417,13 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                                    List<Long> ids, String certType) {
         // 1. 查询数据
         List<Certificate> certs;
+        List<String> scopeCertTypes = adminScopeService.scopeCertTypes();
         if (ids != null && !ids.isEmpty()) {
             certs = this.listByIds(ids);
+            // 子管理员只能导出自己授权证书类型的证书
+            for (Certificate c : certs) {
+                adminScopeService.checkCertType(c.getCertType());
+            }
         } else {
             LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
                     .like(StringUtils.hasText(name), Certificate::getName, name)
@@ -1388,6 +1432,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     .like(StringUtils.hasText(profession), Certificate::getProfession, profession)
                     .orderByDesc(Certificate::getCreateTime)
                     .orderByDesc(Certificate::getId);
+            if (scopeCertTypes != null) {
+                if (scopeCertTypes.isEmpty()) {
+                    return;
+                }
+                w.in(Certificate::getCertType, scopeCertTypes);
+            }
             if (StringUtils.hasText(issueDateStart)) {
                 w.ge(Certificate::getIssueDate, parseDate(issueDateStart));
             }

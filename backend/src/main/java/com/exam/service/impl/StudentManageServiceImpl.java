@@ -17,6 +17,7 @@ import com.exam.mapper.*;
 import com.exam.service.StudentManageService;
 import com.exam.service.StudentNumberService;
 import com.exam.service.CertificateUserSyncService;
+import com.exam.service.AdminScopeService;
 import com.exam.vo.StudentImportVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -67,6 +68,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
     private ExamAnswerMapper examAnswerMapper;
     @Autowired
     private CertificateMapper certificateMapper;
+    @Autowired
+    private AdminScopeService adminScopeService;
 
     @Override
     public PageResult<Student> page(StudentSearchDTO dto) {
@@ -76,6 +79,14 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (dto.getExactCount() != null && dto.getExactCount() > 0) {
             page = 1;
             size = dto.getExactCount();
+        }
+        // 子管理员证书类型范围过滤
+        List<String> scopeCertTypes = adminScopeService.scopeCertTypes();
+        if (scopeCertTypes != null) {
+            if (scopeCertTypes.isEmpty()) {
+                return new PageResult<>(new Page<>());
+            }
+            // 应用在下方 wrapper 上
         }
         // 如果按 professionId 筛选，先查关联表获取 studentId 列表
         List<Long> studentIdsByProfession = null;
@@ -91,6 +102,7 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<Student>()
                 .like(StringUtils.hasText(dto.getPhone()), Student::getPhone, dto.getPhone())
                 .eq(dto.getStatus() != null, Student::getStatus, dto.getStatus())
+                .in(scopeCertTypes != null, Student::getCertType, scopeCertTypes)
                 .orderByDesc(Student::getCreateTime)
                 .orderByDesc(Student::getId);
         if (studentIdsByProfession != null) {
@@ -180,6 +192,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (student == null) {
             throw new BusinessException("学生信息不能为空");
         }
+        // 子管理员只能创建自己授权证书类型的学生
+        adminScopeService.checkCertType(student.getCertType());
         // 手机号为选填字段:为空时存 null(避免 uk_phone 唯一约束在多个空串上冲突)
         if (!StringUtils.hasText(student.getPhone())) {
             student.setPhone(null);
@@ -408,6 +422,12 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (exist == null) {
             throw new BusinessException("学生不存在");
         }
+        // 子管理员只能操作自己授权证书类型的学生
+        adminScopeService.checkCertType(exist.getCertType());
+        // 证书类型变更时也要校验新类型在授权范围内
+        if (student.getCertType() != null && !student.getCertType().equals(exist.getCertType())) {
+            adminScopeService.checkCertType(student.getCertType());
+        }
         // 保存旧值,用于同步到证书表(匹配旧姓名+旧身份证号的证书记录)
         String oldName = exist.getName();
         String oldIdCard = exist.getIdCard();
@@ -592,6 +612,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (exist == null) {
             throw new BusinessException("学生不存在");
         }
+        // 子管理员只能删除自己授权证书类型的学生
+        adminScopeService.checkCertType(exist.getCertType());
         // 级联清理: 该学生所有关联表
         studentCourseMapper.delete(new LambdaQueryWrapper<StudentCourse>()
                 .eq(StudentCourse::getStudentId, id));
@@ -642,6 +664,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (student == null) {
             throw new BusinessException("学生不存在");
         }
+        // 子管理员只能查看自己授权证书类型的学生
+        adminScopeService.checkCertType(student.getCertType());
         student.setPassword(null);
         loadStudentProfessions(student);
         // 已开通课程
@@ -670,6 +694,8 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
         if (student == null) {
             throw new BusinessException("学生不存在");
         }
+        // 子管理员只能冻结自己授权证书类型的学生
+        adminScopeService.checkCertType(student.getCertType());
         // 切换状态
         student.setStatus(student.getStatus() == 1 ? 0 : 1);
         this.updateById(student);
@@ -916,6 +942,12 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
             String idCard = row.getIdCard();
             String professionName = row.getProfession();
             String skillLevel = row.getSkillLevel();
+
+            // 子管理员只能导入自己授权证书类型的学生
+            if (!adminScopeService.canOperateCertType(row.getCertType())) {
+                failList.add(fail(name, idCard, "无权限导入该证书类型(" + (row.getCertType() == null ? "未指定" : row.getCertType()) + ")的学生"));
+                continue;
+            }
 
             if (!StringUtils.hasText(idCard)) {
                 failList.add(fail(name, idCard, "证件号码为空"));

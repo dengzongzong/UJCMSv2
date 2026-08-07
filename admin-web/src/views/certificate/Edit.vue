@@ -129,6 +129,7 @@
 import { certificateDetail, addCertificate, updateCertificate } from '@/api/certificate'
 import { fieldList } from '@/api/certificateField'
 import { templateList } from '@/api/certificateTemplate'
+import { certificateTypeList } from '@/api/certificateType'
 import request from '@/utils/request'
 
 export default {
@@ -208,8 +209,8 @@ export default {
     this.customFields = (fields || []).filter(f => f.isSystem === 0 && !SCORE_FIELD_KEYS.includes(f.fieldKey))
     // 加载证书模板选项(用于"证书模板"下拉;支持一人多证绑定不同模板)
     templateList().then(r => { this.templateOptions = r.data || [] }).catch(() => {})
-    // 加载证书类型选项(用于"证书类型"下拉)
-    request({ url: '/public/certificate-types', method: 'get' }).then(r => {
+    // 加载证书类型选项(用于"证书类型"下拉, 管理端接口: 子管理员仅看到授权类型)
+    certificateTypeList().then(r => {
       this.certTypeOptions = r.data || []
     }).catch(() => {})
     // 加载专业选项(用于"专业名称"下拉)

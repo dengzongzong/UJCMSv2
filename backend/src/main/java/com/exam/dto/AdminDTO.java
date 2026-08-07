@@ -14,5 +14,7 @@ public class AdminDTO {
     private String password;
     private String roleName;
     private List<String> permissions;
+    /** 可操作的证书类型名称列表 */
+    private List<String> certTypeIds;
     private Integer status;
 }
