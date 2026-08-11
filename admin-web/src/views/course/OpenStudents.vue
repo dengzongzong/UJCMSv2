@@ -3,6 +3,7 @@
     title="开通学生管理"
     :visible.sync="dialogVisible"
     width="760px"
+    append-to-body
     :close-on-click-modal="false"
     @close="handleClose"
   >

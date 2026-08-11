@@ -166,6 +166,7 @@
       title="Excel 导入证书用户"
       :visible.sync="importDialog"
       width="900px"
+      append-to-body
       @closed="onImportClosed"
       :close-on-click-modal="false"
     >
@@ -249,6 +250,7 @@
       title="从学生管理同步"
       :visible.sync="syncDialog.visible"
       width="500px"
+      append-to-body
       :close-on-click-modal="false"
       :show-close="syncDialog.status !== 'running'"
       @close="closeSyncDialog"
@@ -288,6 +290,7 @@
       title="处理进度"
       :visible.sync="asyncExportDialog.visible"
       width="500px"
+      append-to-body
       :close-on-click-modal="false"
       :show-close="asyncExportDialog.status !== 'running'"
       @close="closeAsyncExportDialog"
@@ -330,6 +333,7 @@
       title="批量导入学员照片"
       :visible.sync="batchPhotoDialog.visible"
       width="780px"
+      append-to-body
       :close-on-click-modal="false"
       @closed="onBatchPhotoDialogClosed"
     >
@@ -396,6 +400,7 @@
       title="上传学员照片"
       :visible.sync="photoDialog.visible"
       width="500px"
+      append-to-body
       @closed="onPhotoDialogClosed"
     >
       <el-form :model="photoDialog.form" label-width="100px" size="small">
@@ -439,7 +444,7 @@
     </el-dialog>
 
     <!-- 行内"绑定模板"弹窗(为单张证书指定模板;支持一人多证) -->
-    <el-dialog title="绑定证书模板" :visible.sync="templateDialog.visible" width="500px">
+    <el-dialog title="绑定证书模板" :visible.sync="templateDialog.visible" width="500px" append-to-body>
       <el-form label-width="100px" size="small">
         <el-form-item label="学员">
           <span>{{ templateDialog.form.name }} ({{ templateDialog.form.idCard }})</span>
@@ -457,7 +462,7 @@
     </el-dialog>
 
     <!-- 批量"绑定模板"弹窗 -->
-    <el-dialog title="批量绑定证书模板" :visible.sync="batchTemplateDialog.visible" width="500px">
+    <el-dialog title="批量绑定证书模板" :visible.sync="batchTemplateDialog.visible" width="500px" append-to-body>
       <el-form label-width="100px" size="small">
         <el-form-item label="选中证书">
           <span>共 {{ selection.length }} 张证书</span>
@@ -475,7 +480,7 @@
     </el-dialog>
 
     <!-- 下载格式选择弹窗 -->
-    <el-dialog :title="downloadFormatDialog.allMode ? '批量下载(全部) - 选择格式' : '批量下载(选中) - 选择格式'" :visible.sync="downloadFormatDialog.visible" width="400px" :close-on-click-modal="false">
+    <el-dialog :title="downloadFormatDialog.allMode ? '批量下载(全部) - 选择格式' : '批量下载(选中) - 选择格式'" :visible.sync="downloadFormatDialog.visible" width="400px" append-to-body :close-on-click-modal="false">
       <div v-if="downloadFormatDialog.allMode" class="download-all-tip">
         <i class="el-icon-info"></i> 将下载当前筛选条件下所有已绑定模板的证书,每张证书使用其各自绑定的模板渲染。
       </div>

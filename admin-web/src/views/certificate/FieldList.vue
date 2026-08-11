@@ -35,7 +35,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog :title="form.id ? '编辑字段' : '新增字段'" :visible.sync="dialogVisible" width="500px" @closed="onDialogClosed">
+    <el-dialog :title="form.id ? '编辑字段' : '新增字段'" :visible.sync="dialogVisible" width="500px" append-to-body @closed="onDialogClosed">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" size="small">
         <el-form-item label="字段键" prop="fieldKey">
           <el-input v-model="form.fieldKey" :disabled="!!form.id && form.isSystem === 1" placeholder="英文,如 custom1" />

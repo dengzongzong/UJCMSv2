@@ -93,7 +93,7 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog title="直播详情" :visible.sync="detailDialog.visible" width="620px">
+    <el-dialog title="直播详情" :visible.sync="detailDialog.visible" width="620px" append-to-body>
       <div v-loading="detailDialog.loading">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="直播标题" :span="2">{{ detailDialog.data.title }}</el-descriptions-item>
@@ -167,7 +167,7 @@
     />
 
     <!-- 回放地址弹窗 -->
-    <el-dialog title="设置回放地址" :visible.sync="replayDialog.visible" width="520px">
+    <el-dialog title="设置回放地址" :visible.sync="replayDialog.visible" width="520px" append-to-body>
       <el-input v-model="replayDialog.url" placeholder="请输入回放视频直链地址(m3u8/mp4), 用于直播结束后观看" clearable />
       <div class="el-upload__tip" style="margin-top: 6px">
         直播结束后将录制文件转存为可播放链接，填写后学生即可在直播间观看回放

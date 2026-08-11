@@ -104,7 +104,7 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog title="试卷详情" :visible.sync="detailDialog.visible" width="760px">
+    <el-dialog title="试卷详情" :visible.sync="detailDialog.visible" width="760px" append-to-body>
       <div v-loading="detailDialog.loading">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="试卷名称">{{ detailDialog.data.name }}</el-descriptions-item>
@@ -139,6 +139,7 @@
       title="一键抽题组卷"
       :visible.sync="generateDialog.visible"
       width="640px"
+      append-to-body
       :close-on-click-modal="false"
       @closed="onGenerateDialogClosed"
     >

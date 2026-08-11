@@ -127,6 +127,7 @@
       :title="dialog.isEdit ? '编辑证书用户' : '新增证书用户'"
       :visible.sync="dialog.visible"
       width="520px"
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-form ref="dialogForm" :model="dialog.form" :rules="dialog.rules" label-width="100px" size="small">

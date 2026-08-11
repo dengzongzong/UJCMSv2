@@ -80,6 +80,7 @@
       :title="form.id ? '编辑轮播图' : '新增轮播图'"
       :visible.sync="dialogVisible"
       width="640px"
+      append-to-body
       @closed="onDialogClosed"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" size="small">

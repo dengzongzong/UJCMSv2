@@ -165,7 +165,7 @@
     </el-card>
 
     <!-- 留言详情 -->
-    <el-dialog title="留言详情" :visible.sync="detailDialog.visible" width="640px">
+    <el-dialog title="留言详情" :visible.sync="detailDialog.visible" width="640px" append-to-body>
       <el-descriptions v-if="detailDialog.row" :column="1" border>
         <el-descriptions-item label="单位名称">{{ detailDialog.row.orgName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="联系人">{{ detailDialog.row.contactName }}</el-descriptions-item>

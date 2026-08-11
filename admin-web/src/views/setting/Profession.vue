@@ -34,6 +34,7 @@
       :title="professionDialog.id ? '编辑专业' : '新增专业'"
       :visible.sync="professionDialog.visible"
       width="420px"
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-form ref="professionForm" :model="professionForm" :rules="professionRules" label-width="80px">

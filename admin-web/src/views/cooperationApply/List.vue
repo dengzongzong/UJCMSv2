@@ -99,6 +99,7 @@
       :title="dialogTitle"
       :visible.sync="dialogVisible"
       width="75%"
+      append-to-body
       :close-on-click-modal="false"
       @closed="resetForm"
     >

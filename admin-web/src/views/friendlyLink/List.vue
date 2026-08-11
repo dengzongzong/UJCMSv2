@@ -79,6 +79,7 @@
       :title="form.id ? '编辑友链' : '新增友链'"
       :visible.sync="dialogVisible"
       width="560px"
+      append-to-body
       :close-on-click-modal="false"
       @closed="onDialogClosed"
     >

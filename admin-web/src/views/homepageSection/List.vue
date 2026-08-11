@@ -65,7 +65,7 @@
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog :title="editDialog.isEdit ? '编辑内容' : '新增内容'" :visible.sync="editDialog.visible" width="70%" :close-on-click-modal="false">
+    <el-dialog :title="editDialog.isEdit ? '编辑内容' : '新增内容'" :visible.sync="editDialog.visible" width="70%" append-to-body :close-on-click-modal="false">
       <el-form ref="editForm" :model="editDialog.form" :rules="editDialog.rules" label-width="80px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="editDialog.form.title" placeholder="请输入标题" />

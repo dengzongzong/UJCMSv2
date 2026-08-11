@@ -102,7 +102,7 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog title="视频详情" :visible.sync="detailDialog.visible" width="640px">
+    <el-dialog title="视频详情" :visible.sync="detailDialog.visible" width="640px" append-to-body>
       <div v-loading="detailDialog.loading">
         <video
           v-if="detailDialog.data.url"

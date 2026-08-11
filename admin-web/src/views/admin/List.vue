@@ -125,6 +125,7 @@
       :title="dialog.id ? '编辑子管理员' : '新增子管理员'"
       :visible.sync="dialog.visible"
       width="560px"
+      append-to-body
       :close-on-click-modal="false"
       @closed="resetForm"
     >

@@ -116,6 +116,7 @@
       :title="dialog.isEdit ? '编辑模板' : '新建模板'"
       :visible.sync="dialog.visible"
       width="820px"
+      append-to-body
       :close-on-click-modal="false"
       @closed="resetDialogForm"
     >
@@ -359,6 +360,7 @@
       :title="'模板详情：' + viewDialog.name"
       :visible.sync="viewDialog.visible"
       width="800px"
+      append-to-body
     >
       <el-table
         v-loading="viewDialog.loading"

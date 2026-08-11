@@ -166,7 +166,7 @@
     </el-card>
 
     <!-- 导入弹窗 -->
-    <el-dialog title="导入题目" :visible.sync="importDialog.visible" width="480px">
+    <el-dialog title="导入题目" :visible.sync="importDialog.visible" width="480px" append-to-body>
       <el-alert
         title="请上传 Excel 文件，系统将按模板解析题目"
         type="info"

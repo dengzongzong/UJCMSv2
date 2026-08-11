@@ -98,6 +98,7 @@
       :title="form.id ? '编辑三图' : '新增三图'"
       :visible.sync="dialogVisible"
       width="640px"
+      append-to-body
       :close-on-click-modal="false"
       @closed="onDialogClosed"
     >

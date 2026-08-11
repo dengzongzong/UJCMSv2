@@ -34,6 +34,7 @@
       :title="dialog.id ? '编辑分类' : '新增分类'"
       :visible.sync="dialog.visible"
       width="420px"
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-form ref="form" :model="form" :rules="rules" label-width="80px">

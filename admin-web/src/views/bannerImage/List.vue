@@ -33,7 +33,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog :title="dialog.id ? '编辑横幅' : '新增横幅'" :visible.sync="dialog.visible" width="600px" :close-on-click-modal="false">
+    <el-dialog :title="dialog.id ? '编辑横幅' : '新增横幅'" :visible.sync="dialog.visible" width="600px" append-to-body :close-on-click-modal="false">
       <el-form ref="form" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="图片" prop="imageUrl">
           <el-upload

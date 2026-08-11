@@ -125,7 +125,7 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog title="考试详情" :visible.sync="detailDialog.visible" width="720px">
+    <el-dialog title="考试详情" :visible.sync="detailDialog.visible" width="720px" append-to-body>
       <div v-loading="detailDialog.loading">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="考试名称">{{ detailDialog.data.name }}</el-descriptions-item>

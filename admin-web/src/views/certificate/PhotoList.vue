@@ -62,7 +62,7 @@
       />
 
       <!-- 普通上传弹窗 -->
-      <el-dialog title="上传学员照片" :visible.sync="dialogVisible" width="500px" @closed="onDialogClosed">
+      <el-dialog title="上传学员照片" :visible.sync="dialogVisible" width="500px" append-to-body @closed="onDialogClosed">
         <el-form :model="form" label-width="100px" size="small">
           <el-form-item label="身份证" required>
             <el-input v-model="form.idCard" />
@@ -81,7 +81,7 @@
       </el-dialog>
 
       <!-- 为指定证书上传照片弹窗 -->
-      <el-dialog title="为指定证书上传照片" :visible.sync="certPhotoDialog.visible" width="640px" @closed="onCertDialogClosed">
+      <el-dialog title="为指定证书上传照片" :visible.sync="certPhotoDialog.visible" width="640px" append-to-body @closed="onCertDialogClosed">
         <el-form :model="certPhotoDialog.form" label-width="120px" size="small">
           <el-form-item label="身份证号" required>
             <el-input v-model="certPhotoDialog.form.idCard" placeholder="输入身份证号后点击查询" style="width:300px">

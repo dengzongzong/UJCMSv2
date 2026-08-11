@@ -192,6 +192,7 @@
       title="题干重复提醒"
       :visible.sync="duplicateDialog.visible"
       width="720px"
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-alert

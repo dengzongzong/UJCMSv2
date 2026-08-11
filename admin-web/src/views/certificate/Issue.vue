@@ -134,7 +134,7 @@
     </el-card>
 
     <!-- 绑定结果弹窗 -->
-    <el-dialog title="绑定结果" :visible.sync="resultVisible" width="700px">
+    <el-dialog title="绑定结果" :visible.sync="resultVisible" width="700px" append-to-body>
       <el-result
         :icon="result.failedCount === 0 ? 'success' : 'warning'"
         :title="`绑定成功 ${result.issuedCount} 条 / 失败 ${result.failedCount} 条`"
@@ -153,7 +153,7 @@
     </el-dialog>
 
     <!-- 说明弹窗 -->
-    <el-dialog title="本页说明" :visible.sync="dialogVisible" width="600px">
+    <el-dialog title="本页说明" :visible.sync="dialogVisible" width="600px" append-to-body>
       <h4>证书用户和证书使用者的区别</h4>
       <ul class="help-text">
         <li><b>证书用户</b>: 实际拿证书的人(姓名/身份证/职业/技能等级/报单机构/报单费)</li>

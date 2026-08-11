@@ -127,6 +127,7 @@
       :title="editDialog.isEdit ? '编辑新闻' : '新增新闻'"
       :visible.sync="editDialog.visible"
       width="800px"
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-form ref="editForm" :model="editDialog.form" :rules="editDialog.rules" label-width="80px">

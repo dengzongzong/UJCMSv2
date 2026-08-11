@@ -107,7 +107,7 @@
     </el-card>
 
     <!-- 作答详情弹窗 -->
-    <el-dialog title="考试作答详情" :visible.sync="detailDialog.visible" width="780px">
+    <el-dialog title="考试作答详情" :visible.sync="detailDialog.visible" width="780px" append-to-body>
       <div v-loading="detailDialog.loading">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="考试名称">{{ detailDialog.data.examName }}</el-descriptions-item>
@@ -147,7 +147,7 @@
     </el-dialog>
 
     <!-- 批改弹窗 -->
-    <el-dialog title="人工批改" :visible.sync="gradeDialog.visible" width="800px" :close-on-click-modal="false">
+    <el-dialog title="人工批改" :visible.sync="gradeDialog.visible" width="800px" append-to-body :close-on-click-modal="false">
       <div v-loading="gradeDialog.loading">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="考试名称">{{ gradeDialog.data.examName }}</el-descriptions-item>
