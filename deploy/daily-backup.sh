@@ -2,7 +2,7 @@
 # ============================================================
 # 每日定时备份脚本 - 数据库 + uploads目录
 # crontab: 0 0 * * * /opt/exam-platform/daily-backup.sh
-# 保留最近5个备份文件,超过自动清理
+# 保留最近3个备份文件,超过自动清理
 # ============================================================
 set -e
 
@@ -22,7 +22,7 @@ fi
 
 # 备份目录
 BACKUP_BASE="/opt/exam-platform/backups"
-MAX_BACKUPS=5
+MAX_BACKUPS=3
 DATE_STR=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="${BACKUP_BASE}/${DATE_STR}"
 

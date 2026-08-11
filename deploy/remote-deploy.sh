@@ -471,7 +471,22 @@ if [ -f "${SCRIPT_DIR}/daily-backup.sh" ]; then
     echo "  每日备份定时任务已安装 (每天0点执行)"
     echo "  备份脚本: ${DEPLOY_DIR}/daily-backup.sh"
     echo "  备份目录: ${DEPLOY_DIR}/backups/"
-    echo "  保留最近5个备份"
+    echo "  保留最近3个备份"
+
+    # 清理现有备份:只保留最近3个
+    BACKUP_DIR_PATH="${DEPLOY_DIR}/backups"
+    if [ -d "${BACKUP_DIR_PATH}" ]; then
+        EXISTING_COUNT=$(ls -d ${BACKUP_DIR_PATH}/*/ 2>/dev/null | wc -l)
+        if [ ${EXISTING_COUNT} -gt 3 ]; then
+            DELETE_COUNT=$((EXISTING_COUNT - 3))
+            echo "  清理现有备份: 当前${EXISTING_COUNT}个, 删除${DELETE_COUNT}个旧备份"
+            ls -d ${BACKUP_DIR_PATH}/*/ 2>/dev/null | sort | head -n ${DELETE_COUNT} | while read old_dir; do
+                old_dir=$(echo "${old_dir}" | sed 's:/$::')
+                rm -rf "${old_dir}"
+            done
+            echo "  清理完成, 剩余3个备份"
+        fi
+    fi
 else
     echo "  警告: daily-backup.sh 不存在,跳过"
 fi
