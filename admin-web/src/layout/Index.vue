@@ -391,8 +391,10 @@ export default {
   background-color: #f0f2f5;
   padding: 16px;
   overflow: auto;
-  /* 隔离内容区渲染,不阻塞侧边栏和头部 */
-  contain: layout style paint;
+  /* 隔离内容区渲染,不阻塞侧边栏和头部;
+     注意: 不能用 contain: paint, 它会创建新的层叠上下文,
+     导致 el-dialog 的遮罩层盖住弹窗内容 */
+  contain: layout style;
 }
 
 .layout-footer {

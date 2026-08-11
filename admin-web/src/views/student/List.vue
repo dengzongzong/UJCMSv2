@@ -160,6 +160,7 @@
       :visible.sync="courseDialog.visible"
       width="720px"
       :close-on-click-modal="false"
+      append-to-body
     >
       <div v-loading="courseDialog.loading">
         <el-alert
@@ -228,6 +229,7 @@
       :visible.sync="examDialog.visible"
       width="720px"
       :close-on-click-modal="false"
+      append-to-body
     >
       <div v-loading="examDialog.loading">
         <el-alert
@@ -292,6 +294,7 @@
       :visible.sync="addDialog.visible"
       width="560px"
       :close-on-click-modal="false"
+      append-to-body
     >
       <el-form ref="addForm" :model="addDialog.form" :rules="addDialog.rules" label-width="90px">
         <el-row :gutter="16">
@@ -377,6 +380,7 @@
       :visible.sync="importDialog.visible"
       width="560px"
       :close-on-click-modal="false"
+      append-to-body
     >
       <el-alert
         :title="importTipTitle"
@@ -465,6 +469,7 @@
     title="编辑学生"
     :visible.sync="editDialog.visible"
     width="560px"
+    append-to-body
     @closed="onEditDialogClosed"
   >
     <el-form ref="editForm" :model="editDialog.form" :rules="editDialog.rules" label-width="100px" size="small">
