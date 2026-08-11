@@ -18,7 +18,7 @@
           <div v-if="examList.length > 0" class="exam-list">
             <div v-for="exam in examList" :key="exam.id" class="exam-card" @click="goExam(exam)">
               <div class="exam-cover">
-                <img v-if="exam.coverUrl" :src="apiUrl(exam.coverUrl)" alt="" />
+                <img v-if="exam.coverUrl" :src="apiUrl(exam.coverUrl)" alt="" loading="lazy" decoding="async" />
                 <div v-else class="cover-default"><van-icon name="notes-o" size="32" /></div>
               </div>
               <div class="exam-info">

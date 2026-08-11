@@ -18,7 +18,7 @@
           <div v-if="filteredCourses.length > 0" class="course-list">
             <div v-for="course in filteredCourses" :key="course.id" class="course-card" @click="goDetail(course.id)">
               <div class="course-cover">
-                <img v-if="course.coverUrl" :src="resolveImg(course.coverUrl)" alt="" />
+                <img v-if="course.coverUrl" :src="resolveImg(course.coverUrl)" alt="" loading="lazy" decoding="async" />
                 <div v-else class="cover-default"><van-icon name="photo-o" size="32" /></div>
               </div>
               <div class="course-info">

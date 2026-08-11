@@ -240,6 +240,8 @@ export default {
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   z-index: 1000;
+  /* 强制独立合成层:即使页面内容渲染阻塞, Header 菜单也保持响应 */
+  will-change: transform;
 }
 
 .back-button {

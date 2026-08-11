@@ -29,7 +29,7 @@
         <!-- 课程信息 -->
         <div class="course-info-card">
           <div class="course-cover">
-            <img :src="resolveImg(course.coverUrl || course.coverImage || defaultCover)" :alt="course.name" />
+            <img :src="resolveImg(course.coverUrl || course.coverImage || defaultCover)" :alt="course.name" loading="lazy" decoding="async" />
           </div>
           <div class="course-detail-info">
             <h2 class="course-name">{{ course.name }}</h2>
@@ -130,7 +130,7 @@
                   <!-- 有图片时只显示图片，不展示标题 -->
                   <template v-if="img.imageUrl">
                     <div class="evaluate-image-wrapper">
-                      <img :src="resolveImg(img.imageUrl)" :alt="img.title || ''" class="evaluate-image" />
+                      <img :src="resolveImg(img.imageUrl)" :alt="img.title || ''" class="evaluate-image" loading="lazy" decoding="async" />
                     </div>
                   </template>
                   <!-- 无图片时只显示标题，居中显示，位置与图片一致 -->

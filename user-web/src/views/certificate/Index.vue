@@ -189,7 +189,7 @@
                     <template v-else-if="myExamRecords.length > 0">
                       <div v-for="item in myExamRecords" :key="item.recordId" class="paper-card" @click="openPaperFromRecord(item)">
                         <div class="paper-cover">
-                          <img v-if="item.coverUrl" :src="resolveImg(item.coverUrl)" :alt="item.examName" @error="onCoverError" />
+                          <img v-if="item.coverUrl" :src="resolveImg(item.coverUrl)" :alt="item.examName" loading="lazy" decoding="async" @error="onCoverError" />
                           <div v-else class="paper-cover-default">
                             <van-icon name="certificate" size="32" color="#1989fa" />
                           </div>
