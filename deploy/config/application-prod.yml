@@ -8,6 +8,10 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types: application/javascript,text/css,application/json,text/html,text/plain,image/svg+xml
 
 spring:
   datasource:

@@ -102,6 +102,10 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types: application/javascript,text/css,application/json,text/html,text/plain,image/svg+xml
 
 spring:
   datasource:
@@ -237,6 +241,16 @@ server {
     ssl_session_cache   shared:SSL:10m;
     ssl_session_timeout 10m;
 
+    # ===== gzip 压缩 =====
+    gzip on;
+    gzip_min_length 1k;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml font/woff2;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_disable "msie6";
+    # =====================
+
     # 学员端静态资源根(server级, 防止子location缺root时落到默认欢迎页)
     root /opt/exam-platform/user-web/dist/;
 
@@ -326,6 +340,16 @@ cat > /etc/nginx/conf.d/exam-platform.conf << 'NGINX_EOF'
 server {
     listen 80;
     server_name 43.162.107.232;
+
+    # ===== gzip 压缩 =====
+    gzip on;
+    gzip_min_length 1k;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml font/woff2;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_disable "msie6";
+    # =====================
 
     # 学员端静态资源根(server级, 防止子location缺root时落到默认欢迎页)
     root /opt/exam-platform/user-web/dist/;
