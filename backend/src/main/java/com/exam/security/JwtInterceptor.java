@@ -133,9 +133,14 @@ public class JwtInterceptor implements HandlerInterceptor {
      * 判断当前请求路径是否在白名单(白名单路径可访问,带 token 时也会解析上下文)
      */
     private boolean isPublicPath(String path) {
-        // 注意: /auth/ 下的路径已在 WebMvcConfig 中按需排除,
-        // 这里不再用 /auth/ 前缀匹配,避免 /auth/choose-subject 等需登录接口被当作公开路径
-        return path.startsWith("/public/")
+        // 公开的 /auth/* 接口(与 WebMvcConfig.excludePathPatterns 保持一致)
+        // 注意: 仅列举 login/register/reset-password/send-code 这4个真正不需要登录的,
+        // 不要用 /auth/ 前缀匹配,否则 /auth/choose-subject 等需登录接口会被误放行。
+        return path.equals("/auth/login")
+                || path.equals("/auth/register")
+                || path.equals("/auth/reset-password")
+                || path.equals("/auth/send-code")
+                || path.startsWith("/public/")
                 || path.equals("/user/course/public/list")
                 || path.equals("/user/exam/public/list")
                 || path.startsWith("/user/live/public/")
