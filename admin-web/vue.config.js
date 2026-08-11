@@ -45,6 +45,32 @@ module.exports = {
       alias: {
         '@': resolve('src')
       }
+    },
+    optimization: {
+      splitChunks: {
+        chunks: 'all',
+        maxInitialRequests: 6,
+        cacheGroups: {
+          // Vue 全家桶
+          vue: {
+            name: 'chunk-vue',
+            test: /[\\/]node_modules[\\/](vue|vue-router|vuex)[\\/]/,
+            priority: 30
+          },
+          // Element UI (最大,单独拆分,浏览器缓存友好)
+          element: {
+            name: 'chunk-element',
+            test: /[\\/]node_modules[\\/]element-ui[\\/]/,
+            priority: 20
+          },
+          // 其他第三方库
+          vendors: {
+            name: 'chunk-vendors',
+            test: /[\\/]node_modules[\\/]/,
+            priority: 10
+          }
+        }
+      }
     }
   }
 }

@@ -707,3 +707,46 @@ SET @sql := IF(@col_exists = 0,
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- 17. 性能优化: 常用查询字段加索引(提升列表查询和COUNT统计速度)
+-- ============================================================
+-- student.cert_type 索引(子管理员按证书类型过滤)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND INDEX_NAME = 'idx_cert_type');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE student ADD INDEX idx_cert_type (cert_type)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- student.id_card 索引(COUNT DISTINCT + 按身份证查询)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'student' AND INDEX_NAME = 'idx_id_card');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE student ADD INDEX idx_id_card (id_card)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- certificate.cert_type 索引(子管理员按证书类型过滤)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate' AND INDEX_NAME = 'idx_cert_type');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE certificate ADD INDEX idx_cert_type (cert_type)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- certificate_user.cert_type 索引(子管理员按证书类型过滤)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate_user' AND INDEX_NAME = 'idx_cert_type');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE certificate_user ADD INDEX idx_cert_type (cert_type)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- certificate_user.id_card 索引(COUNT DISTINCT + 按身份证查询)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate_user' AND INDEX_NAME = 'idx_id_card');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE certificate_user ADD INDEX idx_id_card (id_card)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
