@@ -37,6 +37,26 @@ module.exports = {
       alias: {
         '@': path.resolve(__dirname, 'src')
       }
+    },
+    optimization: {
+      splitChunks: {
+        chunks: 'all',
+        maxInitialRequests: 6,
+        cacheGroups: {
+          // Vant UI (最大第三方库,单独拆分)
+          vant: {
+            name: 'chunk-vant',
+            test: /[\\/]node_modules[\\/]vant[\\/]/,
+            priority: 20
+          },
+          // 其他第三方库
+          vendors: {
+            name: 'chunk-vendors',
+            test: /[\\/]node_modules[\\/]/,
+            priority: 10
+          }
+        }
+      }
     }
   },
   chainWebpack: config => {

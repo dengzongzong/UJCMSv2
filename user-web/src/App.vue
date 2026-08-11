@@ -1,9 +1,6 @@
 <template>
   <div id="app" :class="{ 'is-mobile': isMobile }">
-    <keep-alive :include="cachedViews">
-      <router-view v-if="$route.meta.keepAlive" />
-    </keep-alive>
-    <router-view v-if="!$route.meta.keepAlive" />
+    <router-view />
     <FloatingQrcode v-if="!isMobile" />
     <TabBar v-if="isMobile" />
   </div>
@@ -18,8 +15,7 @@ export default {
   components: { FloatingQrcode, TabBar },
   data() {
     return {
-      isMobile: window.innerWidth <= 768,
-      cachedViews: ['HomeIndex', 'CourseCenter', 'LiveCenter', 'ExamCenter', 'CertificatePortal', 'ProfileIndex']
+      isMobile: window.innerWidth <= 768
     }
   },
   mounted() {
@@ -35,7 +31,6 @@ export default {
       this.setHeaderHeight()
     },
     setHeaderHeight() {
-      // 移动端Header高度约100px，桌面端 header-top(150)+nav(48)=198px，再加20px间距
       const height = window.innerWidth <= 768 ? '120px' : '218px'
       document.documentElement.style.setProperty('--header-height', height)
     }

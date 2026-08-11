@@ -21,7 +21,7 @@ const routes = [
       name: 'Home',
       component: () => import('@/views/home/Index.vue'),
       // 公开:未登录也能看
-      meta: { requiresAuth: false, requiresSubject: false, title: '首页', keepAlive: true }
+      meta: { requiresAuth: false, requiresSubject: false, title: '首页' }
     },
     {
       path: '/login',
@@ -68,7 +68,7 @@ const routes = [
       name: 'CourseCenter',
       component: () => import('@/views/course/MyCourses.vue'),
       // 公开:未登录可浏览所有课程,点击具体课程时再校验是否已开通/已登录
-      meta: { requiresAuth: false, requiresSubject: false, title: '学习中心', keepAlive: true }
+      meta: { requiresAuth: false, requiresSubject: false, title: '学习中心' }
     },
     {
       path: '/course/my-opened',
@@ -81,7 +81,7 @@ const routes = [
       name: 'LiveCenter',
       component: () => import('@/views/live/LiveList.vue'),
       // 公开:未登录也能看直播中心列表
-      meta: { requiresAuth: false, requiresSubject: false, title: '直播中心', keepAlive: true }
+      meta: { requiresAuth: false, requiresSubject: false, title: '直播中心' }
     },
     {
       path: '/live/:id',
@@ -94,7 +94,7 @@ const routes = [
       name: 'ExamCenter',
       component: () => import('@/views/exam/List.vue'),
       // 公开:未登录可浏览所有考试,点击具体考试时再校验
-      meta: { requiresAuth: false, requiresSubject: false, title: '考试中心', keepAlive: true }
+      meta: { requiresAuth: false, requiresSubject: false, title: '考试中心' }
     },
     {
       path: '/exam/my-opened',
@@ -137,7 +137,7 @@ const routes = [
       name: 'Profile',
       component: () => import('@/views/profile/Index.vue'),
       // 需登录:点击"个人中心"会跳登录
-      meta: { requiresAuth: true, requiresSubject: true, title: '个人中心', keepAlive: true }
+      meta: { requiresAuth: true, requiresSubject: true, title: '个人中心' }
     },
     {
       path: '/profile/wrong-questions',
@@ -191,7 +191,7 @@ const routes = [
       name: 'CertificatePortal',
       component: () => import('@/views/certificate/Index.vue'),
       // 公开:未登录也能查证书
-      meta: { requiresAuth: false, requiresSubject: false, title: '证书查询', keepAlive: true }
+      meta: { requiresAuth: false, requiresSubject: false, title: '证书查询' }
     },
     {
       path: '/cooperation',
