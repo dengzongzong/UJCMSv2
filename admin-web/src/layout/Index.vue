@@ -299,6 +299,8 @@ export default {
   background-color: #304156;
   transition: width 0.28s;
   overflow: hidden;
+  /* 独立合成层: 内容区渲染不阻塞侧边栏菜单点击 */
+  will-change: transform;
 
   .logo-container {
     height: 56px;
@@ -343,6 +345,8 @@ export default {
   border-bottom: 1px solid #f0f0f0;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
   padding: 0 20px;
+  /* 独立合成层: 保持交互响应 */
+  will-change: transform;
 
   .header-left {
     display: flex;
@@ -387,6 +391,8 @@ export default {
   background-color: #f0f2f5;
   padding: 16px;
   overflow: auto;
+  /* 隔离内容区渲染,不阻塞侧边栏和头部 */
+  contain: layout style paint;
 }
 
 .layout-footer {

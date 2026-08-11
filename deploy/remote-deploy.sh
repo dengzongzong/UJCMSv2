@@ -491,6 +491,12 @@ else
     echo "  警告: daily-backup.sh 不存在,跳过"
 fi
 
+# 10. 安装定时重启任务(每天凌晨3点重启后端服务,释放可能存在的资源泄漏)
+echo "[10/10] 安装定时重启任务..."
+# 先清除旧的重启任务条目,再添加新的,避免重复
+(crontab -l 2>/dev/null | grep -v "systemctl restart exam-platform"; echo "0 3 * * * /bin/systemctl restart exam-platform >> ${DEPLOY_DIR}/logs/restart.log 2>&1") | crontab -
+echo "  定时重启任务已安装 (每天凌晨3:00 重启 exam-platform)"
+
 echo ""
 echo "========================================"
 echo "  部署完成!"
