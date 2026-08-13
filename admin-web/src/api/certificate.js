@@ -83,6 +83,18 @@ export function downloadFile(url, opts) {
     headers,
     credentials: 'include'
   }).then(r => {
+    const ct = r.headers.get('Content-Type') || ''
+    // 后端返回 JSON(通常是业务错误,如"结果文件不存在或已过期"),解析并抛出明确错误
+    // 注意: 后端 BusinessException 走 GlobalExceptionHandler 返回 HTTP 200 + JSON,
+    // 不能只看 r.ok,否则会把错误 JSON 当文件下载,表现为"点了下载没有文件出来"
+    if (ct.includes('application/json')) {
+      return r.json().then(j => {
+        const msg = (j && j.message) || '下载失败'
+        const err = new Error(msg)
+        err.code = j && j.code
+        throw err
+      })
+    }
     if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 401 ? ' (未登录)' : ''))
     const cd = r.headers.get('Content-Disposition') || ''
     return r.blob().then(blob => ({ blob, fileName: parseFileName(cd) }))

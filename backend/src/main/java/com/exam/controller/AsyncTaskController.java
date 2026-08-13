@@ -124,22 +124,41 @@ public class AsyncTaskController {
     @GetMapping("/{taskId}/download")
     public void download(@PathVariable String taskId, HttpServletResponse response) throws Exception {
         AsyncTask t = taskService.get(taskId);
-        if (t == null) throw new BusinessException("任务不存在");
-        if (t.getResultFile() == null || !t.getResultFile().exists()) {
-            throw new BusinessException("结果文件不存在或已过期");
+        if (t == null) {
+            writeError(response, 404, "任务不存在");
+            return;
+        }
+        File resultFile = t.getResultFile();
+        // 内存里 resultFile 可能为空(如服务重启后从 DB 恢复),尝试从 resultFilePath 恢复
+        if (resultFile == null && t.getResultFilePath() != null) {
+            resultFile = new File(t.getResultFilePath());
+        }
+        if (resultFile == null || !resultFile.exists()) {
+            writeError(response, 500, "结果文件不存在或已过期");
+            return;
         }
         String fileName = t.getResultFileName() == null
-                ? t.getResultFile().getName()
+                ? resultFile.getName()
                 : t.getResultFileName();
         String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replaceAll("\\+", "%20");
         response.setContentType("application/octet-stream");
         response.setCharacterEncoding("utf-8");
         response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + encoded);
-        try (InputStream in = new BufferedInputStream(new FileInputStream(t.getResultFile()));
+        try (InputStream in = new BufferedInputStream(new FileInputStream(resultFile));
              OutputStream out = response.getOutputStream()) {
             byte[] buf = new byte[8192];
             int n;
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
         }
+    }
+
+    /**
+     * 下载接口出错时返回明确的非 200 状态码 + JSON 错误体,
+     * 前端 downloadFile 能据此识别为错误并提示,而不是把错误 JSON 当文件下载
+     */
+    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json;charset=utf-8");
+        response.getWriter().write("{\"code\":" + status + ",\"message\":\"" + message + "\"}");
     }
 }
