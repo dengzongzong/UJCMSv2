@@ -392,7 +392,11 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
             File pdfFile = new File(System.getProperty("java.io.tmpdir"),
                     "cert_batch_" + System.currentTimeMillis() + ".pdf");
             try (FileOutputStream fos = new FileOutputStream(pdfFile)) {
-                generateService.renderBatchPdf(certs, defaultTemplate, fos);
+                // 传入进度回调,每渲染完一张就更新任务进度,让进度条实时走动
+                generateService.renderBatchPdf(certs, defaultTemplate, fos, (processed, totalCnt) -> {
+                    task.setProcessed(processed);
+                    task.setProgress(Math.min(100, processed * 100 / Math.max(1, totalCnt)));
+                });
             } catch (Exception e) {
                 pdfFile.delete();
                 throw new RuntimeException("批量生成失败: " + e.getMessage(), e);

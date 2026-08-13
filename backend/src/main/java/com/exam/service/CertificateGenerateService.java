@@ -30,6 +30,15 @@ public interface CertificateGenerateService {
     void renderBatchPdf(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception;
 
     /**
+     * 批量渲染为单个 PDF,带进度回调。
+     * <p>每渲染完一张证书调用一次回调,用于异步任务更新进度条。</p>
+     *
+     * @param progressCallback 进度回调(processed, total),可为 null
+     */
+    void renderBatchPdf(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream,
+                        java.util.function.BiConsumer<Integer, Integer> progressCallback) throws Exception;
+
+    /**
      * 渲染单张到字节数组(用于返回前端 / HTTP 响应)
      */
     byte[] renderSingleBytes(Certificate cert, CertificateTemplate template) throws Exception;

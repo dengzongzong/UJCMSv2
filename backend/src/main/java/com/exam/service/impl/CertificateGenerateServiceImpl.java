@@ -189,9 +189,16 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
 
     @Override
     public void renderBatchPdf(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception {
+        renderBatchPdf(certs, template, outputStream, null);
+    }
+
+    @Override
+    public void renderBatchPdf(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream,
+                               java.util.function.BiConsumer<Integer, Integer> progressCallback) throws Exception {
         // 流式处理: 每张证书渲染为一页,所有证书合并到同一个 PDF(每张只驻留内存一次)
         com.itextpdf.text.Document document = null;
         int count = 0;
+        int total = certs.size();
         for (Certificate c : certs) {
             try {
                 CertificateTemplate t = resolveTemplate(c, template);
@@ -217,6 +224,10 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
             } catch (Exception e) {
                 // 跳过未绑定模板或渲染失败的证书,不中断整个批次
                 System.err.println("[批量生成PDF] 跳过证书 certId=" + c.getId() + ": " + e.getMessage());
+            }
+            // 每处理完一张(无论成功失败)都上报进度,让进度条实时走动
+            if (progressCallback != null) {
+                progressCallback.accept(count, total);
             }
         }
         if (document != null) {
