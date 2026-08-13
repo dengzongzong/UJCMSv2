@@ -502,13 +502,20 @@ public class CertificatePortalController {
 
         boolean pdf = "pdf".equalsIgnoreCase(format);
         String fileName = buildFileName(cert, pdf);
+        // 先生成到内存,计算 Content-Length,让浏览器下载进度条能正常显示百分比
+        byte[] bytes;
+        if (pdf) {
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            generateService.renderSinglePdf(cert, template, baos);
+            bytes = baos.toByteArray();
+        } else {
+            bytes = generateService.renderSingleBytes(cert, template);
+        }
         prepareDownload(response, fileName, pdf ? "application/pdf" : "image/jpeg");
+        response.setContentLength(bytes.length);
         try (OutputStream os = response.getOutputStream()) {
-            if (pdf) {
-                generateService.renderSinglePdf(cert, template, os);
-            } else {
-                os.write(generateService.renderSingleBytes(cert, template));
-            }
+            os.write(bytes);
+            os.flush();
         }
     }
 
@@ -567,17 +574,23 @@ public class CertificatePortalController {
             Certificate c = certs.get(0);
             CertificateTemplate template = templateMapper.selectById(c.getTemplateId());
             String singleName = buildCertFileName(c, pdf);
+            byte[] singleBytes;
+            if (pdf) {
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                generateService.renderSinglePdf(c, template, baos);
+                singleBytes = baos.toByteArray();
+            } else {
+                singleBytes = generateService.renderSingleBytes(c, template);
+            }
             if (pdf) {
                 prepareDownload(response, singleName, "application/pdf");
             } else {
                 prepareDownload(response, singleName, "image/jpeg");
             }
+            response.setContentLength(singleBytes.length);
             try (OutputStream os = response.getOutputStream()) {
-                if (pdf) {
-                    generateService.renderSinglePdf(c, template, os);
-                } else {
-                    os.write(generateService.renderSingleBytes(c, template));
-                }
+                os.write(singleBytes);
+                os.flush();
             }
             return;
         }
@@ -585,15 +598,25 @@ public class CertificatePortalController {
         if (pdf) {
             // 多张证书合并为单个 PDF(每张一页),下载文件为 .pdf 而非 zip
             String fileName = "我的证书_" + System.currentTimeMillis() + ".pdf";
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            generateService.renderBatchPdf(certs, null, baos);
+            byte[] pdfBytes = baos.toByteArray();
             prepareDownload(response, fileName, "application/pdf");
+            response.setContentLength(pdfBytes.length);
             try (OutputStream os = response.getOutputStream()) {
-                generateService.renderBatchPdf(certs, null, os);
+                os.write(pdfBytes);
+                os.flush();
             }
         } else {
             String fileName = "certificates_img_" + System.currentTimeMillis() + ".zip";
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            generateService.renderBatchToZip(certs, null, baos);
+            byte[] zipBytes = baos.toByteArray();
             prepareDownload(response, fileName, "application/zip");
+            response.setContentLength(zipBytes.length);
             try (OutputStream os = response.getOutputStream()) {
-                generateService.renderBatchToZip(certs, null, os);
+                os.write(zipBytes);
+                os.flush();
             }
         }
     }
@@ -649,17 +672,23 @@ public class CertificatePortalController {
             Certificate c = certs.get(0);
             CertificateTemplate template = templateMapper.selectById(c.getTemplateId());
             String singleName = buildCertFileName(c, pdf);
+            byte[] singleBytes;
+            if (pdf) {
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                generateService.renderSinglePdf(c, template, baos);
+                singleBytes = baos.toByteArray();
+            } else {
+                singleBytes = generateService.renderSingleBytes(c, template);
+            }
             if (pdf) {
                 prepareDownload(response, singleName, "application/pdf");
             } else {
                 prepareDownload(response, singleName, "image/jpeg");
             }
+            response.setContentLength(singleBytes.length);
             try (OutputStream os = response.getOutputStream()) {
-                if (pdf) {
-                    generateService.renderSinglePdf(c, template, os);
-                } else {
-                    os.write(generateService.renderSingleBytes(c, template));
-                }
+                os.write(singleBytes);
+                os.flush();
             }
             return;
         }
@@ -667,15 +696,25 @@ public class CertificatePortalController {
         if (pdf) {
             // 多张证书合并为单个 PDF(每张一页),下载文件为 .pdf 而非 zip
             String fileName = "我的证书_" + System.currentTimeMillis() + ".pdf";
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            generateService.renderBatchPdf(certs, null, baos);
+            byte[] pdfBytes = baos.toByteArray();
             prepareDownload(response, fileName, "application/pdf");
+            response.setContentLength(pdfBytes.length);
             try (OutputStream os = response.getOutputStream()) {
-                generateService.renderBatchPdf(certs, null, os);
+                os.write(pdfBytes);
+                os.flush();
             }
         } else {
             String fileName = "certificates_selected_img_" + System.currentTimeMillis() + ".zip";
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            generateService.renderBatchToZip(certs, null, baos);
+            byte[] zipBytes = baos.toByteArray();
             prepareDownload(response, fileName, "application/zip");
+            response.setContentLength(zipBytes.length);
             try (OutputStream os = response.getOutputStream()) {
-                generateService.renderBatchToZip(certs, null, os);
+                os.write(zipBytes);
+                os.flush();
             }
         }
     }
