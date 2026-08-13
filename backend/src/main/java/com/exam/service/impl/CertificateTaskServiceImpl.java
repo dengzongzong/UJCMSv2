@@ -381,10 +381,43 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
             task.setProgress(100);
             return;
         }
+        boolean pdf = "pdf".equalsIgnoreCase(format);
         // 尝试获取系统默认模板作为兜底(如果证书没有绑定自己的模板)
         // 如果没有系统默认模板,不报错,各证书使用自己绑定的模板,未绑定的跳过
         CertificateTemplate defaultTemplate = pickDefaultTemplate(certs);
         int total = certs.size();
+
+        if (pdf) {
+            // PDF 批量: 所有证书合并到同一个 PDF(多页),结果文件为 .pdf 而非 zip
+            File pdfFile = new File(System.getProperty("java.io.tmpdir"),
+                    "cert_batch_" + System.currentTimeMillis() + ".pdf");
+            try (FileOutputStream fos = new FileOutputStream(pdfFile)) {
+                generateService.renderBatchPdf(certs, defaultTemplate, fos);
+            } catch (Exception e) {
+                pdfFile.delete();
+                throw new RuntimeException("批量生成失败: " + e.getMessage(), e);
+            }
+            task.setProcessed(total);
+            task.setProgress(100);
+            task.setSuccessCount(total);
+            task.setFailCount(0);
+            if (AsyncTask.STATUS_RUNNING.equals(task.getStatus())) {
+                task.setResultFile(pdfFile);
+                // 使用新命名: 日期_证书类型(次数).pdf
+                String certType = certs.stream()
+                        .map(Certificate::getCertType)
+                        .filter(c -> c != null && !c.isEmpty())
+                        .findFirst().orElse(null);
+                String resultName = certificateService.buildDownloadFileName(certType, "batch_download", ".pdf");
+                task.setResultFileName(resultName);
+            } else {
+                // 取消则删除临时文件
+                pdfFile.delete();
+            }
+            return;
+        }
+
+        // 图片格式: 打包为 zip
         int ok = 0, fail = 0;
         File zipFile = new File(System.getProperty("java.io.tmpdir"),
                 "cert_batch_" + System.currentTimeMillis() + ".zip");
@@ -411,14 +444,9 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
                         log.warn("证书 {} 跳过: 未绑定模板且无系统默认模板", c.getId());
                     } else {
                         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        if ("pdf".equalsIgnoreCase(format)) {
-                            generateService.renderSinglePdf(c, tpl, baos);
-                        } else {
-                            generateService.renderSingle(c, tpl, baos);
-                        }
+                        generateService.renderSingle(c, tpl, baos);
                         String name = fileNameOf(c);
-                        String ext = "pdf".equalsIgnoreCase(format) ? "pdf" : "png";
-                        zip.putNextEntry(new ZipEntry(name + "." + ext));
+                        zip.putNextEntry(new ZipEntry(name + ".png"));
                         zip.write(baos.toByteArray());
                         zip.closeEntry();
                         ok++;
@@ -438,7 +466,7 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
         }
         if (AsyncTask.STATUS_RUNNING.equals(task.getStatus())) {
             task.setResultFile(zipFile);
-            // 使用新命名: 证书_证书类型_月日(次数).zip
+            // 使用新命名: 日期_证书类型(次数).zip
             String certType = certs.stream()
                     .map(Certificate::getCertType)
                     .filter(c -> c != null && !c.isEmpty())

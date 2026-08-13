@@ -120,17 +120,24 @@ public class CertificateGenerateController {
         }
         CertificateTemplate template = resolveTemplate(body.getTemplateId());
         boolean pdf = FORMAT_PDF.equalsIgnoreCase(body.getFormat());
-        // 使用新命名: 证书_证书类型_月日(次数).zip
+        // 使用新命名: 日期_证书类型(次数).pdf / 日期_证书类型(次数).zip
         String certType = certs.stream()
                 .map(Certificate::getCertType)
                 .filter(c -> c != null && !c.isEmpty())
                 .findFirst().orElse(null);
-        String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".zip");
-        prepareDownload(response, fileName, "application/zip");
-        try (OutputStream os = response.getOutputStream()) {
-            if (pdf) {
-                generateService.renderBatchPdfToZip(certs, template, os);
-            } else {
+        if (pdf) {
+            // 批量 PDF: 所有证书合并到同一个 PDF(多页),下载文件为 .pdf 而非 zip
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            generateService.renderBatchPdf(certs, template, baos);
+            String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".pdf");
+            prepareDownload(response, fileName, "application/pdf");
+            response.getOutputStream().write(baos.toByteArray());
+            response.getOutputStream().flush();
+        } else {
+            // 批量图片: 仍然打包为 zip
+            String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".zip");
+            prepareDownload(response, fileName, "application/zip");
+            try (OutputStream os = response.getOutputStream()) {
                 generateService.renderBatchToZip(certs, template, os);
             }
         }
@@ -156,17 +163,24 @@ public class CertificateGenerateController {
         }
         CertificateTemplate template = resolveTemplate(body.getTemplateId());
         boolean pdf = FORMAT_PDF.equalsIgnoreCase(body.getFormat());
-        // 使用新命名: 证书_证书类型_月日(次数).zip
+        // 使用新命名: 日期_证书类型(次数).pdf / 日期_证书类型(次数).zip
         String certType = certs.stream()
                 .map(Certificate::getCertType)
                 .filter(c -> c != null && !c.isEmpty())
                 .findFirst().orElse(null);
-        String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".zip");
-        prepareDownload(response, fileName, "application/zip");
-        try (OutputStream os = response.getOutputStream()) {
-            if (pdf) {
-                generateService.renderBatchPdfToZip(certs, template, os);
-            } else {
+        if (pdf) {
+            // 批量 PDF: 所有证书合并到同一个 PDF(多页),下载文件为 .pdf 而非 zip
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            generateService.renderBatchPdf(certs, template, baos);
+            String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".pdf");
+            prepareDownload(response, fileName, "application/pdf");
+            response.getOutputStream().write(baos.toByteArray());
+            response.getOutputStream().flush();
+        } else {
+            // 批量图片: 仍然打包为 zip
+            String fileName = certificateService.buildDownloadFileName(certType, "batch_download", ".zip");
+            prepareDownload(response, fileName, "application/zip");
+            try (OutputStream os = response.getOutputStream()) {
                 generateService.renderBatchToZip(certs, template, os);
             }
         }

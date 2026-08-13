@@ -2635,9 +2635,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         String dateStr = today.getMonthValue() + "月" + today.getDayOfMonth() + "日";
         // 获取当天下载次数
         int count = getAndIncrementDownloadCount(certType, downloadKind);
-        // 批量下载加 "证书_" 前缀
-        String prefix = "batch_download".equals(downloadKind) ? "证书_" : "";
-        return prefix + effectiveCertType + "_" + dateStr + "(" + count + ")" + extension;
+        // 批量下载命名: 日期_证书类型(次数).ext (如 8月11日_教师资格证(3).pdf)
+        if ("batch_download".equals(downloadKind)) {
+            return dateStr + "_" + effectiveCertType + "(" + count + ")" + extension;
+        }
+        // 其他(导出等): 证书类型_日期(次数).ext
+        return effectiveCertType + "_" + dateStr + "(" + count + ")" + extension;
     }
 
     @Override

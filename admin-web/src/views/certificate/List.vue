@@ -945,7 +945,7 @@ export default {
         if (res && res.async) {
           this.$message.success(res.message || '已提交批量生成任务,请在右下角"任务中心"查看进度')
         } else if (res && res.blob) {
-          triggerDownload(res.blob, res.fileName || ('certificates_' + format + '.zip'))
+          triggerDownload(res.blob, res.fileName || ('certificates_' + format + (format === 'pdf' ? '.pdf' : '.zip')))
           this.$message.success('证书已打包下载')
         } else {
           this.$message.warning('未返回可下载的内容')
@@ -991,7 +991,7 @@ export default {
           this.asyncExportDialog.downloadUrl = null
           this.pollAsyncExportTask(res.taskId)
         } else if (res && res.blob) {
-          triggerDownload(res.blob, res.fileName || ('certificates_all_' + format + '.zip'))
+          triggerDownload(res.blob, res.fileName || ('certificates_all_' + format + (format === 'pdf' ? '.pdf' : '.zip')))
           this.$message.success('证书已打包下载(共 ' + ids.length + ' 张)')
         } else {
           this.$message.warning('未返回可下载的内容')

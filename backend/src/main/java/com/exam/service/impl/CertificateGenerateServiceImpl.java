@@ -188,23 +188,42 @@ public class CertificateGenerateServiceImpl implements CertificateGenerateServic
     }
 
     @Override
-    public void renderBatchPdfToZip(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception {
-        try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
-            for (Certificate c : certs) {
-                try {
-                    CertificateTemplate t = resolveTemplate(c, template);
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    BufferedImage image = renderImage(c, t);
-                    writeImageAsPdf(image, baos);
-                    String name = fileNameOf(c);
-                    zip.putNextEntry(new ZipEntry(name + ".pdf"));
-                    zip.write(baos.toByteArray());
-                    zip.closeEntry();
-                } catch (Exception e) {
-                    // 跳过未绑定模板或渲染失败的证书,不中断整个批次
-                    System.err.println("[批量生成PDF] 跳过证书 certId=" + c.getId() + ": " + e.getMessage());
+    public void renderBatchPdf(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception {
+        // 流式处理: 每张证书渲染为一页,所有证书合并到同一个 PDF(每张只驻留内存一次)
+        com.itextpdf.text.Document document = null;
+        int count = 0;
+        for (Certificate c : certs) {
+            try {
+                CertificateTemplate t = resolveTemplate(c, template);
+                BufferedImage image = renderImage(c, t);
+                ByteArrayOutputStream pngBaos = new ByteArrayOutputStream();
+                ImageIO.write(image, "png", pngBaos);
+                com.itextpdf.text.Image pdfImage = com.itextpdf.text.Image.getInstance(pngBaos.toByteArray());
+                com.itextpdf.text.Rectangle pageSize = new com.itextpdf.text.Rectangle(
+                        pdfImage.getScaledWidth() + 10,
+                        pdfImage.getScaledHeight() + 10);
+                if (document == null) {
+                    // 用第一张证书的尺寸初始化文档(避免首页使用默认 A4 导致图片被裁剪)
+                    document = new com.itextpdf.text.Document(pageSize, 5, 5, 5, 5);
+                    com.itextpdf.text.pdf.PdfWriter.getInstance(document, outputStream);
+                    document.open();
+                } else {
+                    document.setPageSize(pageSize);
+                    document.newPage();
                 }
+                pdfImage.setAbsolutePosition(5, 5);
+                document.add(pdfImage);
+                count++;
+            } catch (Exception e) {
+                // 跳过未绑定模板或渲染失败的证书,不中断整个批次
+                System.err.println("[批量生成PDF] 跳过证书 certId=" + c.getId() + ": " + e.getMessage());
             }
+        }
+        if (document != null) {
+            document.close();
+        }
+        if (count == 0) {
+            throw new BusinessException("没有可生成的证书(所选证书均未绑定模板或渲染失败)");
         }
     }
 

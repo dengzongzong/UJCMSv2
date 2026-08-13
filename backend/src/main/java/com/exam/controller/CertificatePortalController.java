@@ -513,10 +513,11 @@ public class CertificatePortalController {
     }
 
     /**
-     * 学员批量下载证书(ZIP 打包) - 一个人可有多张证书,一次性打包下载。
+     * 学员批量下载证书 - 一个人可有多张证书,一次性下载。
+     * pdf 格式合并为单个 PDF(每张一页),image 格式打包为 zip。
      *
      * <p>公开接口(无需登录): 仍以 (idCard + name) 双因子匹配该人全部证书,防越权。
-     * 内部复用 generateService.renderBatchToZip / renderBatchPdfToZip,每张证书
+     * 内部复用 generateService.renderBatchPdf / renderBatchToZip,每张证书
      * 优先使用自己绑定的 templateId(与单张下载行为一致)。</p>
      *
      * @param idCard 身份证号
@@ -581,12 +582,17 @@ public class CertificatePortalController {
             return;
         }
 
-        String fileName = "certificates_" + (pdf ? "pdf_" : "img_") + System.currentTimeMillis() + ".zip";
-        prepareDownload(response, fileName, "application/zip");
-        try (OutputStream os = response.getOutputStream()) {
-            if (pdf) {
-                generateService.renderBatchPdfToZip(certs, null, os);
-            } else {
+        if (pdf) {
+            // 多张证书合并为单个 PDF(每张一页),下载文件为 .pdf 而非 zip
+            String fileName = "我的证书_" + System.currentTimeMillis() + ".pdf";
+            prepareDownload(response, fileName, "application/pdf");
+            try (OutputStream os = response.getOutputStream()) {
+                generateService.renderBatchPdf(certs, null, os);
+            }
+        } else {
+            String fileName = "certificates_img_" + System.currentTimeMillis() + ".zip";
+            prepareDownload(response, fileName, "application/zip");
+            try (OutputStream os = response.getOutputStream()) {
                 generateService.renderBatchToZip(certs, null, os);
             }
         }
@@ -658,12 +664,17 @@ public class CertificatePortalController {
             return;
         }
 
-        String fileName = "certificates_selected_" + (pdf ? "pdf_" : "img_") + System.currentTimeMillis() + ".zip";
-        prepareDownload(response, fileName, "application/zip");
-        try (OutputStream os = response.getOutputStream()) {
-            if (pdf) {
-                generateService.renderBatchPdfToZip(certs, null, os);
-            } else {
+        if (pdf) {
+            // 多张证书合并为单个 PDF(每张一页),下载文件为 .pdf 而非 zip
+            String fileName = "我的证书_" + System.currentTimeMillis() + ".pdf";
+            prepareDownload(response, fileName, "application/pdf");
+            try (OutputStream os = response.getOutputStream()) {
+                generateService.renderBatchPdf(certs, null, os);
+            }
+        } else {
+            String fileName = "certificates_selected_img_" + System.currentTimeMillis() + ".zip";
+            prepareDownload(response, fileName, "application/zip");
+            try (OutputStream os = response.getOutputStream()) {
                 generateService.renderBatchToZip(certs, null, os);
             }
         }

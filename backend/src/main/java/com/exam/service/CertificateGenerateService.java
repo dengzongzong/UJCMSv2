@@ -20,14 +20,14 @@ public interface CertificateGenerateService {
     void renderSinglePdf(Certificate cert, CertificateTemplate template, OutputStream outputStream) throws Exception;
 
     /**
-     * 批量渲染为 ZIP 压缩包(本轮实现)
+     * 批量渲染为 ZIP 压缩包(内含图片)
      */
     void renderBatchToZip(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception;
 
     /**
-     * 批量渲染为 ZIP(内含 PDF)
+     * 批量渲染为单个 PDF(每张证书一页,合并到一个 PDF 文件)
      */
-    void renderBatchPdfToZip(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception;
+    void renderBatchPdf(List<Certificate> certs, CertificateTemplate template, OutputStream outputStream) throws Exception;
 
     /**
      * 渲染单张到字节数组(用于返回前端 / HTTP 响应)

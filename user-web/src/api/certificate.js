@@ -139,7 +139,7 @@ export async function downloadSelectedCertificates(idCard, name, ids, format) {
     throw new Error(msg + ' (HTTP ' + resp.status + ')')
   }
 
-  var fileName = 'certificates_selected_' + fmt + '.zip'
+  var fileName = 'certificates_selected_' + fmt + (fmt === 'pdf' ? '.pdf' : '.zip')
   var cd = resp.headers.get('Content-Disposition') || ''
   var m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)/i)
   if (m) fileName = decodeURIComponent(m[1])
@@ -197,7 +197,7 @@ export async function downloadAllCertificates(idCard, name, format, certNo) {
     throw new Error(msg + ' (HTTP ' + resp.status + ')')
   }
 
-  var fileName = 'certificates_' + fmt + '.zip'
+  var fileName = 'certificates_' + fmt + (fmt === 'pdf' ? '.pdf' : '.zip')
   var cd = resp.headers.get('Content-Disposition') || ''
   var m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)/i)
   if (m) fileName = decodeURIComponent(m[1])
