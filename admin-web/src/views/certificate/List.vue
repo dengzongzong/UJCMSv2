@@ -871,10 +871,18 @@ export default {
     },
     downloadAsyncResult() {
       if (!this.asyncExportDialog.taskId) return
-      // 使用 downloadFile 下载结果文件(自动带 JWT)
-      downloadFile('/admin/task/' + this.asyncExportDialog.taskId + '/download')
-        .then(({ blob, fileName }) => triggerDownload(blob, fileName || '导出结果文件'))
-        .catch(err => this.$message.error('下载失败: ' + (err.message || '未知错误')))
+      // 直接用原生 <a> 标签触发下载,绕过 fetch+blob 的各种坑
+      // 后端 JwtInterceptor 支持 query string 传 token,所以把 token 拼到 URL 上即可
+      const token = localStorage.getItem('admin_token') || ''
+      const url = apiUrl('/admin/task/' + this.asyncExportDialog.taskId + '/download') + '?token=' + encodeURIComponent(token)
+      const a = document.createElement('a')
+      a.href = url
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        document.body.removeChild(a)
+      }, 100)
     },
     async loadList() {
       if (this.dateRange && this.dateRange.length === 2) {

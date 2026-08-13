@@ -110,14 +110,29 @@ function parseFileName(cd) {
 }
 /** 触发浏览器下载 Blob */
 export function triggerDownload(blob, fileName) {
+  if (!blob || blob.size === 0) {
+    console.warn('[triggerDownload] blob 为空, 无法触发下载, size:', blob ? blob.size : 'null')
+    return
+  }
   const a = document.createElement('a')
   const url = URL.createObjectURL(blob)
   a.href = url
   a.download = fileName || 'download'
+  // display:none 会导致某些浏览器不触发下载,改用离屏定位
+  a.style.position = 'fixed'
+  a.style.left = '-9999px'
+  a.style.top = '-9999px'
+  a.style.opacity = '0'
   document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 100)
+  // 用 setTimeout 确保元素已挂载到 DOM 后再 click
+  setTimeout(() => {
+    a.click()
+    // 延迟清理,给浏览器足够时间处理下载(特别是大文件)
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 1000)
+  }, 0)
 }
 
 /**
