@@ -772,13 +772,15 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (StringUtils.hasText(dto.getName())) c.setName(dto.getName());
         if (StringUtils.hasText(dto.getIdCard())) c.setIdCard(dto.getIdCard());
         if (dto.getGender() != null) c.setGender(dto.getGender());
-        // 身份证号变化时自动提取性别和出生日期:
-        // 1) 性别: 用户未手动选择(或原性别为空)时,从身份证第17位自动识别
+        // 身份证号变化时,后台解析身份证号自动提取性别和出生日期:
+        // 1) 性别: 从身份证第17位自动识别(以身份证号为准,覆盖前端传入值)
         // 2) 出生日期: 从身份证第7-14位提取,写入 birth_date 列
         if (StringUtils.hasText(dto.getIdCard())) {
             String idCard = dto.getIdCard().trim();
-            if (dto.getGender() == null) {
-                c.setGender(CertificateNumberServiceImpl.extractGenderFromIdCard(idCard));
+            // 后台解析身份证号,提取性别和出生日期(以身份证号为准,覆盖前端传入值)
+            Integer extractedGender = CertificateNumberServiceImpl.extractGenderFromIdCard(idCard);
+            if (extractedGender != null) {
+                c.setGender(extractedGender);
             }
             String birthday = extractBirthdayFromIdCard(idCard);
             if (birthday != null) {
