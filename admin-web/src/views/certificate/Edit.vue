@@ -203,7 +203,14 @@ export default {
     }
   },
   watch: {
-    examQrEnabled(v) { this.form.examQrEnabled = v }
+    examQrEnabled(v) { this.form.examQrEnabled = v },
+    // 身份证号变化时自动提取性别和出生日期(比 @input 更可靠,覆盖粘贴/清空等场景)
+    'form.idCard': {
+      handler(val) {
+        this.onIdCardChange(val)
+      },
+      immediate: true
+    }
   },
   async mounted() {
     const fields = await fieldList().then(r => r.data)
@@ -259,27 +266,26 @@ export default {
   methods: {
     // 身份证号输入时自动提取性别和出生日期
     onIdCardChange(val) {
-      if (!val) {
-        this.form.birthDate = ''
-        return
-      }
-      const idCard = val.trim()
+      const idCard = (val || '').trim()
+      let extractedBirth = ''
       // 出生日期: 18位取第7-14位, 15位取第7-12位(年份补19)
       if (idCard.length === 18) {
         const year = idCard.substring(6, 10)
         const month = idCard.substring(10, 12)
         const day = idCard.substring(12, 14)
         if (/^\d{8}$/.test(year + month + day)) {
-          this.form.birthDate = year + '-' + month + '-' + day
+          extractedBirth = year + '-' + month + '-' + day
         }
       } else if (idCard.length === 15) {
         const year = '19' + idCard.substring(6, 8)
         const month = idCard.substring(8, 10)
         const day = idCard.substring(10, 12)
         if (/^\d{8}$/.test(year + month + day)) {
-          this.form.birthDate = year + '-' + month + '-' + day
+          extractedBirth = year + '-' + month + '-' + day
         }
       }
+      // 能提取到就更新;提取不到(输入中/无效)则清空,避免残留旧值
+      this.form.birthDate = extractedBirth
       // 性别: 第17位(18位)或第15位(15位)奇数为男,偶数为女
       const genderChar = idCard.length === 18 ? idCard.charAt(16) : (idCard.length === 15 ? idCard.charAt(14) : '')
       if (genderChar && /^\d$/.test(genderChar)) {

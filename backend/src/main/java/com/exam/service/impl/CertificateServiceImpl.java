@@ -569,6 +569,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         CertificateVO vo = new CertificateVO();
         org.springframework.beans.BeanUtils.copyProperties(c, vo);
         vo.setIssueDate(c.getIssueDate() == null ? null : c.getIssueDate().toString());
+        // 出生日期: 优先取存储的 birth_date,为空则从身份证号提取兜底
+        if (c.getBirthDate() != null) {
+            vo.setBirthDate(c.getBirthDate().toString());
+        } else if (StringUtils.hasText(c.getIdCard())) {
+            vo.setBirthDate(extractBirthdayFromIdCard(c.getIdCard()));
+        }
         vo.setGenderName(c.getGender() == null ? null : (c.getGender() == 1 ? "男" : "女"));
         vo.setAgencyFee(c.getAgencyFee() == null ? null : c.getAgencyFee().toPlainString());
         vo.setCreateTime(c.getCreateTime() == null ? null : c.getCreateTime().toString());

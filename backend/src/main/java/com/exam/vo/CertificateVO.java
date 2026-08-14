@@ -17,6 +17,8 @@ public class CertificateVO {
     private String idCard;
     private Integer gender;
     private String genderName;
+    /** 出生日期(从身份证号自动提取) */
+    private String birthDate;
     private String profession;
     private String skillLevel;
     private String issueDate;
