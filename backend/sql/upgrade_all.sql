@@ -750,3 +750,15 @@ SET @sql = IF(@idx_exists = 0,
   'ALTER TABLE certificate_user ADD INDEX idx_id_card (id_card)',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ============================================================
+-- 18. 证书表加 birth_date 字段(出生日期,从身份证号自动提取)
+-- ============================================================
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'certificate' AND COLUMN_NAME = 'birth_date');
+SET @sql := IF(@col_exists = 0,
+    'ALTER TABLE `certificate` ADD COLUMN `birth_date` date DEFAULT NULL COMMENT ''出生日期(从身份证号自动提取)'' AFTER `gender`',
+    'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

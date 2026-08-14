@@ -95,7 +95,9 @@
         </template>
       </el-table-column>
       <el-table-column label="出生日期" width="120">
-        <template slot-scope="s">{{ getBirthdayFromIdCard(s.row.idCard) || '-' }}</template>
+        <template slot-scope="s">
+          {{ s.row.birthDate || getBirthdayFromIdCard(s.row.idCard) || '-' }}
+        </template>
       </el-table-column>
       <el-table-column label="专业" min-width="120">
         <template slot-scope="s">{{ s.row.professionName || s.row.profession || '-' }}</template>

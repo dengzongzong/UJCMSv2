@@ -10,14 +10,18 @@
           <el-input v-model="form.name" />
         </el-form-item>
         <el-form-item label="身份证号" prop="idCard">
-          <el-input v-model="form.idCard" />
+          <el-input v-model="form.idCard" @input="onIdCardChange" />
         </el-form-item>
         <el-form-item label="性别">
           <el-radio-group v-model="form.gender">
             <el-radio :label="1">男</el-radio>
             <el-radio :label="2">女</el-radio>
           </el-radio-group>
-          <span style="margin-left:8px;color:#999;font-size:12px">从身份证号第17位自动识别</span>
+          <span style="margin-left:8px;color:#999;font-size:12px">输入身份证号后自动识别</span>
+        </el-form-item>
+        <el-form-item label="出生日期">
+          <el-input v-model="form.birthDate" placeholder="输入身份证号后自动提取" readonly />
+          <span style="margin-left:8px;color:#999;font-size:12px">从身份证号第7-14位自动提取</span>
         </el-form-item>
         <el-form-item label="专业名称" prop="profession">
           <el-select v-model="form.profession" placeholder="请选择专业" style="width:100%" filterable>
@@ -140,7 +144,7 @@ export default {
       isEdit: false,
       form: {
         id: null,
-        name: '', idCard: '', gender: null,
+        name: '', idCard: '', gender: null, birthDate: '',
         profession: '', skillLevel: '三级/高级',
         issueYear: null, issueMonth: null, issueDay: null,
         certNo: '', studentNo: '',
@@ -238,6 +242,7 @@ export default {
         this.form = {
           id: d.id,
           name: d.name, idCard: d.idCard, gender: d.gender,
+          birthDate: d.birthDate || '',
           profession: professionValue, skillLevel: d.skillLevel,
           issueYear, issueMonth, issueDay,
           certNo: d.certNo, studentNo: d.studentNo,
@@ -252,6 +257,35 @@ export default {
     }
   },
   methods: {
+    // 身份证号输入时自动提取性别和出生日期
+    onIdCardChange(val) {
+      if (!val) {
+        this.form.birthDate = ''
+        return
+      }
+      const idCard = val.trim()
+      // 出生日期: 18位取第7-14位, 15位取第7-12位(年份补19)
+      if (idCard.length === 18) {
+        const year = idCard.substring(6, 10)
+        const month = idCard.substring(10, 12)
+        const day = idCard.substring(12, 14)
+        if (/^\d{8}$/.test(year + month + day)) {
+          this.form.birthDate = year + '-' + month + '-' + day
+        }
+      } else if (idCard.length === 15) {
+        const year = '19' + idCard.substring(6, 8)
+        const month = idCard.substring(8, 10)
+        const day = idCard.substring(10, 12)
+        if (/^\d{8}$/.test(year + month + day)) {
+          this.form.birthDate = year + '-' + month + '-' + day
+        }
+      }
+      // 性别: 第17位(18位)或第15位(15位)奇数为男,偶数为女
+      const genderChar = idCard.length === 18 ? idCard.charAt(16) : (idCard.length === 15 ? idCard.charAt(14) : '')
+      if (genderChar && /^\d$/.test(genderChar)) {
+        this.form.gender = (parseInt(genderChar, 10) % 2 === 1) ? 1 : 2
+      }
+    },
     onSubmit() {
       this.$refs.form.validate(valid => {
         if (!valid) return

@@ -17,6 +17,8 @@ public class CertificateDTO {
     private String name;
     private String idCard;
     private Integer gender;
+    /** 出生日期(从身份证号自动提取) */
+    private LocalDate birthDate;
     private String profession;
     private String skillLevel;
     private LocalDate issueDate;

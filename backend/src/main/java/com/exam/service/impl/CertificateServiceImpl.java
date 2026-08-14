@@ -636,10 +636,11 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (c.getGender() == null && StringUtils.hasText(c.getIdCard())) {
             c.setGender(CertificateNumberServiceImpl.extractGenderFromIdCard(c.getIdCard()));
         }
-        // 自动从身份证提取出生日期,存入 extra_json
+        // 自动从身份证提取出生日期,存入 extra_json 和 birth_date 列
         if (StringUtils.hasText(c.getIdCard())) {
             String birthday = extractBirthdayFromIdCard(c.getIdCard());
             if (birthday != null) {
+                c.setBirthDate(parseDate(birthday));
                 Map<String, Object> extra = dto.getExtra() != null ? dto.getExtra() : new HashMap<>();
                 if (!extra.containsKey("birthday")) {
                     extra.put("birthday", birthday);
@@ -765,6 +766,19 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         if (StringUtils.hasText(dto.getName())) c.setName(dto.getName());
         if (StringUtils.hasText(dto.getIdCard())) c.setIdCard(dto.getIdCard());
         if (dto.getGender() != null) c.setGender(dto.getGender());
+        // 身份证号变化时自动提取性别和出生日期:
+        // 1) 性别: 用户未手动选择(或原性别为空)时,从身份证第17位自动识别
+        // 2) 出生日期: 从身份证第7-14位提取,写入 birth_date 列
+        if (StringUtils.hasText(dto.getIdCard())) {
+            String idCard = dto.getIdCard().trim();
+            if (dto.getGender() == null) {
+                c.setGender(CertificateNumberServiceImpl.extractGenderFromIdCard(idCard));
+            }
+            String birthday = extractBirthdayFromIdCard(idCard);
+            if (birthday != null) {
+                c.setBirthDate(parseDate(birthday));
+            }
+        }
         if (StringUtils.hasText(dto.getProfession())) c.setProfession(dto.getProfession());
         if (StringUtils.hasText(dto.getSkillLevel())) c.setSkillLevel(dto.getSkillLevel());
         if (dto.getIssueDate() != null) c.setIssueDate(dto.getIssueDate());
@@ -1869,6 +1883,7 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         c.setName(dto.getName());
         c.setIdCard(dto.getIdCard());
         c.setGender(dto.getGender());
+        c.setBirthDate(dto.getBirthDate());
         c.setProfession(dto.getProfession());
         c.setSkillLevel(dto.getSkillLevel());
         c.setIssueDate(dto.getIssueDate());

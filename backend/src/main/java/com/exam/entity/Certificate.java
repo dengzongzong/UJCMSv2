@@ -28,8 +28,10 @@ public class Certificate {
     private String name;
     /** 身份证号 */
     private String idCard;
-    /** 1-男 2-女 */
+    /** 性别: 1-男 2-女 */
     private Integer gender;
+    /** 出生日期(从身份证号自动提取) */
+    private LocalDate birthDate;
     /** 职业名称 */
     private String profession;
     /** 技能等级 */
