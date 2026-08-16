@@ -789,18 +789,16 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         Certificate c = new Certificate();
         c.setId(dto.getId());
         if (StringUtils.hasText(dto.getName())) c.setName(dto.getName());
-        if (StringUtils.hasText(dto.getIdCard())) c.setIdCard(dto.getIdCard());
-        if (dto.getGender() != null) c.setGender(dto.getGender());
-        // 身份证号变化时,后台解析身份证号自动提取性别和出生日期:
-        // 1) 性别: 从身份证第17位自动识别(以身份证号为准,覆盖前端传入值)
-        // 2) 出生日期: 从身份证第7-14位提取,写入 birth_date 列
+        // 身份证号有值时,强制从身份证号提取性别和出生日期,覆盖前端传入值和数据库旧值
         if (StringUtils.hasText(dto.getIdCard())) {
             String idCard = dto.getIdCard().trim();
-            // 后台解析身份证号,提取性别和出生日期(以身份证号为准,覆盖前端传入值)
+            c.setIdCard(idCard);
+            // 强制从身份证号提取性别
             Integer extractedGender = CertificateNumberServiceImpl.extractGenderFromIdCard(idCard);
             if (extractedGender != null) {
                 c.setGender(extractedGender);
             }
+            // 强制从身份证号提取出生日期
             String birthday = extractBirthdayFromIdCard(idCard);
             if (birthday != null) {
                 c.setBirthDate(parseDate(birthday));
@@ -850,12 +848,15 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         // certNo / studentNo 同理:虽然上面已 setCertNo/setStudentNo 赋值到实体,
         // 但因 updateById 默认 NOT_NULL 策略,在实体该字段为 null(被前端清空/历史空值)时
         // 会被忽略,导致"提交成功但值未变"。这里用带条件的 set 强制写入,确保修改一定落库。
+        // gender / birthDate: 强制从身份证号提取后写入,覆盖前端传入值和数据库旧值
         this.update(new LambdaUpdateWrapper<Certificate>()
                 .eq(Certificate::getId, dto.getId())
                 .set(Certificate::getTemplateId, dto.getTemplateId())
                 .set(dto.getCertNo() != null, Certificate::getCertNo, dto.getCertNo())
                 .set(dto.getStudentNo() != null, Certificate::getStudentNo, dto.getStudentNo())
-                .set(dto.getCertType() != null, Certificate::getCertType, dto.getCertType()));
+                .set(dto.getCertType() != null, Certificate::getCertType, dto.getCertType())
+                .set(c.getGender() != null, Certificate::getGender, c.getGender())
+                .set(c.getBirthDate() != null, Certificate::getBirthDate, c.getBirthDate()));
         // 绑定模板时(编辑页选择模板),若证书编号仍为空则自动生成(证书编号在绑定模板时才生成)
         if (dto.getTemplateId() != null) {
             Certificate latest = this.getById(dto.getId());
