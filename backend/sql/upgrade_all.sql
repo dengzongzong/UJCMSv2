@@ -84,6 +84,19 @@ BEGIN
 END //
 DELIMITER ;
 
+-- ============================================================
+-- 19. 证书表去重索引: 姓名+身份证号+专业+级别 四字段复合索引
+--     新增 idx_name_idcard_profession_level 提高去重查询性能
+-- ============================================================
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate'
+    AND index_name = 'idx_name_idcard_profession_level');
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE `certificate` ADD INDEX `idx_name_idcard_profession_level` (`name`, `id_card`, `profession`, `skill_level`)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- course 表
 CALL safe_add_column('course', 'sort', 'INT NOT NULL DEFAULT 0 COMMENT ''排序''');
 CALL safe_add_column('course', 'base_study_count', 'INT NOT NULL DEFAULT 0 COMMENT ''基础学过人数''');

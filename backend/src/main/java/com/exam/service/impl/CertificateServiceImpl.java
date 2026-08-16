@@ -603,8 +603,12 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
      */
     @Override
     public boolean existsByNameIdCardProfessionLevel(String name, String idCard, String profession, String skillLevel) {
-        // 去重判断标准: 身份证号 + 专业(与数据库唯一索引 uk_idcard_profession 一致)
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>();
+        if (StringUtils.hasText(name)) {
+            w.eq(Certificate::getName, name.trim());
+        } else {
+            w.and(ww -> ww.isNull(Certificate::getName).or().eq(Certificate::getName, ""));
+        }
         if (StringUtils.hasText(idCard)) {
             w.eq(Certificate::getIdCard, idCard.trim());
         } else {
@@ -614,6 +618,11 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             w.eq(Certificate::getProfession, profession.trim());
         } else {
             w.and(ww -> ww.isNull(Certificate::getProfession).or().eq(Certificate::getProfession, ""));
+        }
+        if (StringUtils.hasText(skillLevel)) {
+            w.eq(Certificate::getSkillLevel, skillLevel.trim());
+        } else {
+            w.and(ww -> ww.isNull(Certificate::getSkillLevel).or().eq(Certificate::getSkillLevel, ""));
         }
         return this.count(w) > 0;
     }
@@ -678,16 +687,26 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         // 默认技能等级(继承后仍为空时才用默认值)
         if (!StringUtils.hasText(c.getSkillLevel())) c.setSkillLevel("高级");
 
-        // ====== 去重检查: 身份证号 + 专业 相同则跳过(唯一键) ======
+        // ====== 去重检查: 姓名+身份证号+专业+级别 完全相同才算重复 ======
         LambdaQueryWrapper<Certificate> dupCheck = new LambdaQueryWrapper<Certificate>()
-                .eq(Certificate::getIdCard, c.getIdCard());
+                .eq(Certificate::getName, c.getName() != null ? c.getName().trim() : "");
+        if (StringUtils.hasText(c.getIdCard())) {
+            dupCheck.eq(Certificate::getIdCard, c.getIdCard());
+        } else {
+            dupCheck.and(w -> w.isNull(Certificate::getIdCard).or().eq(Certificate::getIdCard, ""));
+        }
         if (StringUtils.hasText(c.getProfession())) {
             dupCheck.eq(Certificate::getProfession, c.getProfession());
         } else {
             dupCheck.and(w -> w.isNull(Certificate::getProfession).or().eq(Certificate::getProfession, ""));
         }
+        if (StringUtils.hasText(c.getSkillLevel())) {
+            dupCheck.eq(Certificate::getSkillLevel, c.getSkillLevel());
+        } else {
+            dupCheck.and(w -> w.isNull(Certificate::getSkillLevel).or().eq(Certificate::getSkillLevel, ""));
+        }
         if (this.count(dupCheck) > 0) {
-            // 已存在相同 身份证+专业 的记录,跳过不创建
+            // 已存在相同 姓名+身份证+专业+级别 的记录,跳过不创建
             return false;
         }
 
@@ -2430,20 +2449,25 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
     }
 
     /**
-     * 检查学生是否已有证书记录(idCard + profession),没有则创建
+     * 检查学生是否已有证书记录(name + idCard + profession),没有则创建
      * @return 1=新建,0=已存在跳过
      */
     private int createIfNotExists(Student student, String idCard, String profession, String certType) {
-        // 去重判断标准: 身份证号码 + 专业 两个字段相同即为重复(姓名可能变动,不作为判断条件)
+        // 去重判断标准: 姓名 + 身份证号码 + 专业 三个字段相同即为重复
         String trimmedProfession = StringUtils.hasText(profession) ? profession.trim() : null;
         LambdaQueryWrapper<Certificate> w = new LambdaQueryWrapper<Certificate>()
-                .eq(Certificate::getIdCard, idCard);
+                .eq(Certificate::getName, student.getName() != null ? student.getName().trim() : "");
+        if (StringUtils.hasText(idCard)) {
+            w.eq(Certificate::getIdCard, idCard);
+        } else {
+            w.and(ww -> ww.isNull(Certificate::getIdCard).or().eq(Certificate::getIdCard, ""));
+        }
         if (StringUtils.hasText(trimmedProfession)) {
             w.eq(Certificate::getProfession, trimmedProfession);
         } else {
             w.and(ww -> ww.isNull(Certificate::getProfession).or().eq(Certificate::getProfession, ""));
         }
-        if (this.count(w) > 0) return 0; // 已存在(身份证+专业重复),跳过
+        if (this.count(w) > 0) return 0; // 已存在(姓名+身份证+专业重复),跳过
 
         // 创建新证书记录
         Certificate c = new Certificate();
