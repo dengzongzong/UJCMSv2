@@ -543,7 +543,15 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         for (java.lang.reflect.Field f : getAllFields(bean.getClass())) {
             f.setAccessible(true);
             try {
-                m.put(f.getName(), f.get(bean));
+                Object val = f.get(bean);
+                // LocalDate/LocalDateTime 转字符串,避免 Jackson 序列化 Map 时输出为数组
+                if (val instanceof LocalDate) {
+                    val = ((LocalDate) val).toString();
+                } else if (val instanceof LocalDateTime) {
+                    val = ((LocalDateTime) val).format(
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                }
+                m.put(f.getName(), val);
             } catch (IllegalAccessException ignore) { /* ignore */ }
         }
         return m;
@@ -647,8 +655,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
         // 学员编号由下方 fillStudentNoIfEmpty 生成，故创建时这两个字段为空一律存 NULL。
         if (!StringUtils.hasText(c.getCertNo())) c.setCertNo(null);
         if (!StringUtils.hasText(c.getStudentNo())) c.setStudentNo(null);
-        // 自动从身份证提取性别
-        if (c.getGender() == null && StringUtils.hasText(c.getIdCard())) {
+        // 自动从身份证提取性别(覆盖前端传入值,以身份证号为准)
+        if (StringUtils.hasText(c.getIdCard())) {
             c.setGender(CertificateNumberServiceImpl.extractGenderFromIdCard(c.getIdCard()));
         }
         // 自动从身份证提取出生日期,存入 extra_json 和 birth_date 列

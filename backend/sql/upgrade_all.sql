@@ -85,6 +85,28 @@ END //
 DELIMITER ;
 
 -- ============================================================
+-- 19. 证书表加 UNIQUE 约束: 姓名+身份证号+专业+级别 四字段唯一
+--     防止重复数据(先删除重复记录再建约束,避免建约束失败)
+-- ============================================================
+SET @uk_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate'
+    AND index_name = 'uk_name_idcard_profession_level');
+SET @sql := IF(@uk_exists = 0,
+  'DELETE t1 FROM certificate t1 INNER JOIN certificate t2 ON
+   t1.name = t2.name AND t1.id_card = t2.id_card AND
+   (t1.profession = t2.profession OR (t1.profession IS NULL AND t2.profession IS NULL)) AND
+   (t1.skill_level = t2.skill_level OR (t1.skill_level IS NULL AND t2.skill_level IS NULL)) AND
+   t1.id > t2.id',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := IF(@uk_exists = 0,
+  'ALTER TABLE `certificate` ADD UNIQUE KEY `uk_name_idcard_profession_level` (`name`, `id_card`, `profession`, `skill_level`)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ============================================================
 -- 19. 证书表去重索引: 姓名+身份证号+专业+级别 四字段复合索引
 --     新增 idx_name_idcard_profession_level 提高去重查询性能
 -- ============================================================

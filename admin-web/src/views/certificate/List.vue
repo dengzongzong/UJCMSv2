@@ -649,6 +649,9 @@ export default {
     // 加载证书模板选项(行内"绑定模板"弹窗用)
     templateList().then(r => { this.templateOptions = r.data || [] }).catch(() => {})
   },
+  activated() {
+    this.loadList()
+  },
   watch: {
     '$route.params.idx'() {
       this.query = { page: 1, size: 10, name: '', idCard: '', agency: '', profession: '', importTimeStart: '', importTimeEnd: '', exactCount: undefined }

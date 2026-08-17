@@ -835,6 +835,7 @@ CREATE TABLE `certificate` (
   `name` VARCHAR(50) NOT NULL COMMENT '姓名',
   `id_card` VARCHAR(30) NOT NULL COMMENT '身份证号',
   `gender` TINYINT DEFAULT NULL COMMENT '1-男 2-女',
+  `birth_date` DATE DEFAULT NULL COMMENT '出生日期(从身份证号自动提取)',
   `profession` VARCHAR(100) DEFAULT NULL COMMENT '职业名称',
   `skill_level` VARCHAR(50) DEFAULT NULL COMMENT '技能等级',
   `issue_date` DATE DEFAULT NULL COMMENT '颁发日期',
@@ -862,7 +863,8 @@ CREATE TABLE `certificate` (
   KEY `idx_issue_date` (`issue_date`),
   KEY `idx_agency` (`agency`),
   KEY `idx_profession` (`profession`),
-  KEY `idx_upload_time` (`upload_time`)
+  KEY `idx_upload_time` (`upload_time`),
+  UNIQUE KEY `uk_name_idcard_profession_level` (`name`, `id_card`, `profession`, `skill_level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书';
 
 -- 证书编号配置(前缀/中段字母,生成证书编号时使用)
