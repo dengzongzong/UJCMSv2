@@ -119,6 +119,18 @@ SET @sql = IF(@idx_exists = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- ============================================================
+-- 20. 证书表加复合索引: 身份证+专业+级别,提升去重查询性能
+-- ============================================================
+SET @idx2_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate'
+    AND index_name = 'idx_idcard_profession_level');
+SET @sql = IF(@idx2_exists = 0,
+  'ALTER TABLE `certificate` ADD INDEX `idx_idcard_profession_level` (`id_card`, `profession`, `skill_level`)',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- course 表
 CALL safe_add_column('course', 'sort', 'INT NOT NULL DEFAULT 0 COMMENT ''排序''');
 CALL safe_add_column('course', 'base_study_count', 'INT NOT NULL DEFAULT 0 COMMENT ''基础学过人数''');

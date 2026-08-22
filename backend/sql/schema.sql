@@ -864,6 +864,7 @@ CREATE TABLE `certificate` (
   KEY `idx_agency` (`agency`),
   KEY `idx_profession` (`profession`),
   KEY `idx_upload_time` (`upload_time`),
+  KEY `idx_idcard_profession_level` (`id_card`, `profession`, `skill_level`),
   UNIQUE KEY `uk_name_idcard_profession_level` (`name`, `id_card`, `profession`, `skill_level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证书';
 

@@ -236,6 +236,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             parseExtraJson(c.getExtraJson(), m);
             out.add(m);
         }
+        // 标记身份证重复: 身份证+专业+级别 相同但姓名不同的记录,身份证标红
+        markIdCardDuplicated(out);
         return new PageResult<>(base.getTotal(), base.getPage(), base.getSize(), out);
     }
 
@@ -360,6 +362,8 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
             parseExtraJson(c.getExtraJson(), m);
             out.add(m);
         }
+        // 标记身份证重复: 身份证+专业+级别 相同但姓名不同的记录,身份证标红
+        markIdCardDuplicated(out);
         return new PageResult<>(base.getTotal(), base.getPage(), base.getSize(), out);
     }
 
@@ -394,6 +398,27 @@ public class CertificateServiceImpl extends ServiceImpl<CertificateMapper, Certi
                     }
                 }
             } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /**
+     * 标记身份证重复: 身份证+专业+级别 相同但姓名不同的记录,标记 idCardDuplicated=true
+     * 前端据此渲染红色背景
+     */
+    private void markIdCardDuplicated(List<Map<String, Object>> records) {
+        if (records == null || records.isEmpty()) return;
+        // 一次查询找出所有"身份证+专业+级别"重复的组合
+        Set<String> dupCombos = new HashSet<>(this.baseMapper.findDuplicatedComboKeys());
+        if (dupCombos.isEmpty()) return;
+        for (Map<String, Object> m : records) {
+            String idCard = (String) m.get("idCard");
+            if (!StringUtils.hasText(idCard)) continue;
+            String key = idCard.trim()
+                    + "|" + (m.get("profession") != null ? ((String) m.get("profession")).trim() : "")
+                    + "|" + (m.get("skillLevel") != null ? ((String) m.get("skillLevel")).trim() : "");
+            if (dupCombos.contains(key)) {
+                m.put("idCardDuplicated", true);
             }
         }
     }

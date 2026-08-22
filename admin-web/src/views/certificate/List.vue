@@ -91,7 +91,10 @@
       </el-table-column>
       <el-table-column prop="idCard" label="身份证" min-width="180">
         <template slot-scope="{ row }">
-          <span :class="{ 'id-card-invalid': row.idCard && !validateIdCard(row.idCard) }">{{ row.idCard || '-' }}</span>
+          <span :class="{
+            'id-card-invalid': row.idCard && !validateIdCard(row.idCard),
+            'id-card-duplicated': row.idCardDuplicated
+          }">{{ row.idCard || '-' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="出生日期" width="120">
@@ -1657,6 +1660,13 @@ export default {
 .id-card-invalid {
   background-color: #fef0f0;
   color: #f56c6c;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.id-card-duplicated {
+  background-color: #fff2e8;
+  color: #fa541c;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 3px;
 }
