@@ -435,11 +435,12 @@ export default {
       }
     },
     normalizeQuestionTypeFromAnswer(answer) {
-      // AnswerResultVO 没有 type 字段，从 sort 或 content 推不出；默认 single
-      return 'single'
+      // 后端 AnswerResultVO 已传 type 字段: 1-单选 2-多选 3-填空 4-判断 5-简答
+      const typeMap = { 1: 'single', 2: 'multiple', 3: 'blank', 4: 'judge', 5: 'essay' }
+      return typeMap[answer.type] || 'single'
     },
     getTypeText(type) {
-      const map = { single: '单选题', multiple: '多选题', judge: '判断题', essay: '简答题' }
+      const map = { single: '单选题', multiple: '多选题', blank: '填空题', judge: '判断题', essay: '简答题' }
       return map[type] || '题目'
     },
     isUserAnswer(q, key) {
@@ -1052,6 +1053,10 @@ export default {
 
       &.multiple {
         background: #ff976a;
+      }
+
+      &.blank {
+        background: #909399;
       }
 
       &.judge {

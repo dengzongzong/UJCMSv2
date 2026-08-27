@@ -631,6 +631,7 @@ public class ExamServiceImpl extends ServiceImpl<ExamMapper, Exam> implements Ex
             AnswerResultVO arVO = new AnswerResultVO();
             arVO.setQuestionId(questionId);
             arVO.setSort(sort);
+            arVO.setType(type);
             arVO.setIsCorrect(isCorrect);
             arVO.setStudentAnswer(studentAnswer);
             arVO.setCorrectAnswer(displayCorrectAnswer);
@@ -813,6 +814,7 @@ public class ExamServiceImpl extends ServiceImpl<ExamMapper, Exam> implements Ex
             AnswerResultVO vo = new AnswerResultVO();
             vo.setQuestionId(examAnswer.getQuestionId());
             vo.setSort(examAnswer.getSort());
+            vo.setType(type);
             vo.setIsCorrect(examAnswer.getIsCorrect());
             vo.setScore(examAnswer.getScore());
             vo.setStudentAnswer(examAnswer.getStudentAnswer());

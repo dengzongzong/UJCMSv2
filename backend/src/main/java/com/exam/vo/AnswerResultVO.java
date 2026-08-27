@@ -12,6 +12,8 @@ import java.util.List;
 public class AnswerResultVO {
     private Long questionId;
     private Integer sort;
+    /** 题目类型: 1-单选 2-多选 3-填空 4-判断 5-简答 */
+    private Integer type;
     private Integer isCorrect;
     /** 该题得分(人工批改简答题时设置) */
     private BigDecimal score;
