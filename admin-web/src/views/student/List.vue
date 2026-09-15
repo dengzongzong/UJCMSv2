@@ -1209,8 +1209,9 @@ export default {
       this.unexamDialog.visible = true
       this.unexamDialog.loading = true
       getUnexamStats().then(res => {
-        this.unexamDialog.total = res.total || 0
-        this.unexamDialog.professions = res.professions || []
+        const data = (res && res.data) || {}
+        this.unexamDialog.total = data.total || 0
+        this.unexamDialog.professions = data.professions || []
       }).finally(() => {
         this.unexamDialog.loading = false
       })
