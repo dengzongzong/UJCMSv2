@@ -61,6 +61,9 @@
         <el-button type="success" icon="el-icon-upload2" class="filter-item" @click="openImportDialog">
           批量导入
         </el-button>
+        <el-button type="warning" icon="el-icon-data-analysis" class="filter-item" @click="openUnexamStats">
+          未考试学生统计
+        </el-button>
         <el-button type="primary" icon="el-icon-plus" class="filter-item" @click="openAddDialog">
           新增学生
         </el-button>
@@ -285,6 +288,37 @@
         >
           确认开通({{ examDialog.selected.length }})
         </el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 未考试学生统计弹框 -->
+    <el-dialog
+      title="未考试学生统计"
+      :visible.sync="unexamDialog.visible"
+      width="520px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <div v-loading="unexamDialog.loading">
+        <el-alert
+          :title="`未考试学生共计 ${unexamDialog.total} 人`"
+          type="warning"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+        />
+        <el-table :data="unexamDialog.professions" border stripe max-height="420" empty-text="暂无未考试学生">
+          <el-table-column type="index" label="序号" width="55" align="center" />
+          <el-table-column prop="professionName" label="专业" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="unexamCount" label="未考试人数" width="110" align="center">
+            <template slot-scope="{ row }">
+              <span class="unexam-count">{{ row.unexamCount }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="margin-top: 8px; color: #909399; font-size: 12px">
+          说明：一个学生属于多个专业时，会在各专业下各计一次。
+        </div>
       </div>
     </el-dialog>
 
@@ -547,7 +581,8 @@ import {
   getStudentExams,
   openExams,
   importStudents,
-  downloadTemplate
+  downloadTemplate,
+  getUnexamStats
 } from '@/api/student'
 import { closeCourseStudent } from '@/api/course'
 import { closeExamStudent } from '@/api/exam'
@@ -605,6 +640,12 @@ export default {
         submitting: false,
         file: null,
         result: null
+      },
+      unexamDialog: {
+        visible: false,
+        loading: false,
+        total: 0,
+        professions: []
       },
       // 编辑学生(含改密码):仅在前端维护一个 dialog 实例
       editDialog: {
@@ -1164,6 +1205,16 @@ export default {
         this.$refs.importUpload && this.$refs.importUpload.clearFiles()
       })
     },
+    openUnexamStats() {
+      this.unexamDialog.visible = true
+      this.unexamDialog.loading = true
+      getUnexamStats().then(res => {
+        this.unexamDialog.total = res.total || 0
+        this.unexamDialog.professions = res.professions || []
+      }).finally(() => {
+        this.unexamDialog.loading = false
+      })
+    },
     handleImportChange(file) {
       if (file.status === 'ready') {
         if (!/\.(xlsx|xls)$/i.test(file.name)) {
@@ -1244,6 +1295,11 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.unexam-count {
+  color: #e6a23c;
+  font-weight: 700;
+  font-size: 14px;
+}
 .danger-text {
   color: #f56c6c;
 }

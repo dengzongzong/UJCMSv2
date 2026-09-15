@@ -85,6 +85,11 @@ public interface StudentManageService extends IService<Student> {
     void importStudents(StudentImportDTO dto);
 
     /**
+     * 统计未考试学生(从未交卷)按专业分组数量
+     */
+    Map<String, Object> unexamStats();
+
+    /**
      * 通过Excel文件批量导入学生
      * 返回导入成功数量和失败列表
      */

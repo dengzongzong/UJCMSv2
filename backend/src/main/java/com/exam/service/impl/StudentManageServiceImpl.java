@@ -855,6 +855,14 @@ public class StudentManageServiceImpl extends ServiceImpl<StudentMapper, Student
     }
 
     @Override
+    public Map<String, Object> unexamStats() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", baseMapper.countUnexamTotal());
+        result.put("professions", baseMapper.countUnexamByProfession());
+        return result;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> importStudentsFromExcel(MultipartFile file) {
         if (file == null || file.isEmpty()) {

@@ -4,6 +4,10 @@ export function studentPage(params) {
   return request({ url: '/admin/student/page', method: 'get', params })
 }
 
+export function getUnexamStats() {
+  return request({ url: '/admin/student/unexam-stats', method: 'get' })
+}
+
 export function addStudent(data) {
   return request({ url: '/admin/student', method: 'post', data })
 }

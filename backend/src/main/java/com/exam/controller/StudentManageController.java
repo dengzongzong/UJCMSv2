@@ -47,6 +47,14 @@ public class StudentManageController {
     }
 
     /**
+     * 未考试学生按专业统计数量
+     */
+    @GetMapping("/unexam-stats")
+    public Result<Map<String, Object>> unexamStats() {
+        return Result.success(studentManageService.unexamStats());
+    }
+
+    /**
      * 新增学生
      */
     @PostMapping
