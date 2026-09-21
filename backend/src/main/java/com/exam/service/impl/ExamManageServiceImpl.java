@@ -478,15 +478,9 @@ public class ExamManageServiceImpl extends ServiceImpl<ExamMapper, Exam> impleme
             if (!openedIds.contains(studentId)) {
                 continue;
             }
-            // 基于试卷题目和每题分值,为每个学生生成差异化的模拟成绩
-            // 根据学生在本专业其他考试中的历史表现,确定一个合理的基础正确率
-            BigDecimal baseAccuracy = getStudentBaseAccuracy(studentId, exam.getProfessionId());
-            // 在基础正确率上加上较大范围波动,使分数分布更自然
-            // 第一层波动: ±12%
-            double variance1 = (random.nextDouble() - 0.5) * 0.24;
-            // 第二层波动: ±3% (叠加使分布更均匀,减少扎堆)
-            double variance2 = (random.nextDouble() - 0.5) * 0.06;
-            double actualAccuracy = Math.max(0.70, Math.min(0.98, baseAccuracy.doubleValue() + variance1 + variance2));
+            // 自动考试: 正确率直接随机在 80% ~ 98% 之间(按需求固定区间,不依赖历史表现)
+            double actualAccuracy = 0.80 + random.nextDouble() * 0.18;
+            actualAccuracy = Math.min(0.98, Math.max(0.80, actualAccuracy));
 
             // 根据正确率计算得分
             BigDecimal score = totalScore.multiply(new BigDecimal(actualAccuracy))
@@ -628,45 +622,6 @@ public class ExamManageServiceImpl extends ServiceImpl<ExamMapper, Exam> impleme
                 // 回写失败不影响自动考试主流程
                 org.slf4j.LoggerFactory.getLogger(getClass()).warn("自动考试成绩回写证书失败: examId={}, studentId={}", examId, studentId, e);
             }
-        }
-    }
-
-    /**
-     * 获取学生在指定专业下的历史考试基础正确率
-     * 如果有历史考试记录,取历史平均正确率;如果没有,给一个默认的 75%
-     */
-    private BigDecimal getStudentBaseAccuracy(Long studentId, Long professionId) {
-        try {
-            // 查该学生所有已提交的考试记录(排除自动考试产生的记录,避免自动考试的accuracy锁死后续随机性)
-            List<ExamRecord> records = examRecordMapper.selectList(
-                    new LambdaQueryWrapper<ExamRecord>()
-                            .eq(ExamRecord::getStudentId, studentId)
-                            .eq(ExamRecord::getSubmitStatus, 1)
-                            .eq(ExamRecord::getDuration, 0));
-            if (records == null || records.isEmpty()) {
-                // 没有真实考试记录:基于学生ID+专业ID生成一个稳定的默认正确率(65%-85%)
-                // 这样不同学生的默认正确率不同,避免撞分
-                long key = studentId + (professionId != null ? professionId : 0);
-                int hash = Math.abs(Long.hashCode(key));
-                double defaultAccuracy = 0.65 + (hash % 200) / 1000.0; // 0.65 ~ 0.85
-                return new BigDecimal(defaultAccuracy);
-            }
-            // 取历史正确率平均值
-            BigDecimal sum = BigDecimal.ZERO;
-            int count = 0;
-            for (ExamRecord r : records) {
-                if (r.getAccuracy() != null && r.getAccuracy().compareTo(BigDecimal.ZERO) > 0) {
-                    // accuracy 存的是 0-100 的百分比,转成 0-1 的小数
-                    sum = sum.add(r.getAccuracy()).divide(new BigDecimal("100"), 4, BigDecimal.ROUND_HALF_UP);
-                    count++;
-                }
-            }
-            if (count > 0) {
-                return sum.divide(new BigDecimal(count), 4, BigDecimal.ROUND_HALF_UP);
-            }
-            return new BigDecimal("0.75");
-        } catch (Exception e) {
-            return new BigDecimal("0.75");
         }
     }
 
