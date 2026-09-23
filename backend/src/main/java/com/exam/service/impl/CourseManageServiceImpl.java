@@ -389,9 +389,9 @@ public class CourseManageServiceImpl extends ServiceImpl<CourseMapper, Course> i
         // 按专业筛选: 先查 student_profession 关联表获取匹配的 studentId
         Set<Long> professionFilteredIds = null;
         if (StringUtils.hasText(profession)) {
-            // profession 可能是专业名称或ID,先查 profession 表
+            // profession 是专业名称,按名称精确匹配
             List<Profession> matchedProfessions = professionMapper.selectList(
-                    new LambdaQueryWrapper<Profession>().like(Profession::getName, profession));
+                    new LambdaQueryWrapper<Profession>().eq(Profession::getName, profession));
             if (matchedProfessions.isEmpty()) {
                 return new PageResult<>(new Page<>(page, size));
             }

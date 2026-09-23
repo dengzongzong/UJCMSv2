@@ -399,11 +399,11 @@ public class LiveServiceImpl extends ServiceImpl<LiveRoomMapper, LiveRoom> imple
                 new LambdaQueryWrapper<StudentLive>().eq(StudentLive::getLiveId, liveId));
         Set<Long> openedIds = studentLives.stream().map(StudentLive::getStudentId).collect(Collectors.toSet());
 
-        // 按专业筛选: 先查 profession 表按名称匹配,再查 student_profession 关联表获取 studentId
+        // 按专业筛选: 先查 profession 表按名称精确匹配,再查 student_profession 关联表获取 studentId
         Set<Long> professionFilteredIds = null;
         if (StringUtils.hasText(profession)) {
             List<Profession> matchedProfessions = professionMapper.selectList(
-                    new LambdaQueryWrapper<Profession>().like(Profession::getName, profession));
+                    new LambdaQueryWrapper<Profession>().eq(Profession::getName, profession));
             if (matchedProfessions.isEmpty()) {
                 return new PageResult<>(new Page<>(page, size));
             }
