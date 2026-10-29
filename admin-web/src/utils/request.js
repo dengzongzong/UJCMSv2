@@ -58,6 +58,19 @@ function handleUnauthorized() {
     .catch(() => {})
 }
 
+// 查询类请求(仅 GET)在超时或网络中断时自动重试一次,
+// 避免偶发连接被中间链路掐断时页面直接空白并弹出一串错误
+const RETRY_TIMES = 1
+
+function isRetryable(error) {
+  const config = error.config
+  if (!config || !config.method || config.method.toLowerCase() !== 'get') return false
+  if (config.__retryCount >= RETRY_TIMES) return false
+  const isTimeout = error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')
+  const isNetwork = !error.response
+  return isTimeout || isNetwork
+}
+
 service.interceptors.response.use(
   (response) => {
     // 二进制流直接透传
@@ -83,6 +96,10 @@ service.interceptors.response.use(
     return res
   },
   (error) => {
+    if (isRetryable(error)) {
+      error.config.__retryCount = (error.config.__retryCount || 0) + 1
+      return service(error.config)
+    }
     const status = error.response && error.response.status
     const data = error.response && error.response.data
     // 记录网络/服务错误详情

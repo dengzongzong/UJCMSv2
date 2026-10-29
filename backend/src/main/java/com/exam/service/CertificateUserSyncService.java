@@ -44,12 +44,31 @@ public class CertificateUserSyncService {
     @Autowired
     private StudentProfessionMapper studentProfessionMapper;
 
+    /** 增量同步游标:上次增量同步的时间点 */
+    private volatile LocalDateTime lastIncrementalSyncTime = LocalDateTime.now();
+
     /**
-     * 定时全量同步:每 10 分钟执行一次
-     * <p>删除了证书用户里面的数据,也会自动从学生管理再次同步过来</p>
+     * 定时增量同步:每 10 分钟执行一次,只同步上次同步之后新增或变更的学员
+     * <p>学员的新增/修改/导入已由 syncStudent 实时同步,这里只做兜底,
+     * 避免每 10 分钟全量扫描 1.5 万名学员给数据库造成持续压力</p>
      */
-    @Scheduled(fixedRate = 10 * 60 * 1000)
-    public void scheduledSyncAll() {
+    @Scheduled(fixedDelay = 10 * 60 * 1000)
+    public void scheduledSyncIncremental() {
+        LocalDateTime from = lastIncrementalSyncTime;
+        lastIncrementalSyncTime = LocalDateTime.now();
+        int count = syncChangedSince(from);
+        if (count > 0) {
+            log.info("证书用户增量同步完成,自 {} 起共处理 {} 名学员", from, count);
+        }
+    }
+
+    /**
+     * 每日凌晨 3 点全量同步一次
+     * <p>用于恢复被手工删除的证书用户数据,放在低峰期执行</p>
+     */
+    @Scheduled(cron = "0 0 3 * * ?")
+    public void scheduledSyncAllDaily() {
+        log.info("开始每日全量同步证书用户");
         syncAll(null);
     }
 
@@ -91,6 +110,34 @@ public class CertificateUserSyncService {
             }
         }
         log.info("证书用户同步完成,certType={},共处理 {} 名学员", certType, count);
+        return count;
+    }
+
+    /**
+     * 同步指定时间点之后新增或变更过的学员
+     * <p>取创建时间或变更时间落在该时间点之后的学员,多留 1 分钟重叠窗口避免边界漏同步</p>
+     */
+    private int syncChangedSince(LocalDateTime from) {
+        if (from == null) {
+            return syncAll(null);
+        }
+        LocalDateTime since = from.minusMinutes(1);
+        LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<Student>()
+                .and(w -> w.ge(Student::getCreateTime, since).or().ge(Student::getUpdateTime, since));
+        List<Student> students = studentMapper.selectList(queryWrapper);
+        if (students.isEmpty()) {
+            return 0;
+        }
+        Map<Long, String> professionNameMap = loadProfessionNameMap();
+        int count = 0;
+        for (Student s : students) {
+            try {
+                count += upsertPerProfession(s, professionNameMap);
+            } catch (Exception e) {
+                log.warn("同步学员到证书用户失败 studentId={}, idCard={}, phone={}: {}",
+                        s.getId(), s.getIdCard(), s.getPhone(), e.getMessage());
+            }
+        }
         return count;
     }
 
