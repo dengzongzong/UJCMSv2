@@ -114,6 +114,17 @@ spring:
     url: jdbc:mysql://localhost:3306/${MYSQL_DB}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
     username: ${MYSQL_USER}
     password: ${MYSQL_PASS}
+    # 连接池调优:默认 maxActive=8 且 maxWait=-1(无限等待),同步任务占满连接后
+    # 其它请求会无限期挂起直到前端 30 秒超时,这里显式限制等待时间快速失败
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 3000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      time-between-eviction-runs-millis: 60000
   servlet:
     multipart:
       max-file-size: 1500MB
