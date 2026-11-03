@@ -10,8 +10,10 @@
     <div class="header-top" :style="{ backgroundImage: `url(${publicPath}images/body.jpg)` }">
       <div class="header-container">
         <div class="logo" @click="$router.push('/home')">
+          <img src="/images/logo-hr.png" alt="人力资源专业技能人才评价网" class="logo-title-img" />
           <div class="logo-text">
-            <img src="/images/logo-hr.png" alt="人力资源专业技能人才评价中心" class="logo-title-img" />
+            <div class="logo-title">人力资源专业技能人才评价网</div>
+            <div class="logo-title-en">Human Resources Professional Skills Talent Evaluation Network</div>
             <div class="logo-subtitle">www.hrzynlpj.org.cn</div>
           </div>
         </div>
@@ -377,6 +379,24 @@ export default {
     gap: 2px;
   }
 
+  .logo-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #e10a1c;
+    letter-spacing: 1px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .logo-title-en {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e10a1c;
+    letter-spacing: 0.3px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
   .logo-title-img {
     height: 72px;
     width: auto;
@@ -442,6 +462,9 @@ export default {
       font-size: 16px;
       letter-spacing: 0;
       line-height: 1.2;
+    }
+    .logo-title-en {
+      display: none;
     }
     .logo-title-img {
       height: 38px;
