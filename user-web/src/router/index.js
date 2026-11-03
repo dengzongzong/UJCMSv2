@@ -215,9 +215,9 @@ const router = new VueRouter({
 
 // 全局前置守卫
 router.beforeEach((to, from, next) => {
-  // 设置页面标题
+  // 设置页面标题(统一带上站点名称)
   if (to.meta.title) {
-    document.title = to.meta.title
+    document.title = `${to.meta.title} - 人力资源专业技能人才评价中心`
   }
 
   // 检测首页 URL 中的证书查询参数(bh/name/certNo),
