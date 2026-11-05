@@ -240,6 +240,8 @@ export function importPhotoBatch(data) {
     url: '/admin/certificate/photo/batch-import',
     method: 'post',
     data,
+    // 图片批量上传较耗时,单独放宽超时(nginx 与后端上限均为 300 秒)
+    timeout: 300000,
     headers: {
       'Content-Type': 'multipart/form-data'
     }

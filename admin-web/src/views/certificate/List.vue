@@ -365,6 +365,10 @@
           <div class="el-upload__text">将多张图片拖到此处,或<em>点击上传</em></div>
           <div slot="tip" class="el-upload__tip">仅支持图片文件,每张图不超过 5MB</div>
         </el-upload>
+        <div v-if="batchPhotoDialog.uploading" class="batch-photo-progress">
+          <el-progress :percentage="batchPhotoDialog.percent" :stroke-width="12" />
+          <div class="batch-photo-progress-text">{{ batchPhotoDialog.progressText }}</div>
+        </div>
       </div>
       <div v-else>
         <el-alert
@@ -585,6 +589,8 @@ export default {
         visible: false,
         fileList: [],
         uploading: false,
+        percent: 0,
+        progressText: '',
         result: null
       },
       // 上传学员照片(行内触发,身份证+姓名从当前行预填)
@@ -1478,31 +1484,56 @@ export default {
         this.$message.warning('请先选择要上传的图片')
         return
       }
-      const form = new FormData()
-      for (const f of files) {
-        form.append('files', f)
+      // 分片上传:每批最多 10 张,避免单个请求体过大、耗时过长触发超时
+      const CHUNK_SIZE = 10
+      const chunks = []
+      for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+        chunks.push(files.slice(i, i + CHUNK_SIZE))
       }
+      const result = { successCount: 0, failCount: 0, failedItems: [] }
       this.batchPhotoDialog.uploading = true
+      this.batchPhotoDialog.percent = 0
       try {
-        const res = await importPhotoBatch(form)
-        this.batchPhotoDialog.result = res.data || { successCount: 0, failCount: 0, failedItems: [] }
-        // 提示语
-        const ok = this.batchPhotoDialog.result.successCount || 0
-        const fail = this.batchPhotoDialog.result.failCount || 0
+        for (let i = 0; i < chunks.length; i++) {
+          this.batchPhotoDialog.progressText =
+            '正在导入第 ' + (i + 1) + '/' + chunks.length + ' 批(' + chunks[i].length + ' 张)'
+          const form = new FormData()
+          for (const f of chunks[i]) {
+            form.append('files', f)
+          }
+          const res = await importPhotoBatch(form)
+          const part = res.data || {}
+          result.successCount += part.successCount || 0
+          result.failCount += part.failCount || 0
+          if (Array.isArray(part.failedItems)) {
+            result.failedItems = result.failedItems.concat(part.failedItems)
+          }
+          this.batchPhotoDialog.percent = Math.round(((i + 1) / chunks.length) * 100)
+        }
+        this.batchPhotoDialog.result = result
+        const ok = result.successCount
+        const fail = result.failCount
         if (fail > 0) {
           this.$message.warning('导入完成:成功 ' + ok + ' 张,失败 ' + fail + ' 张,请查看失败明细')
         } else if (ok > 0) {
           this.$message.success('导入成功 ' + ok + ' 张')
         }
       } catch (e) {
+        // 已经导入成功的批次结果仍要展示,避免用户重复上传
+        if (result.successCount > 0 || result.failedItems.length > 0) {
+          this.batchPhotoDialog.result = result
+        }
         this.$message.error('导入失败: ' + (e.message || '未知错误'))
       } finally {
         this.batchPhotoDialog.uploading = false
+        this.batchPhotoDialog.progressText = ''
       }
     },
     onBatchPhotoDialogClosed() {
       this.batchPhotoDialog.fileList = []
       this.batchPhotoDialog.uploading = false
+      this.batchPhotoDialog.percent = 0
+      this.batchPhotoDialog.progressText = ''
       this.batchPhotoDialog.result = null
     },
   }
@@ -1515,6 +1546,8 @@ export default {
 .toolbar .el-button { margin-right: 8px; }
 .pagination { margin-top: 16px; text-align: right; }
 .async-hint { margin-top: 12px; }
+.batch-photo-progress { margin-top: 16px; }
+.batch-photo-progress-text { margin-top: 6px; font-size: 13px; color: #606266; text-align: center; }
 .empty-tip { padding: 24px; text-align: center; color: #909399; }
 .action-row {
   display: flex;
