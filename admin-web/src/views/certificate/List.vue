@@ -556,6 +556,7 @@ import {
   certificateUserSync
 } from '@/api/certificate'
 import { uploadFile as uploadRequest } from '@/api/upload'
+import { compressImage } from '@/utils/image'
 import { apiUrl } from '@/utils/apiBase'
 import { templateList } from '@/api/certificateTemplate'
 import { getTask } from '@/api/asyncTask'
@@ -1151,8 +1152,10 @@ export default {
     async onPhotoUpload({ file }) {
       this.photoDialog.uploading = true
       try {
+        // JPEG 温和压缩后再上传,降低带宽占用(图片不足 300KB 时保持原样)
+        const uploadFileObj = await compressImage(file)
         const fd = new FormData()
-        fd.append('file', file)
+        fd.append('file', uploadFileObj)
         // 直接调用 upload-for-certificate 接口,把文件和 certificateId 一起提交
         if (this.photoDialog.form.certificateId) {
           fd.append('certificateId', this.photoDialog.form.certificateId)
@@ -1484,16 +1487,22 @@ export default {
         this.$message.warning('请先选择要上传的图片')
         return
       }
-      // 分片上传:每批最多 10 张,避免单个请求体过大、耗时过长触发超时
-      const CHUNK_SIZE = 10
-      const chunks = []
-      for (let i = 0; i < files.length; i += CHUNK_SIZE) {
-        chunks.push(files.slice(i, i + CHUNK_SIZE))
-      }
       const result = { successCount: 0, failCount: 0, failedItems: [] }
       this.batchPhotoDialog.uploading = true
       this.batchPhotoDialog.percent = 0
       try {
+        // 上传前对 JPEG 照片做温和压缩(长边 1600、质量 0.85,仅超过 300KB 才处理),
+        // 可显著降低带宽占用;PNG 等格式保持原样,避免丢失透明通道
+        for (let i = 0; i < files.length; i++) {
+          this.batchPhotoDialog.progressText = '正在压缩图片 ' + (i + 1) + '/' + files.length
+          files[i] = await compressImage(files[i])
+        }
+        // 分片上传:每批最多 10 张,避免单个请求体过大、耗时过长触发超时
+        const CHUNK_SIZE = 10
+        const chunks = []
+        for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+          chunks.push(files.slice(i, i + CHUNK_SIZE))
+        }
         for (let i = 0; i < chunks.length; i++) {
           this.batchPhotoDialog.progressText =
             '正在导入第 ' + (i + 1) + '/' + chunks.length + ' 批(' + chunks[i].length + ' 张)'

@@ -28,8 +28,31 @@ export function getAnnouncementList() {
   return request({ url: '/public/announcements', method: 'get' })
 }
 
+// 专业列表响应约 37KB,Header 每次进入站点都会拉取,做 10 分钟本地缓存,
+// 减少带宽占用与首屏等待(后台修改专业后最多 10 分钟自动生效)。
+const PROFESSION_CACHE_KEY = 'public_professions_cache'
+const PROFESSION_CACHE_TTL = 10 * 60 * 1000
+
 export function getProfessions() {
-  return request({ url: '/public/professions', method: 'get' })
+  try {
+    const cached = JSON.parse(localStorage.getItem(PROFESSION_CACHE_KEY) || 'null')
+    if (cached && cached.data && Date.now() - cached.time < PROFESSION_CACHE_TTL) {
+      return Promise.resolve({ data: cached.data })
+    }
+  } catch (e) {
+    // 缓存读取失败时忽略,走远程请求
+  }
+  return request({ url: '/public/professions', method: 'get' }).then(res => {
+    try {
+      localStorage.setItem(
+        PROFESSION_CACHE_KEY,
+        JSON.stringify({ data: res.data, time: Date.now() })
+      )
+    } catch (e) {
+      // 存储不可用(如隐私模式)时忽略
+    }
+    return res
+  })
 }
 
 /**

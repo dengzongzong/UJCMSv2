@@ -1,19 +1,49 @@
 import request from '@/utils/request'
 
+// 专业列表体积较大(约 37KB),多个页面会重复拉取;做 10 分钟内存缓存,
+// 降低带宽占用和首屏等待。任何新增/修改/删除后立即失效。
+const PROFESSION_CACHE_TTL = 10 * 60 * 1000
+let professionCache = { data: null, key: '', time: 0 }
+
+function clearProfessionCache() {
+  professionCache = { data: null, key: '', time: 0 }
+}
+
+function isProfessionCacheValid(key) {
+  return (
+    professionCache.data &&
+    professionCache.key === key &&
+    Date.now() - professionCache.time < PROFESSION_CACHE_TTL
+  )
+}
+
 // 专业
 export function professions(params) {
-  return request({ url: '/admin/setting/professions', method: 'get', params })
+  const key = params ? JSON.stringify(params) : ''
+  if (isProfessionCacheValid(key)) {
+    const data = Array.isArray(professionCache.data)
+      ? professionCache.data.slice()
+      : professionCache.data
+    return Promise.resolve({ data })
+  }
+  return request({ url: '/admin/setting/professions', method: 'get', params }).then(res => {
+    professionCache = { data: res.data, key, time: Date.now() }
+    return res
+  })
 }
 
 export function addProfession(data) {
+  clearProfessionCache()
   return request({ url: '/admin/setting/profession', method: 'post', data })
 }
 
 export function updateProfession(data) {
+  clearProfessionCache()
   return request({ url: '/admin/setting/profession', method: 'put', data })
 }
 
 export function deleteProfession(id) {
+  clearProfessionCache()
   return request({ url: '/admin/setting/profession/' + id, method: 'delete' })
 }
 
