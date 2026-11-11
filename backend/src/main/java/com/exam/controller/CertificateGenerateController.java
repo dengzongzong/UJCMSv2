@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * 证书生成 / 下载
  * <p>
  * - 单张: 走同步流式下载
- * - 批量: < 50 张走同步, >= 50 张走异步任务(返回 taskId)
+ * - 批量: < 20 张走同步, >= 20 张走异步任务(返回 taskId)
  */
 @RestController
 @RequestMapping("/admin/certificate/generate")
@@ -81,8 +81,8 @@ public class CertificateGenerateController {
     /**
      * 批量下载
      * - forceAsync=true: 强制异步(用于"批量下载全部")
-     * - 数量 >= 50: 异步任务,返回 { taskId, async: true }
-     * - 数量 < 50: 同步流式下载
+     * - 数量 >= ASYNC_THRESHOLD(20): 异步任务,返回 { taskId, async: true }
+     * - 数量 < 20: 同步流式下载
      */
     @PostMapping("/batch")
     public Object batch(@RequestBody BatchRequest body, HttpServletResponse response) throws Exception {

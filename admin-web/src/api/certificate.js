@@ -31,8 +31,8 @@ export function switchExamQr(data) {
 // 批量生成证书:
 // - PDF: 后端把多张证书合并到同一个 PDF(多页),直接返回 .pdf 文件
 // - 图片: 返回 zip 压缩包
-// - 数量 < 50: 后端 /batch 同步流式返回
-// - 数量 >= 50: 后端 /batch 返回 { taskId, async: true },前端交给任务中心
+// - 数量 < 20: 后端 /batch 同步流式返回
+// - 数量 >= 20: 后端 /batch 返回 { taskId, async: true },前端打开进度弹窗轮询
 export function generateCertificateBatch(data) {
   return request({ url: '/admin/certificate/generate/batch', method: 'post', data })
 }
@@ -182,8 +182,8 @@ export async function downloadSingleCertificate(id, format) {
  * 批量下载证书(后台) - 一个人可有多张证书,选中多条打包下载。
  * POST /admin/certificate/generate/batch
  * - forceAsync=true: 强制异步(用于"批量下载全部")
- * - < 50 张 且非强制: 后端同步返回文件(pdf 为合并的单 PDF,image 为 zip),直接触发浏览器下载
- * - >= 50 张 或 forceAsync: 后端返回 { taskId, async: true },交给任务中心
+ * - < 20 张 且非强制: 后端同步返回文件(pdf 为合并的单 PDF,image 为 zip),直接触发浏览器下载
+ * - >= 20 张 或 forceAsync: 后端返回 { taskId, async: true },前端打开进度弹窗轮询
  *
  * @param {number[]} ids 证书ID列表
  * @param {string} format 'image' | 'pdf'

@@ -43,8 +43,8 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
 
     private static final Logger log = LoggerFactory.getLogger(CertificateTaskServiceImpl.class);
 
-    /** 触发异步的阈值,数据量超过此值走异步,否则同步处理 */
-    public static final int ASYNC_THRESHOLD = 50;
+    /** 触发异步的阈值,数据量超过此值走异步,否则同步处理(同步渲染+打包在低带宽下超过约20张就容易出现长时间无响应) */
+    public static final int ASYNC_THRESHOLD = 20;
 
     private final com.fasterxml.jackson.databind.ObjectMapper objMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -447,11 +447,12 @@ public class CertificateTaskServiceImpl implements CertificateTaskService {
                         fail++;
                         log.warn("证书 {} 跳过: 未绑定模板且无系统默认模板", c.getId());
                     } else {
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        generateService.renderSingle(c, tpl, baos);
+                        // 优先使用预览缓存,已生成过预览的证书可跳过重复渲染,大幅加快批量任务
+                        byte[] bytes = generateService.renderSingleBytesCached(c, tpl);
                         String name = fileNameOf(c);
-                        zip.putNextEntry(new ZipEntry(name + ".png"));
-                        zip.write(baos.toByteArray());
+                        // renderSingle 输出为 JPEG,扩展名应为 .jpg
+                        zip.putNextEntry(new ZipEntry(name + ".jpg"));
+                        zip.write(bytes);
                         zip.closeEntry();
                         ok++;
                     }

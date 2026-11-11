@@ -314,23 +314,17 @@ export default {
       } catch (e) { /* ignore */ }
     },
     onDownload(task) {
-      const url = downloadTaskResultUrl(task.taskId)
-      fetch(url, {
-        headers: { Authorization: 'Bearer ' + (this.$store.getters.token || '') }
-      }).then(r => {
-        if (!r.ok) throw new Error('download failed')
-        return r.blob().then(blob => {
-          const cd = r.headers.get('Content-Disposition') || ''
-          let fileName = task.resultFileName || 'download'
-          const m = cd.match(/filename\*=utf-8''([^;]+)/)
-          if (m) fileName = decodeURIComponent(m[1])
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(blob)
-          a.download = fileName
-          a.click()
-          URL.revokeObjectURL(a.href)
-        })
-      }).catch(() => this.$message.error('下载失败'))
+      // 大文件(zip/pdf)用原生 <a> 下载,交给浏览器下载管理器(有进度、可暂停),
+      // 避免 fetch+blob 把整个文件缓冲在内存里、且必须保持页面打开
+      // 后端 JwtInterceptor 支持 query string 传 token
+      const token = this.$store.getters.token || localStorage.getItem('admin_token') || ''
+      const url = downloadTaskResultUrl(task.taskId) + '?token=' + encodeURIComponent(token)
+      const a = document.createElement('a')
+      a.href = url
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => document.body.removeChild(a), 100)
     },
     showError(task) {
       this.$alert(task.errorMessage || '任务失败', '错误详情', { type: 'error' })

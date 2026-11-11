@@ -966,7 +966,16 @@ export default {
       try {
         const res = await downloadCertificateBatch(ids, format)
         if (res && res.async) {
-          this.$message.success(res.message || '已提交批量生成任务,请在右下角"任务中心"查看进度')
+          // 数量达到阈值走异步任务:打开进度弹窗并轮询,完成后可直接点击"下载结果"
+          this.asyncExportDialog.visible = true
+          this.asyncExportDialog.progress = 0
+          this.asyncExportDialog.processed = 0
+          this.asyncExportDialog.total = ids.length
+          this.asyncExportDialog.status = 'running'
+          this.asyncExportDialog.taskId = res.taskId
+          this.asyncExportDialog.result = null
+          this.asyncExportDialog.downloadUrl = null
+          this.pollAsyncExportTask(res.taskId)
         } else if (res && res.blob) {
           triggerDownload(res.blob, res.fileName || ('certificates_' + format + (format === 'pdf' ? '.pdf' : '.zip')))
           this.$message.success('证书已打包下载')
