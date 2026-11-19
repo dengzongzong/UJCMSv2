@@ -20,8 +20,12 @@
           <span style="margin-left:8px;color:#999;font-size:12px">输入身份证号后自动识别</span>
         </el-form-item>
         <el-form-item label="出生日期">
-          <el-input v-model="form.birthDate" placeholder="输入身份证号后自动提取" readonly />
-          <span style="margin-left:8px;color:#999;font-size:12px">从身份证号第7-14位自动提取</span>
+          <el-input
+            v-model="form.birthDate"
+            placeholder="输入身份证号后自动提取,可手动修改"
+            @input="birthDateTouched = true"
+          />
+          <span style="margin-left:8px;color:#999;font-size:12px">身份证号变化时自动提取,也支持手动修改</span>
         </el-form-item>
         <el-form-item label="专业名称" prop="profession">
           <el-select v-model="form.profession" placeholder="请选择专业" style="width:100%" filterable>
@@ -142,6 +146,10 @@ export default {
     return {
       submitting: false,
       isEdit: false,
+      // 编辑页回显历史数据中,不执行"身份证号自动提取覆盖",保留数据库已存的出生日期/性别
+      restoring: false,
+      // 出生日期是否被手动编辑过(手动值不因身份证提取失败被清空)
+      birthDateTouched: false,
       form: {
         id: null,
         name: '', idCard: '', gender: null, birthDate: '',
@@ -246,6 +254,7 @@ export default {
           const matched = this.professionOptions.find(p => String(p.id) === professionValue)
           if (matched) professionValue = matched.name
         }
+        this.restoring = true
         this.form = {
           id: d.id,
           name: d.name, idCard: d.idCard, gender: d.gender,
@@ -260,12 +269,16 @@ export default {
           certType: d.certType || '',
           extra: d.extra || {}
         }
+        // form.idCard 的 watcher 在 nextTick 调度时触发,先于本回调执行,之后再解除回显保护
+        this.$nextTick(() => { this.restoring = false })
       this.examQrEnabled = d.examQrEnabled || 0
     }
   },
   methods: {
     // 身份证号输入时自动提取性别和出生日期
     onIdCardChange(val) {
+      // 编辑页回显历史数据阶段不覆盖,保留数据库已保存的出生日期/性别
+      if (this.restoring) return
       const idCard = (val || '').trim()
       let extractedBirth = ''
       // 出生日期: 18位取第7-14位, 15位取第7-12位(年份补19)
@@ -284,8 +297,14 @@ export default {
           extractedBirth = year + '-' + month + '-' + day
         }
       }
-      // 能提取到就更新;提取不到(输入中/无效)则清空,避免残留旧值
-      this.form.birthDate = extractedBirth
+      if (extractedBirth) {
+        // 提取成功: 身份证号为权威来源,覆盖出生日期并清除手动编辑标记
+        this.form.birthDate = extractedBirth
+        this.birthDateTouched = false
+      } else if (!this.birthDateTouched) {
+        // 提取不到且当前值来自上次自动提取时才清空,避免误伤手动输入的出生日期
+        this.form.birthDate = ''
+      }
       // 性别: 第17位(18位)或第15位(15位)奇数为男,偶数为女
       const genderChar = idCard.length === 18 ? idCard.charAt(16) : (idCard.length === 15 ? idCard.charAt(14) : '')
       if (genderChar && /^\d$/.test(genderChar)) {
