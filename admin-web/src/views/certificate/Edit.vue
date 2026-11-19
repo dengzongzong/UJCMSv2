@@ -146,7 +146,7 @@ export default {
     return {
       submitting: false,
       isEdit: false,
-      // 编辑页回显历史数据中,不执行"身份证号自动提取覆盖",保留数据库已存的出生日期/性别
+      // 编辑页回显历史数据阶段标记(回显时身份证提取失败不清空已存的出生日期)
       restoring: false,
       // 出生日期是否被手动编辑过(手动值不因身份证提取失败被清空)
       birthDateTouched: false,
@@ -275,10 +275,8 @@ export default {
     }
   },
   methods: {
-    // 身份证号输入时自动提取性别和出生日期
+    // 身份证号输入时自动提取性别和出生日期(打开编辑页回显时同样自动提取回填)
     onIdCardChange(val) {
-      // 编辑页回显历史数据阶段不覆盖,保留数据库已保存的出生日期/性别
-      if (this.restoring) return
       const idCard = (val || '').trim()
       let extractedBirth = ''
       // 出生日期: 18位取第7-14位, 15位取第7-12位(年份补19)
@@ -298,11 +296,13 @@ export default {
         }
       }
       if (extractedBirth) {
-        // 提取成功: 身份证号为权威来源,覆盖出生日期并清除手动编辑标记
+        // 提取成功: 身份证号为权威来源,自动回填出生日期并清除手动编辑标记
         this.form.birthDate = extractedBirth
         this.birthDateTouched = false
-      } else if (!this.birthDateTouched) {
-        // 提取不到且当前值来自上次自动提取时才清空,避免误伤手动输入的出生日期
+      } else if (!this.restoring && !this.birthDateTouched) {
+        // 提取不到: 用户正在输入身份证时清空上次自动提取的残留值;
+        // 打开编辑页回显(restoring)阶段不清空,保留数据库已存的出生日期;
+        // 手动输入过的出生日期也不清空
         this.form.birthDate = ''
       }
       // 性别: 第17位(18位)或第15位(15位)奇数为男,偶数为女
